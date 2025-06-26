@@ -1,0 +1,105 @@
+/* src/style.css */
+
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* 将聊天框固定在底部 */
+    min-height: 100vh;
+    background-color: #282c34; /* 深色背景 */
+    color: #e0e0e0; /* 浅色文字 */
+    overflow: hidden; /* 隐藏滚动条，如果 Live2D 占据整个屏幕 */
+}
+
+/* 聊天容器 */
+.chat-container {
+    background-color: rgba(40, 44, 52, 0.8); /* 半透明背景 */
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 90%; /* 宽度调整为 90% */
+    max-width: 800px; /* 最大宽度 */
+    height: 40vh; /* 限制聊天框高度为视窗高度的 40% */
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    margin-bottom: 20px; /* 底部留白 */
+    z-index: 1; /* 确保在 Live2D 之上 */
+}
+
+/* 消息显示区域 */
+.messages-display {
+    flex-grow: 1; /* 占据可用空间 */
+    overflow-y: auto; /* 消息过多时显示滚动条 */
+    padding-right: 10px; /* 防止滚动条遮挡文字 */
+    margin-bottom: 15px;
+    /* 滚动条美化 (可选) */
+    scrollbar-width: thin;
+    scrollbar-color: #666 #333;
+}
+.messages-display::-webkit-scrollbar {
+    width: 8px;
+}
+.messages-display::-webkit-scrollbar-track {
+    background: #333;
+    border-radius: 4px;
+}
+.messages-display::-webkit-scrollbar-thumb {
+    background-color: #666;
+    border-radius: 4px;
+}
+
+/* 单条消息样式 */
+.message {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 18px;
+    max-width: 70%;
+    word-wrap: break-word; /* 防止长单词溢出 */
+}
+
+.user-message {
+    background-color: #007bff; /* 蓝色气泡 */
+    align-self: flex-end; /* 用户消息靠右 */
+    margin-left: auto; /* 自动左边距 */
+    color: white;
+}
+
+.ai-message {
+    background-color: #444; /* 深灰色气泡 */
+    align-self: flex-start; /* AI 消息靠左 */
+    margin-right: auto; /* 自动右边距 */
+}
+
+/* 输入区域 */
+.chat-input-area {
+    display: flex;
+    gap: 10px; /* 输入框和按钮之间的间距 */
+}
+
+#chat-input {
+    flex-grow: 1; /* 输入框占据大部分空间 */
+    padding: 10px 15px;
+    border: 1px solid #555;
+    border-radius: 20px;
+    background-color: #333;
+    color: #e0e0e0;
+    font-size: 1em;
+    outline: none; /* 移除选中时的蓝色边框 */
+}
+
+#send-button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s;
+}
+
+#send-button:hover {
+    background-color: #0056b3;
+}
