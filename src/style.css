@@ -1,42 +1,98 @@
 /* src/style.css */
 
+/* 定义 Twitch 常用颜色变量 */
 :root {
-  --sidebar-width: 400px; /* 侧边栏宽度 */
-  --sidebar-collapsed-width: 50px; /* 折叠后侧边栏宽度,只显示按钮 */
+  --twitch-purple: #9147FF;
+  --twitch-dark-bg: #18181B;
+  --twitch-chat-bg: #0E0E10;
+  --twitch-text-color: #EFEFF1;
+  --twitch-secondary-text-color: #A0A0A0;
+  --twitch-border-color: #3A3A3D;
+
+  --sidebar-width: 340px; /* 聊天侧边栏的宽度 */
+  --header-height: 50px; /* Twitch 页眉高度 */
   --transition-duration: 0.3s; /* 过渡动画时间 */
-  --twitch-purple: #9147FF; /* Twitch 主题色 */
-  --twitch-dark-bg: #18181B; /* Twitch 深色背景 */
-  --twitch-chat-bg: #0E0E10; /* Twitch 聊天背景 */
+
   --neuro-shadow-color: #32003C; /* Neuro 字幕阴影色 */
 }
 
+/* 自定义字体 */
+@font-face {
+  font-family: 'First Coffee';
+  src: url('/fonts/first-coffee.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
 body {
-  font-family: 'Arial', sans-serif; /* 默认字体 */
+  font-family: 'Inter', Arial, sans-serif; /* Twitch 常用字体,没有则回退 Arial */
   margin: 0;
   padding: 0;
   display: flex;
-  height: 100vh; /* 填充整个视口高度 */
-  overflow: hidden; /* 隐藏溢出内容,避免滚动条 */
-  background-color: var(--twitch-dark-bg); /* 全局深色背景 */
-  color: #e0e0e0;
-  justify-content: flex-end; /* *** 修复侧边栏跑到左边的问题：将内容推到右侧 *** */
-
-  /* 直播背景 */
-  background-image: url('/background.webp'); /* 引用 background.webp */
-  background-size: cover; /* 覆盖整个区域 */
-  background-position: center; /* 居中背景图 */
-  background-repeat: no-repeat;
+  flex-direction: column; /* 垂直布局：页眉在顶,主内容在下 */
+  min-height: 100vh; /* 允许页面内容撑开并滚动 */
+  background-color: var(--twitch-dark-bg); /* body 纯色背景 */
+  color: var(--twitch-text-color);
 }
 
-/* 主内容区 */
-#main-content {
-  flex-grow: 1; /* 占据剩余所有空间 */
-  position: relative; /* 用于字幕的绝对定位 */
+/* === Twitch 页眉 === */
+#twitch-header {
+  height: var(--header-height);
+  background-color: var(--twitch-chat-bg);
   display: flex;
-  justify-content: center;
-  align-items: flex-end; /* 字幕靠底 */
-  padding-bottom: 50px; /* 给字幕留出空间 */
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--twitch-border-color);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+#twitch-header .logo {
+  font-weight: bold;
+  font-size: 1.4em;
+  color: var(--twitch-purple);
+  margin-right: auto;
+}
+
+#twitch-header .nav-links a {
+  color: var(--twitch-text-color);
+  text-decoration: none;
+  margin-left: 20px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+#twitch-header .nav-links a:hover {
+  color: var(--twitch-purple);
+}
+
+/* === 主内容区域：直播画面 + 聊天室 === */
+#main-content-wrapper {
+  flex-grow: 1; /* 占据页眉下方所有剩余空间 */
+  display: flex; /* 横向布局：直播画面在左,聊天室在右 */
+  overflow-y: auto; /* 允许主内容区垂直滚动 */
+  overflow-x: hidden; /* 防止横向滚动条 */
+  position: relative; /* 用于可能的内部定位 */
+}
+
+/* 左侧：直播画面和信息容器 */
+#stream-and-info-container {
+  flex-grow: 1; /* 占据大部分空间 */
+  display: flex;
+  flex-direction: column; /* 垂直布局：画面在顶,信息在下 */
+  padding: 0; /* 移除 padding，让画面紧贴边缘 */
+}
+
+/* 直播画面容器 (保持 16:9 比例) */
+#stream-display-area {
+  width: 100%;
+  position: relative; /* 用于内部绝对定位的 Live2D 和字幕 */
+  aspect-ratio: 16 / 9; /* 保持 16:9 比例 */
+  background-color: #000; /* 黑色背景,当 Live2D 未加载时显示 */
   overflow: hidden; /* 隐藏 Live2D 可能溢出的部分 */
+  border-radius: 0; /* 移除圆角 */
+  box-shadow: none; /* 移除阴影 */
+  flex-shrink: 0; /* 确保它不会被压缩 */
 }
 
 /* Live2D 占位符 */
@@ -46,122 +102,143 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0; /* 确保在字幕之下 */
-  /* background-color: rgba(255, 0, 0, 0.1); # 用于调试 Live2D 区域 */
+  z-index: 0;
+  pointer-events: none;
+  /* background.webp 仅用于 Live2D 画面背景 */
+  background-image: url('/background.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
-/* Neuro 字幕显示区域 */
+/* Neuro 字幕显示区域 (位于直播画面之上) */
 #neuro-caption {
   position: absolute;
-  bottom: 5%; /* 距离底部 5% */
+  bottom: 5%;
   left: 50%;
-  transform: translateX(-50%); /* 水平居中 */
-  width: 70%; /* 字幕宽度 */
-  max-width: 960px; /* 最大宽度 */
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 960px;
   padding: 15px 25px;
-  border-radius: 10px; /* 仍然可以保留圆角,即使没有背景 */
+  border-radius: 10px;
   text-align: center;
-  font-size: 2.5em; /* 字幕大一些 */
-  font-weight: bold; /* 保持粗体 */
-  opacity: 0; /* 初始隐藏 */
-  pointer-events: none; /* 确保不阻挡鼠标事件 */
-  z-index: 10; /* 确保在其他内容之上 */
-  color: white; /* 字幕本体白色 */
-}
-
-#neuro-caption.show {
-    opacity: 1; /* 显示时完全不透明 */
-}
-
-/* 字幕字体和阴影效果 */
-@font-face {
-  font-family: 'First Coffee';
-  src: url('/fonts/first-coffee.woff2') format('woff2'); /* 引用字体文件 */
-  font-weight: normal;
-  font-style: normal;
-}
-
-#neuro-caption {
-  font-family: 'First Coffee', cursive; /* 应用自定义字体,备用手写体 */
+  font-size: 2.5em;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  color: white;
+  transition: opacity 0.5s ease-in-out;
   text-shadow:
     0 0 4px var(--neuro-shadow-color),
     0 0 4px var(--neuro-shadow-color),
-    0 0 4px var(--neuro-shadow-color); /* 三层阴影模拟渐变轮廓 */
+    0 0 4px var(--neuro-shadow-color);
+  font-family: 'First Coffee', cursive;
 }
 
-/* 右侧聊天边栏 */
+#neuro-caption.show {
+    opacity: 1;
+}
+
+/* 直播信息区域 */
+#stream-info {
+  display: flex;
+  align-items: center;
+  padding: 20px; /* 添加内边距 */
+  border-bottom: 1px solid var(--twitch-border-color);
+  margin-bottom: 0; /* 移除 margin-bottom */
+}
+
+#streamer-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin-right: 15px;
+  border: 2px solid var(--twitch-purple);
+  flex-shrink: 0;
+}
+
+.stream-details {
+  flex-grow: 1;
+}
+
+.stream-details h1 {
+  margin: 0;
+  font-size: 1.8em;
+  color: var(--twitch-text-color);
+  line-height: 1.2;
+}
+
+.stream-details p {
+  margin: 5px 0 0;
+  font-size: 1em;
+}
+
+#streamer-nickname {
+  color: var(--twitch-secondary-text-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+#streamer-nickname:hover {
+  color: var(--twitch-purple);
+  text-decoration: underline;
+}
+
+
+/* === 右侧聊天边栏 === */
 .chat-sidebar {
   width: var(--sidebar-width);
-  min-width: var(--sidebar-collapsed-width); /* 确保折叠后按钮可见 */
   background-color: var(--twitch-chat-bg);
-  height: 100%;
-  position: relative; /* 用于折叠按钮的定位 */
-  transition: width var(--transition-duration) ease-in-out;
-  flex-shrink: 0; /* 不允许被挤压 */
+  /* height: 100%; */ /* *** 修复：不再需要固定高度，让它自动填充剩余空间 *** */
+  flex-shrink: 0;
   display: flex;
-  flex-direction: row-reverse; /* 让折叠按钮在左侧 */
+  flex-direction: column; /* 垂直布局，内容从上到下 */
+  border-left: 1px solid var(--twitch-border-color);
+  z-index: 50;
+  /* 移除所有与折叠相关的定位和动画 */
 }
-
-/* 侧边栏折叠状态 */
-.chat-sidebar.collapsed {
-  width: var(--sidebar-collapsed-width);
-}
-
-/* 侧边栏折叠按钮 */
-.sidebar-toggle-button {
-  background-color: var(--twitch-purple);
-  color: white;
-  border: none;
-  border-radius: 8px 0 0 8px; /* 左侧圆角 */
-  padding: 15px 10px;
-  cursor: pointer;
-  font-size: 1.2em;
-  height: 100px; /* 按钮高度 */
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 20; /* 确保按钮在最上层 */
-  transition: background-color 0.2s;
-}
-
-.sidebar-toggle-button:hover {
-  background-color: #7728FF; /* 更深的紫色 */
-}
-
-.chat-sidebar.collapsed .sidebar-toggle-button {
-    left: 0; /* 折叠后按钮仍在最左侧 */
-    border-radius: 0 8px 8px 0; /* 折叠后右侧圆角 */
-}
-.chat-sidebar:not(.collapsed) .sidebar-toggle-button {
-    left: 0; /* 展开后按钮仍在最左侧 */
-    border-radius: 8px 0 0 8px; /* 展开后左侧圆角 */
-}
-
 
 /* 聊天内容区域 (在侧边栏内部) */
 .chat-content {
   flex-grow: 1; /* 占据侧边栏剩余空间 */
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* *** 修复：让 messages-display 和 chat-input-area 垂直堆叠 *** */
   padding: 15px;
-  /* 隐藏聊天内容当侧边栏折叠时 */
-  opacity: 1;
-  transition: opacity var(--transition-duration) ease-in-out;
   overflow: hidden; /* 防止内容溢出 */
 }
 
-.chat-sidebar.collapsed .chat-content {
-  opacity: 0;
-  pointer-events: none; /* 禁用交互 */
+.chat-header {
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid var(--twitch-border-color);
+  /* 修复：对齐方式，确保垂直居中 */
+  display: flex;
+  justify-content: center; /* 标题居中 */
+  align-items: center; /* 垂直居中 */
+  position: relative; /* 如果以后要加其他元素可以定位 */
+}
+.chat-header h2 {
+  margin: 0;
+  font-size: 1em; /* 顶栏字号调小 */
+  color: var(--twitch-text-color);
+  flex-grow: 1;
+  text-align: center; /* 确保标题本身也居中 */
 }
 
-/* 消息显示区域 (只显示用户消息) */
+/* 修复：移除 sidebar-toggle-button 的样式，因为它已经不存在了 */
+/* .sidebar-toggle-button { ... } */
+/* .chat-sidebar.collapsed .sidebar-toggle-button { ... } */
+/* .chat-sidebar:not(.collapsed) + .sidebar-toggle-button { ... } */
+/* .chat-sidebar.collapsed + .sidebar-toggle-button { ... } */
+
+
+/* 消息显示区域 (聊天内容无背景，用户名随机颜色) */
 .messages-display {
-  flex-grow: 1;
+  flex-grow: 1; /* *** 修复：让消息区域占据所有可用垂直空间 *** */
   overflow-y: auto;
   padding-right: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 15px; /* 仍然需要与输入框的间距 */
   scrollbar-width: thin;
   scrollbar-color: #666 #333;
 }
@@ -177,57 +254,65 @@ body {
   border-radius: 4px;
 }
 
-/* 单条消息样式 */
+/* 单条消息样式 - 移除背景色，调整间距 */
 .message {
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  border-radius: 18px;
-  max-width: 85%; /* 消息最大宽度 */
+  padding: 4px 0;
+  margin-bottom: 4px;
+  border-radius: 0;
+  max-width: 100%;
   word-wrap: break-word;
-  color: white;
+  color: var(--twitch-text-color);
+  text-align: left;
 }
 
-.user-message {
-  background-color: #007bff; /* 蓝色气泡 */
-  align-self: flex-end;
-  margin-left: auto;
+.message .username {
+  font-weight: bold;
+  margin-right: 5px;
 }
-
-/* AI 消息不再显示在聊天框中,只在字幕中显示 */
-/* .ai-message { ... } */
-
 
 /* 输入区域 */
 .chat-input-area {
   display: flex;
   gap: 10px;
+  flex-shrink: 0; /* 确保输入区域不会被压缩 */
+  /* *** 修复：确保发送栏位于底部 *** */
+  margin-top: auto; /* 推到 flex 容器的底部 */
 }
 
 #chat-input {
   flex-grow: 1;
   padding: 10px 15px;
-  border: 1px solid #555;
-  border-radius: 20px;
+  border: 1px solid var(--twitch-border-color);
+  border-radius: 4px; /* 文本框圆角减少 */
   background-color: #333;
-  color: #e0e0e0;
+  color: var(--twitch-text-color);
   font-size: 1em;
   outline: none;
 }
 #chat-input::placeholder {
-  color: #aaa;
+  color: var(--twitch-secondary-text-color);
+}
+#chat-input:focus {
+  border-color: var(--twitch-purple);
 }
 
 #send-button {
-  padding: 10px 20px;
+  padding: 10px 15px; /* 发送按钮内边距调整，以适应图标 */
   background-color: var(--twitch-purple);
   color: white;
   border: none;
-  border-radius: 20px;
+  border-radius: 4px; /* 发送按钮圆角减少 */
   cursor: pointer;
-  font-size: 1em;
+  font-size: 1.2em; /* 增大图标大小 */
+  font-weight: bold; /* 确保 > 符号明显 */
   transition: background-color 0.2s;
 }
 
-#send-button:hover {
+#send-button:hover:not(:disabled) {
   background-color: #7728FF;
+}
+
+#send-button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
 }

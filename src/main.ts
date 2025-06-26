@@ -5,14 +5,15 @@ declare var setTimeout: typeof import('timers').setTimeout;
 declare var clearTimeout: typeof import('timers').clearTimeout;
 
 const BACKEND_BASE_URL = 'http://127.0.0.1:8000'; // 后端基础 URL
+const MY_USERNAME = "Files_Transfer"; // 你的用户名
 
 // 获取 HTML 元素
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const sendButton = document.getElementById('send-button') as HTMLButtonElement;
 const chatMessages = document.getElementById('chat-messages') as HTMLDivElement;
-const neuroCaption = document.getElementById('neuro-caption') as HTMLDivElement;
-const chatSidebar = document.getElementById('chat-sidebar') as HTMLDivElement;
-const sidebarToggle = document.getElementById('sidebar-toggle') as HTMLButtonElement;
+const neuroCaption = document.getElementById('neuro-caption') as HTMLDivElement; // 主播画面上的字幕
+// const chatSidebar = document.getElementById('chat-sidebar') as HTMLDivElement; // 修复：chatSidebar 不再需要获取，因为它不再与按钮交互
+// const sidebarToggle = document.getElementById('sidebar-toggle') as HTMLButtonElement; // 修复：侧边栏切换按钮不再需要获取
 
 let captionTimeout: NodeJS.Timeout | undefined;
 
@@ -26,14 +27,38 @@ const audioQueue: AudioSegment[] = [];
 let isPlayingAudio = false; // 标记当前是否有音频正在播放
 let allSegmentsReceived = false; // 标记所有段是否已从后端接收
 
-// 辅助函数:将用户消息添加到聊天界面
-function appendUserMessageToChat(text: string) {
+// 辅助函数:生成随机颜色 (用于聊天用户名)
+function getRandomChatColor(): string {
+    const colors = [
+        '#FF0000', '#00FF00', '#0000FF', '#00FFFF', '#FF00FF', // Primary/Secondary
+        '#FF4500', '#ADFF2F', '#1E90FF', '#FFD700', '#8A2BE2', '#00CED1', // Common web colors
+        '#FF69B4', '#DA70D6', '#BA55D3', '#87CEEB', '#32CD32', '#CD853F'  // More diverse
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// 辅助函数:将消息添加到聊天界面
+// 新增 username 参数和 isAI 参数
+function appendChatMessage(username: string, text: string, isAI: boolean = false) {
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message user-message`;
-    messageDiv.textContent = text;
+    messageDiv.className = `message ${isAI ? 'ai-chat-message' : 'user-chat-message'}`; // 用于未来区分AI观众
+
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'username';
+    usernameSpan.textContent = username + ': ';
+    usernameSpan.style.color = getRandomChatColor(); // 为用户名设置随机颜色
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = text;
+    textSpan.style.color = '#EFEFF1'; // 消息内容统一白色
+
+    messageDiv.appendChild(usernameSpan);
+    messageDiv.appendChild(textSpan);
+
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight; // 滚动到底部
 }
+
 
 // 辅助函数:显示 Neuro 的字幕 (只负责显示,不设置消失计时器)
 function showNeuroCaption(text: string) {
@@ -136,8 +161,9 @@ function connectWebSocket() {
         sendButton.disabled = false; // 连接成功后启用发送按钮
         chatInput.disabled = false;
         // 初始消息仅显示在聊天室
-        appendUserMessageToChat('欢迎来到 Neuro-Sama 的直播间!'); 
-        // 移除字幕区的初始连接提示
+        appendChatMessage(MY_USERNAME, '欢迎来到 Neuro-Sama 的直播间!', false); 
+        
+        // 移除字幕区的初始连接提示,保持字幕区清爽
         neuroCaption.classList.remove('show');
         neuroCaption.textContent = '';
     };
@@ -164,13 +190,12 @@ function connectWebSocket() {
             showNeuroCaption("Someone tell Vedal there is a problem with my AI.");
             playVedalErrorSpeech(); // 调用函数播放错误语音
             
-            allSegmentsReceived = true; // 即使错误，也确保字幕能消失
+            allSegmentsReceived = true; 
             hideNeuroCaptionAfterDelay(); 
 
-            // 错误发生时也确保用户可以再次发送消息
             sendButton.disabled = false;
             chatInput.disabled = false;
-            audioQueue.length = 0; // 清空队列，防止错误后仍然播放
+            audioQueue.length = 0; 
             isPlayingAudio = false;
         }
     };
@@ -182,7 +207,7 @@ function connectWebSocket() {
         isPlayingAudio = false;
         allSegmentsReceived = false;
         audioQueue.length = 0; 
-        // 移除字幕区的连接断开提示
+        // 连接断开不显示在字幕区
         neuroCaption.classList.remove('show');
         neuroCaption.textContent = '';
         setTimeout(connectWebSocket, 3000); // 3秒后尝试重连
@@ -190,7 +215,7 @@ function connectWebSocket() {
 
     ws.onerror = (error) => {
         console.error("WebSocket error:", error);
-        // 移除字幕区的连接失败提示
+        // 连接失败不显示在字幕区
         neuroCaption.classList.remove('show');
         neuroCaption.textContent = '';
         
@@ -207,7 +232,7 @@ async function sendMessage() {
     const userMessage = chatInput.value.trim();
     if (!userMessage) return;
 
-    appendUserMessageToChat(userMessage); // 显示用户消息在聊天侧边栏
+    appendChatMessage(MY_USERNAME, userMessage, false); // 显示用户消息在聊天侧边栏
     chatInput.value = ''; // 清空输入框
 
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -234,7 +259,7 @@ async function sendMessage() {
 
         } catch (error) {
             console.error('通过 WebSocket 发送消息时发生错误:', error);
-            // 移除字幕区的发送消息失败提示
+            // 发送消息失败不显示在字幕区
             neuroCaption.classList.remove('show');
             neuroCaption.textContent = '';
 
@@ -245,7 +270,7 @@ async function sendMessage() {
         }
     } else {
         console.warn("WebSocket is not open. Trying to reconnect...");
-        // 移除字幕区的网络连接断开提示
+        // 网络连接断开不显示在字幕区
         neuroCaption.classList.remove('show');
         neuroCaption.textContent = '';
 
@@ -257,19 +282,8 @@ async function sendMessage() {
     }
 }
 
-// 侧边栏折叠功能 (保持不变)
-sidebarToggle.addEventListener('click', () => {
-    if (chatSidebar) {
-        chatSidebar.classList.toggle('collapsed');
-        if (chatSidebar.classList.contains('collapsed')) {
-            sidebarToggle.textContent = '❯';
-        } else {
-            sidebarToggle.textContent = '❮';
-        }
-    } else {
-        console.error("chatSidebar element not found!");
-    }
-});
+// 修复：移除 sidebarToggle 的事件监听器，因为它和折叠功能一并移除了
+// sidebarToggle.addEventListener('click', () => { ... });
 
 
 // 添加事件监听器

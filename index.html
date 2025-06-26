@@ -2,36 +2,62 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- 根据你的 public 目录调整路径 -->
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Neuro-Sama Live</title>
-    <link rel="stylesheet" href="/src/style.css" /> <!-- 确保style.css被引用 -->
+    <title>Neuro-Simulator Live</title>
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- Live2D 和背景图的占位符，后续再实现 -->
-    <div id="live2d-display">
-        <!-- Live2D canvas 将会在这里渲染 -->
-    </div>
-    
-    <!-- 修复：添加 id="chat-sidebar" -->
-    <div id="chat-sidebar" class="chat-sidebar">
-      <button id="sidebar-toggle" class="sidebar-toggle-button">❮</button>
-      <div class="chat-content">
-        <div id="chat-messages" class="messages-display">
-          <!-- 聊天消息会在这里显示 -->
+    <!-- Twitch 风格页眉 -->
+    <header id="twitch-header">
+      <div class="logo">Neuro-Simulator</div>
+      <div class="nav-links">
+        <a href="#">浏览</a>
+        <a href="#">关注</a>
+      </div>
+    </header>
+
+    <!-- 主内容区域：直播画面 + 聊天室 -->
+    <div id="main-content-wrapper">
+      <!-- 左侧：直播画面和信息 -->
+      <div id="stream-and-info-container">
+        <!-- 直播画面容器，将保持 16:9 比例 -->
+        <div id="stream-display-area">
+          <div id="live2d-display"></div>
+          <!-- Neuro-Sama 字幕显示区域 (位于直播画面之上) -->
+          <div id="neuro-caption"></div>
         </div>
-        <div class="chat-input-area">
-          <input type="text" id="chat-input" placeholder="发送消息..." />
-          <button id="send-button">发送</button>
+
+        <!-- 直播信息 -->
+        <div id="stream-info">
+          <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
+          <div class="stream-details">
+            <h1 id="stream-title">Neuro-Sama 的沉浸式记忆模拟直播</h1>
+            <p><a id="streamer-nickname" href="https://www.twitch.tv/vedal987" target="_blank">vedal987</a></p>
+          </div>
         </div>
       </div>
+
+      <!-- 右侧：聊天侧边栏 -->
+      <div id="chat-sidebar" class="chat-sidebar">
+        <div class="chat-content">
+          <div class="chat-header">
+            <h2>直播聊天</h2>
+            <!-- 修复：移除侧边栏折叠按钮 -->
+          </div>
+          <div id="chat-messages" class="messages-display">
+            <!-- 聊天消息会在这里显示 -->
+          </div>
+          <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="发送消息..." />
+            <button id="send-button">❯</button>
+          </div>
+        </div>
+      </div>
+      <!-- 修复：移除侧边栏折叠按钮 -->
+      <!-- <button id="sidebar-toggle" class="sidebar-toggle-button">❮</button> -->
     </div>
 
-    <!-- Neuro-Sama 字幕显示区域 -->
-    <div id="neuro-caption"></div>
-
-    <!-- 确保你的主前端逻辑文件被加载 -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
