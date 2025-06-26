@@ -1,105 +1,233 @@
 /* src/style.css */
 
+:root {
+  --sidebar-width: 400px; /* 侧边栏宽度 */
+  --sidebar-collapsed-width: 50px; /* 折叠后侧边栏宽度,只显示按钮 */
+  --transition-duration: 0.3s; /* 过渡动画时间 */
+  --twitch-purple: #9147FF; /* Twitch 主题色 */
+  --twitch-dark-bg: #18181B; /* Twitch 深色背景 */
+  --twitch-chat-bg: #0E0E10; /* Twitch 聊天背景 */
+  --neuro-shadow-color: #32003C; /* Neuro 字幕阴影色 */
+}
+
 body {
-    font-family: sans-serif;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end; /* 将聊天框固定在底部 */
-    min-height: 100vh;
-    background-color: #282c34; /* 深色背景 */
-    color: #e0e0e0; /* 浅色文字 */
-    overflow: hidden; /* 隐藏滚动条，如果 Live2D 占据整个屏幕 */
+  font-family: 'Arial', sans-serif; /* 默认字体 */
+  margin: 0;
+  padding: 0;
+  display: flex;
+  height: 100vh; /* 填充整个视口高度 */
+  overflow: hidden; /* 隐藏溢出内容,避免滚动条 */
+  background-color: var(--twitch-dark-bg); /* 全局深色背景 */
+  color: #e0e0e0;
+  justify-content: flex-end; /* *** 修复侧边栏跑到左边的问题：将内容推到右侧 *** */
+
+  /* 直播背景 */
+  background-image: url('/background.webp'); /* 引用 background.webp */
+  background-size: cover; /* 覆盖整个区域 */
+  background-position: center; /* 居中背景图 */
+  background-repeat: no-repeat;
 }
 
-/* 聊天容器 */
-.chat-container {
-    background-color: rgba(40, 44, 52, 0.8); /* 半透明背景 */
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    width: 90%; /* 宽度调整为 90% */
-    max-width: 800px; /* 最大宽度 */
-    height: 40vh; /* 限制聊天框高度为视窗高度的 40% */
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-    margin-bottom: 20px; /* 底部留白 */
-    z-index: 1; /* 确保在 Live2D 之上 */
+/* 主内容区 */
+#main-content {
+  flex-grow: 1; /* 占据剩余所有空间 */
+  position: relative; /* 用于字幕的绝对定位 */
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; /* 字幕靠底 */
+  padding-bottom: 50px; /* 给字幕留出空间 */
+  overflow: hidden; /* 隐藏 Live2D 可能溢出的部分 */
 }
 
-/* 消息显示区域 */
+/* Live2D 占位符 */
+#live2d-display {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0; /* 确保在字幕之下 */
+  /* background-color: rgba(255, 0, 0, 0.1); # 用于调试 Live2D 区域 */
+}
+
+/* Neuro 字幕显示区域 */
+#neuro-caption {
+  position: absolute;
+  bottom: 5%; /* 距离底部 5% */
+  left: 50%;
+  transform: translateX(-50%); /* 水平居中 */
+  width: 70%; /* 字幕宽度 */
+  max-width: 960px; /* 最大宽度 */
+  padding: 15px 25px;
+  border-radius: 10px; /* 仍然可以保留圆角,即使没有背景 */
+  text-align: center;
+  font-size: 2.5em; /* 字幕大一些 */
+  font-weight: bold; /* 保持粗体 */
+  opacity: 0; /* 初始隐藏 */
+  pointer-events: none; /* 确保不阻挡鼠标事件 */
+  z-index: 10; /* 确保在其他内容之上 */
+  color: white; /* 字幕本体白色 */
+}
+
+#neuro-caption.show {
+    opacity: 1; /* 显示时完全不透明 */
+}
+
+/* 字幕字体和阴影效果 */
+@font-face {
+  font-family: 'First Coffee';
+  src: url('/fonts/first-coffee.woff2') format('woff2'); /* 引用字体文件 */
+  font-weight: normal;
+  font-style: normal;
+}
+
+#neuro-caption {
+  font-family: 'First Coffee', cursive; /* 应用自定义字体,备用手写体 */
+  text-shadow:
+    0 0 4px var(--neuro-shadow-color),
+    0 0 4px var(--neuro-shadow-color),
+    0 0 4px var(--neuro-shadow-color); /* 三层阴影模拟渐变轮廓 */
+}
+
+/* 右侧聊天边栏 */
+.chat-sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-collapsed-width); /* 确保折叠后按钮可见 */
+  background-color: var(--twitch-chat-bg);
+  height: 100%;
+  position: relative; /* 用于折叠按钮的定位 */
+  transition: width var(--transition-duration) ease-in-out;
+  flex-shrink: 0; /* 不允许被挤压 */
+  display: flex;
+  flex-direction: row-reverse; /* 让折叠按钮在左侧 */
+}
+
+/* 侧边栏折叠状态 */
+.chat-sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* 侧边栏折叠按钮 */
+.sidebar-toggle-button {
+  background-color: var(--twitch-purple);
+  color: white;
+  border: none;
+  border-radius: 8px 0 0 8px; /* 左侧圆角 */
+  padding: 15px 10px;
+  cursor: pointer;
+  font-size: 1.2em;
+  height: 100px; /* 按钮高度 */
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20; /* 确保按钮在最上层 */
+  transition: background-color 0.2s;
+}
+
+.sidebar-toggle-button:hover {
+  background-color: #7728FF; /* 更深的紫色 */
+}
+
+.chat-sidebar.collapsed .sidebar-toggle-button {
+    left: 0; /* 折叠后按钮仍在最左侧 */
+    border-radius: 0 8px 8px 0; /* 折叠后右侧圆角 */
+}
+.chat-sidebar:not(.collapsed) .sidebar-toggle-button {
+    left: 0; /* 展开后按钮仍在最左侧 */
+    border-radius: 8px 0 0 8px; /* 展开后左侧圆角 */
+}
+
+
+/* 聊天内容区域 (在侧边栏内部) */
+.chat-content {
+  flex-grow: 1; /* 占据侧边栏剩余空间 */
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  /* 隐藏聊天内容当侧边栏折叠时 */
+  opacity: 1;
+  transition: opacity var(--transition-duration) ease-in-out;
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+.chat-sidebar.collapsed .chat-content {
+  opacity: 0;
+  pointer-events: none; /* 禁用交互 */
+}
+
+/* 消息显示区域 (只显示用户消息) */
 .messages-display {
-    flex-grow: 1; /* 占据可用空间 */
-    overflow-y: auto; /* 消息过多时显示滚动条 */
-    padding-right: 10px; /* 防止滚动条遮挡文字 */
-    margin-bottom: 15px;
-    /* 滚动条美化 (可选) */
-    scrollbar-width: thin;
-    scrollbar-color: #666 #333;
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 10px;
+  margin-bottom: 15px;
+  scrollbar-width: thin;
+  scrollbar-color: #666 #333;
 }
 .messages-display::-webkit-scrollbar {
-    width: 8px;
+  width: 8px;
 }
 .messages-display::-webkit-scrollbar-track {
-    background: #333;
-    border-radius: 4px;
+  background: #333;
+  border-radius: 4px;
 }
 .messages-display::-webkit-scrollbar-thumb {
-    background-color: #666;
-    border-radius: 4px;
+  background-color: #666;
+  border-radius: 4px;
 }
 
 /* 单条消息样式 */
 .message {
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    border-radius: 18px;
-    max-width: 70%;
-    word-wrap: break-word; /* 防止长单词溢出 */
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  max-width: 85%; /* 消息最大宽度 */
+  word-wrap: break-word;
+  color: white;
 }
 
 .user-message {
-    background-color: #007bff; /* 蓝色气泡 */
-    align-self: flex-end; /* 用户消息靠右 */
-    margin-left: auto; /* 自动左边距 */
-    color: white;
+  background-color: #007bff; /* 蓝色气泡 */
+  align-self: flex-end;
+  margin-left: auto;
 }
 
-.ai-message {
-    background-color: #444; /* 深灰色气泡 */
-    align-self: flex-start; /* AI 消息靠左 */
-    margin-right: auto; /* 自动右边距 */
-}
+/* AI 消息不再显示在聊天框中,只在字幕中显示 */
+/* .ai-message { ... } */
+
 
 /* 输入区域 */
 .chat-input-area {
-    display: flex;
-    gap: 10px; /* 输入框和按钮之间的间距 */
+  display: flex;
+  gap: 10px;
 }
 
 #chat-input {
-    flex-grow: 1; /* 输入框占据大部分空间 */
-    padding: 10px 15px;
-    border: 1px solid #555;
-    border-radius: 20px;
-    background-color: #333;
-    color: #e0e0e0;
-    font-size: 1em;
-    outline: none; /* 移除选中时的蓝色边框 */
+  flex-grow: 1;
+  padding: 10px 15px;
+  border: 1px solid #555;
+  border-radius: 20px;
+  background-color: #333;
+  color: #e0e0e0;
+  font-size: 1em;
+  outline: none;
+}
+#chat-input::placeholder {
+  color: #aaa;
 }
 
 #send-button {
-    padding: 10px 20px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.2s;
+  padding: 10px 20px;
+  background-color: var(--twitch-purple);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.2s;
 }
 
 #send-button:hover {
-    background-color: #0056b3;
+  background-color: #7728FF;
 }

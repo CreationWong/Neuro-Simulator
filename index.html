@@ -5,24 +5,31 @@
     <!-- 根据你的 public 目录调整路径 -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Neuro-Sama Chat</title>
+    <title>Neuro-Sama Live</title>
     <link rel="stylesheet" href="/src/style.css" /> <!-- 确保style.css被引用 -->
   </head>
   <body>
     <!-- Live2D 和背景图的占位符，后续再实现 -->
-    <div id="live2d-display" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;">
+    <div id="live2d-display">
         <!-- Live2D canvas 将会在这里渲染 -->
     </div>
     
-    <div class="chat-container">
-      <div id="chat-messages" class="messages-display">
-        <!-- 聊天消息会在这里显示 -->
-      </div>
-      <div class="chat-input-area">
-        <input type="text" id="chat-input" placeholder="输入你的消息..." />
-        <button id="send-button">发送</button>
+    <!-- 修复：添加 id="chat-sidebar" -->
+    <div id="chat-sidebar" class="chat-sidebar">
+      <button id="sidebar-toggle" class="sidebar-toggle-button">❮</button>
+      <div class="chat-content">
+        <div id="chat-messages" class="messages-display">
+          <!-- 聊天消息会在这里显示 -->
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="chat-input" placeholder="发送消息..." />
+          <button id="send-button">发送</button>
+        </div>
       </div>
     </div>
+
+    <!-- Neuro-Sama 字幕显示区域 -->
+    <div id="neuro-caption"></div>
 
     <!-- 确保你的主前端逻辑文件被加载 -->
     <script type="module" src="/src/main.ts"></script>
