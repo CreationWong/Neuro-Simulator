@@ -14,6 +14,8 @@
       <div class="nav-links">
         <a href="#">浏览</a>
         <a href="#">关注</a>
+        <!-- 修复：增加重置按钮 -->
+        <a href="#" id="reset-button">重置</a> 
       </div>
     </header>
 
@@ -32,7 +34,7 @@
         <div id="stream-info">
           <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
           <div class="stream-details">
-            <h1 id="stream-title">Neuro-Sama 的沉浸式记忆模拟直播</h1>
+            <h1 id="stream-title">Just Chatting</h1>
             <p><a id="streamer-nickname" href="https://www.twitch.tv/vedal987" target="_blank">vedal987</a></p>
           </div>
         </div>
@@ -43,7 +45,6 @@
         <div class="chat-content">
           <div class="chat-header">
             <h2>直播聊天</h2>
-            <!-- 修复：移除侧边栏折叠按钮 -->
           </div>
           <div id="chat-messages" class="messages-display">
             <!-- 聊天消息会在这里显示 -->
@@ -54,8 +55,6 @@
           </div>
         </div>
       </div>
-      <!-- 修复：移除侧边栏折叠按钮 -->
-      <!-- <button id="sidebar-toggle" class="sidebar-toggle-button">❮</button> -->
     </div>
 
     <script type="module" src="/src/main.ts"></script>
