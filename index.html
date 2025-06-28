@@ -14,8 +14,7 @@
       <div class="nav-links">
         <a href="#">浏览</a>
         <a href="#">关注</a>
-        <!-- 修复：增加重置按钮 -->
-        <a href="#" id="reset-button">重置</a> 
+        <a href="#" id="reset-button">Reset</a> 
       </div>
     </header>
 
@@ -28,13 +27,18 @@
           <div id="live2d-display"></div>
           <!-- Neuro-Sama 字幕显示区域 (位于直播画面之上) -->
           <div id="neuro-caption"></div>
+
+          <!-- Startup Video Overlay moved inside stream-display-area -->
+          <div id="startup-video-overlay">
+            <video id="startup-video" src="/neuro_start.mp4" playsinline muted autoplay></video>
+          </div>
         </div>
 
         <!-- 直播信息 -->
         <div id="stream-info">
           <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
           <div class="stream-details">
-            <h1 id="stream-title">Just Chatting</h1>
+            <h1 id="stream-title">Neuro-Sama's Immersive Memory Simulation Live</h1>
             <p><a id="streamer-nickname" href="https://www.twitch.tv/vedal987" target="_blank">vedal987</a></p>
           </div>
         </div>
@@ -44,13 +48,13 @@
       <div id="chat-sidebar" class="chat-sidebar">
         <div class="chat-content">
           <div class="chat-header">
-            <h2>直播聊天</h2>
+            <h2>Live Chat</h2>
           </div>
           <div id="chat-messages" class="messages-display">
             <!-- 聊天消息会在这里显示 -->
           </div>
           <div class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="发送消息..." />
+            <input type="text" id="chat-input" placeholder="Send a message..." />
             <button id="send-button">❯</button>
           </div>
         </div>

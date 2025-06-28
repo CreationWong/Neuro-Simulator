@@ -15,9 +15,9 @@ import random
 
 from google import genai
 from google.genai import types 
-from starlette.websockets import WebSocketState # Import WebSocketState for correct enum comparison
+from starlette.websockets import WebSocketState 
 
-# 1. Load environment variables
+# 1. 加载环境变量
 load_dotenv()
 
 LETTA_API_TOKEN = os.getenv("LETTA_API_TOKEN")
@@ -26,30 +26,39 @@ NEURO_AGENT_ID = os.getenv("AGENT_ID")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") 
 AUDIENCE_MODEL_NAME = os.getenv("AUDIENCE_MODEL_NAME", "gemini-2.5-flash-lite-preview-06-17") 
 
+# Audience LLM 提供商配置
+AUDIENCE_LLM_PROVIDER = os.getenv("AUDIENCE_LLM_PROVIDER", "gemini").lower() # 'gemini' 或 'openai'
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") # 用于 OpenAI 的 API 密钥
+
+# 检查 Letta API 配置
 if not LETTA_API_TOKEN:
-    print("Warning: LETTA_API_TOKEN not found in .env file. Using a dummy token for letta_client initialization.")
+    print("Warning: LETTA_API_TOKEN 环境变量未找到。使用一个虚拟 token 初始化 letta_client。")
     LETTA_API_TOKEN = "dummy_token"
 
 if not LETTA_BASE_URL:
-    raise ValueError("LETTA_BASE_URL not found in .env file. Please specify your self-hosted Letta server URL (e.g., http://localhost:8283).")
+    raise ValueError("LETTA_BASE_URL 环境变量未找到。请指定您的 Letta 服务器 URL (例如, http://localhost:8283)。")
 
 if not NEURO_AGENT_ID:
-    raise ValueError("NEURO_AGENT_ID not found in .env file. Please provide the ID of your pre-existing Neuro Letta Agent.")
+    raise ValueError("NEURO_AGENT_ID 环境变量未找到。请提供您预先创建的 Neuro Letta Agent 的 ID。")
 
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in .env file. Required for Audience LLM.")
+# 检查 Audience LLM API 密钥配置
+if AUDIENCE_LLM_PROVIDER == "gemini" and not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY 环境变量未找到。Gemini Audience LLM 需要此密钥。")
+elif AUDIENCE_LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
+    print("Warning: OPENAI_API_KEY 环境变量未找到。OpenAI Audience LLM 将无法正常运行。")
 
+# 检查 Azure Speech 服务配置
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY")
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION")
 
 if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
-    print("Warning: AZURE_SPEECH_KEY or AZURE_SPEECH_REGION not found in .env. Azure TTS/STT will not be functional.")
+    print("Warning: AZURE_SPEECH_KEY 或 AZURE_SPEECH_REGION 环境变量未找到。Azure TTS/STT 功能将无法使用。")
 
 
-# 2. Initialize FastAPI App
+# 2. 初始化 FastAPI 应用
 app = FastAPI()
 
-# Configure CORS middleware
+# 配置 CORS 中间件，允许前端访问
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -63,22 +72,83 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 3. Initialize Letta client for Neuro and Gemini Client for Audience
+# 3. 初始化 Letta 客户端 (用于 Neuro)
 letta_client = Letta(token=LETTA_API_TOKEN, base_url=LETTA_BASE_URL)
-genai_client = genai.Client(api_key=GEMINI_API_KEY)
 
-# --- Global Queues and Events ---
+# --- Audience LLM 抽象接口 ---
+class AudienceLLMClient:
+    """Audience LLM 客户端的抽象类/接口。"""
+    async def generate_chat_messages(self, prompt: str, max_tokens: int) -> str:
+        raise NotImplementedError
+
+class GeminiAudienceLLM(AudienceLLMClient):
+    """Gemini 作为 Audience LLM 的实现。"""
+    def __init__(self, api_key: str, model_name: str):
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = model_name
+        print(f"已初始化 GeminiAudienceLLM，模型: {self.model_name}")
+
+    async def generate_chat_messages(self, prompt: str, max_tokens: int) -> str:
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=[{"role": "user", "parts": [{"text": prompt}]}],
+            config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=max_tokens)
+        )
+        raw_chat_text = ""
+        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if part.text:
+                    raw_chat_text += part.text
+        return raw_chat_text
+
+# class OpenAIAudienceLLM(AudienceLLMClient):
+#     """OpenAI 作为 Audience LLM 的实现 (待启用)。"""
+#     def __init__(self, api_key: str, model_name: str = "gpt-3.5-turbo"):
+#         # 需要先安装 openai 库：pip install openai
+#         # import openai
+#         self.client = openai.AsyncOpenAI(api_key=api_key) # 使用 AsyncOpenAI 进行异步操作
+#         self.model_name = model_name
+#         print(f"已初始化 OpenAIAudienceLLM，模型: {self.model_name}")
+
+#     async def generate_chat_messages(self, prompt: str, max_tokens: int) -> str:
+#         response = await self.client.chat.completions.create(
+#             model=self.model_name,
+#             messages=[
+#                 {"role": "system", "content": "You are a helpful assistant."}, # OpenAI 通常需要系统 Prompt
+#                 {"role": "user", "content": prompt}
+#             ],
+#             max_tokens=max_tokens,
+#             temperature=0.7
+#         )
+#         return response.choices[0].message.content.strip() # 确保返回文本
+
+# 根据配置获取 Audience LLM 客户端实例
+def get_audience_llm_client() -> AudienceLLMClient:
+    """根据配置选择并返回 Audience LLM 客户端实例。"""
+    if AUDIENCE_LLM_PROVIDER == "gemini":
+        return GeminiAudienceLLM(api_key=GEMINI_API_KEY, model_name=AUDIENCE_MODEL_NAME)
+    # elif AUDIENCE_LLM_PROVIDER == "openai":
+    #    return OpenAIAudienceLLM(api_key=OPENAI_API_KEY, model_name="gpt-3.5-turbo") 
+    else:
+        raise ValueError(f"不支持的 AUDIENCE_LLM_PROVIDER: {AUDIENCE_LLM_PROVIDER}")
+
+audience_llm_client = get_audience_llm_client()
+
+
+# --- 全局队列和事件 ---
+# 观众聊天消息缓冲区 (用于前端显示)
 audience_chat_buffer = deque(maxlen=500) 
+# Neuro LLM 的输入队列 (观众聊天和用户消息都会进入此队列)
 neuro_input_queue = deque(maxlen=200) 
 
-audience_display_websockets: list[WebSocket] = []
+# 用于 Neuro TTS 的 WebSocket 连接实例
 neuro_tts_websocket: WebSocket | None = None
 
-neuro_tts_ready_event = asyncio.Event()
-# neuro_tts_ready_event's state will be managed by _trigger_neuro_response_flow
-# and frontend's 'tts_finished' signal.
+# 用于控制 neuro_processing_task 何时运行的异步事件
+neuro_tts_ready_event = asyncio.Event() 
 
-# --- LLM Prompts (English) ---
+
+# --- LLM Prompts (英文，供 AI 阅读) ---
 NEURO_AGENT_SYSTEM_PROMPT = """You are Neuro-Sama, an AI VTuber. You are intelligent, sometimes quirky, and observant.
 Your primary role is to host a live stream, interact with your audience, and maintain an engaging personality.
 You will receive messages from the stream chat. These messages can be direct questions to you, comments about your stream, or general banter among viewers.
@@ -87,10 +157,11 @@ Maintain your VTuber persona. Do not explicitly mention 'AI' or 'LLM' unless spe
 Keep your responses concise and natural for a live stream.
 """
 
+# 用于生成随机聊天消息的 Audience LLM Prompt
 AUDIENCE_LLM_PROMPT = """You are a Twitch live stream viewer. Generate short, realistic chat messages as if you are watching a stream.
 Your messages should be varied: questions, comments about the streamer (Neuro-Sama), emotes, general banter, or reactions to what Neuro might be saying.
 Do NOT act as the streamer (Neuro-Sama). Do NOT generate full conversations or detailed replies.
-Generate around 10 distinct chat messages. Each message should be prefixed with a fictional username, like 'username: message text'.
+Generate around 30 distinct chat messages. Each message should be prefixed with a fictional username, like 'username: message text'.
 Examples:
 KappaKing: LUL
 ChatterBox: Is Neuro talking about the weather again?
@@ -99,18 +170,18 @@ QuestionMark: How are you doing today, Neuro?
 StreamFan: Neuro-Sama you are so cool!
 """
 
-# --- Initial System Prompt for Neuro's first turn ---
+# Neuro 首次开播时的初始消息
 INITIAL_NEURO_STARTUP_MESSAGE = {"username": "System", "text": "Welcome to the stream, Neuro-Sama! How are you doing today? Your audience is excited to chat with you."}
 
 @app.on_event("startup")
 async def startup_event():
-    """On app startup, confirm Letta Agent existence and start background tasks."""
+    """FastAPI 应用启动时的事件处理函数。"""
     global NEURO_AGENT_ID
 
-    print(f"Attempting to retrieve Neuro Letta Agent with ID: {NEURO_AGENT_ID}")
+    print(f"尝试获取 Neuro Letta Agent，ID: {NEURO_AGENT_ID}")
     try:
         agent_data = letta_client.agents.retrieve(agent_id=NEURO_AGENT_ID)
-        print(f"Successfully retrieved Agent details for ID: {agent_data.id}")
+        print(f"成功获取 Agent 详情，ID: {agent_data.id}")
         llm_model_info = "N/A"
         if hasattr(agent_data, 'model') and agent_data.model:
             llm_model_info = agent_data.model
@@ -120,35 +191,33 @@ async def startup_event():
                 llm_model_info = llm_config_dict.get('model_name') or llm_config_dict.get('name') or llm_config_dict.get('model')
             if not llm_model_info:
                 llm_model_info = str(agent_data.llm_config)
-        print(f"Neuro Agent Name: {agent_data.name}, LLM Model: {llm_model_info}")
+        print(f"Neuro Agent 名称: {agent_data.name}, LLM 模型: {llm_model_info}")
 
     except Exception as e:
-        print(f"Error: Could not retrieve Neuro Letta Agent with ID {NEURO_AGENT_ID}. Please ensure the ID is correct and your Letta server is running and accessible.")
-        print(f"Details: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Neuro Agent {NEURO_AGENT_ID} cannot be found or accessed: {e}")
+        print(f"错误: 无法获取 Neuro Letta Agent (ID: {NEURO_AGENT_ID})。请确保 ID 正确，且 Letta 服务器正在运行并可访问。")
+        print(f"详情: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Neuro Agent {NEURO_AGENT_ID} 无法找到或访问: {e}")
     
-    # --- IMPORTANT: Reset Neuro's memory on every backend startup ---
-    try:
-        letta_client.agents.messages.reset(agent_id=NEURO_AGENT_ID)
-        print(f"Neuro Agent {NEURO_AGENT_ID} memory reset on startup.")
-    except Exception as e:
-        print(f"Warning: Failed to reset Neuro Agent memory on startup: {e}. It might retain previous context.")
-
-    # Start background tasks
-    asyncio.create_task(generate_audience_chat_task())
-    asyncio.create_task(neuro_processing_task())
-    print("Background tasks 'generate_audience_chat_task' and 'neuro_processing_task' started.")
+    # 初始化 Neuro 会话状态，但不立即触发 Neuro LLM (等待前端信号)
+    await _initialize_neuro_session_state_only() 
+    
+    # 启动后台任务
+    asyncio.create_task(generate_audience_chat_task()) # 观众聊天立即开始生成
+    asyncio.create_task(neuro_processing_task()) # 此任务将等待事件触发，不会立即运行
+    print("后台任务 'generate_audience_chat_task' 和 'neuro_processing_task' 已启动。")
 
 
-# --- Helper Functions ---
+# --- 辅助函数 ---
 def split_text_into_sentences(text: str) -> list[str]:
+    """将文本分割成句子。"""
     sentences = re.split(r'(?<=[.!?])(?<!Mr\.)(?<!Mrs\.)(?<!Dr\.)(?<!etc\.)\s+|$', text)
     sentences = [s.strip() for s in sentences if s.strip()]
     return sentences
 
 async def synthesize_audio_segment(text: str, voice_name: str, pitch: float) -> str:
+    """使用 Azure TTS 合成音频。"""
     if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
-        raise ValueError("Azure Speech Key or Region not configured.")
+        raise ValueError("Azure Speech Key 或 Region 未配置。")
 
     speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
     speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3)
@@ -168,6 +237,7 @@ async def synthesize_audio_segment(text: str, voice_name: str, pitch: float) -> 
 
     synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
 
+    # 在单独的线程中执行同步的 TTS 操作，避免阻塞事件循环
     def _perform_synthesis_sync():
         return synthesizer.speak_ssml_async(ssml_string).get()
 
@@ -179,16 +249,16 @@ async def synthesize_audio_segment(text: str, voice_name: str, pitch: float) -> 
         return encoded_audio
     elif result.reason == speechsdk.ResultReason.Canceled:
         cancellation_details = result.cancellation_details
-        error_message = f"Speech synthesis canceled: {cancellation_details.reason}."
+        error_message = f"语音合成取消: {cancellation_details.reason}。"
         if cancellation_details.error_details:
-            error_message += f" Details: {cancellation_details.error_details}"
+            error_message += f" 详情: {cancellation_details.error_details}"
         raise Exception(error_message)
     else:
         error_details = result.error_details if hasattr(result, 'error_details') else 'N/A'
-        raise Exception(f"Speech synthesis failed: {result.reason}. Error details: {error_details}")
+        raise Exception(f"语音合成失败: {result.reason}。错误详情: {error_details}")
 
 
-# --- HTTP Endpoints ---
+# --- HTTP 端点 ---
 class ErrorSpeechRequest(BaseModel):
     text: str
     voice_name: str = "en-US-AshleyNeural"
@@ -199,7 +269,7 @@ class ErrorSpeechResponse(BaseModel):
 
 @app.post("/synthesize_error_speech", response_model=ErrorSpeechResponse)
 async def synthesize_error_speech_endpoint(request: ErrorSpeechRequest):
-    """Synthesize speech for specific error messages via HTTP POST."""
+    """通过 HTTP POST 合成特定错误消息的语音。"""
     try:
         audio_base64 = await synthesize_audio_segment(
             text=request.text,
@@ -208,39 +278,31 @@ async def synthesize_error_speech_endpoint(request: ErrorSpeechRequest):
         )
         return ErrorSpeechResponse(audio_base64=audio_base64)
     except Exception as e:
-        print(f"Error synthesizing error speech: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to synthesize error speech: {e}")
+        print(f"合成错误语音时出错: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"无法合成错误语音: {e}")
 
 @app.post("/reset_agent_messages", status_code=status.HTTP_200_OK)
 async def reset_agent_messages():
-    """Reset Neuro Letta Agent's message history and clear all chat queues."""
-    print(f"Attempting to reset messages for Neuro Agent ID: {NEURO_AGENT_ID}")
+    """重置 Neuro 的会话 (记忆、队列) 并为新的直播开始做准备。"""
+    print(f"尝试重置 Neuro Agent 的消息，ID: {NEURO_AGENT_ID}")
     try:
-        audience_chat_buffer.clear()
-        neuro_input_queue.clear()
-        letta_client.agents.messages.reset(agent_id=NEURO_AGENT_ID)
-        print(f"Successfully reset messages for Neuro Agent ID: {NEURO_AGENT_ID} and cleared all chat queues.")
-        
-        # After reset, immediately add an initial prompt to kickstart Neuro
-        neuro_input_queue.append(INITIAL_NEURO_STARTUP_MESSAGE)
-        # Manually trigger Neuro processing flow since it's a reset
-        _trigger_neuro_response_flow() 
-        
-        return {"message": f"Messages for Neuro agent {NEURO_AGENT_ID} reset successfully, and all chat queues cleared."}
+        # 仅重置状态，前端将处理视频播放并触发首次启动
+        await _initialize_neuro_session_state_only() 
+        return {"message": f"Neuro Agent {NEURO_AGENT_ID} 的消息已成功重置，所有聊天队列已清空。"}
     except Exception as e:
-        print(f"Error resetting messages for Neuro Agent ID {NEURO_AGENT_ID}: {e}")
+        print(f"重置 Neuro Agent 消息时出错 (ID: {NEURO_AGENT_ID}): {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to reset Neuro agent messages: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"无法重置 Neuro Agent 消息: {e}")
 
 @app.get("/")
 async def root():
-    return {"message": "AI Streamer Backend is running and ready!"}
+    """根路径，返回后端状态消息。"""
+    return {"message": "AI 主播后端正在运行并已就绪！"}
 
-# --- Audience Chat Generation Background Task ---
+# --- 观众聊天生成后台任务 ---
 async def generate_audience_chat_task():
     """
-    Background task to continuously generate audience chat messages
-    and add them to the audience_chat_buffer and neuro_input_queue.
+    后台任务，持续生成观众聊天消息，并将其添加到 audience_chat_buffer 和 neuro_input_queue。
     """
     username_pool = [
         "ChatterBox", "EmoteLord", "QuestionMark", "StreamFan", "PixelPundit",
@@ -249,28 +311,17 @@ async def generate_audience_chat_task():
         "PogChamp", "KappaPride", "ModdedMind", "VirtualVoyager", "MatrixMind"
     ]
     
-    chat_generation_interval = 4 # seconds (Changed to 4 seconds)
-    llm_max_output_tokens = 500 # Adjust max tokens for ~10 chats (as per prompt)
+    chat_generation_interval = 10 # 秒 (每次生成聊天的间隔)
+    llm_max_output_tokens = 1500 # LLM 最大输出 Token 数 (约 30 条消息 * 50 tokens/消息)
 
     while True:
         try:
-            response = await genai_client.aio.models.generate_content(
-                model=AUDIENCE_MODEL_NAME,
-                contents=[
-                    {"role": "user", "parts": [{"text": AUDIENCE_LLM_PROMPT}]}
-                ],
-                config=types.GenerateContentConfig(
-                    temperature=0.7,
-                    max_output_tokens=llm_max_output_tokens 
-                )
+            # 使用选定的 Audience LLM 客户端生成聊天消息
+            raw_chat_text = await audience_llm_client.generate_chat_messages(
+                prompt=AUDIENCE_LLM_PROMPT,
+                max_tokens=llm_max_output_tokens
             )
             
-            raw_chat_text = ""
-            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-                for part in response.candidates[0].content.parts:
-                    if part.text:
-                        raw_chat_text += part.text
-
             parsed_chats = []
             for line in raw_chat_text.split('\n'):
                 line = line.strip()
@@ -280,84 +331,102 @@ async def generate_audience_chat_task():
                     text = text_part.strip()
                     if username and text:
                         parsed_chats.append({"username": username, "text": text})
-                elif line:
-                    random_username = username_pool[len(audience_chat_buffer) % len(username_pool)]
+                elif line: # 处理没有冒号分隔的行，分配随机用户名
+                    random_username = username_pool[random.randrange(len(username_pool))] # 更随机地选择用户名
                     parsed_chats.append({"username": random_username, "text": line})
 
             actual_generated_count = 0
-            # Limit to a maximum of 10 chats to append, even if LLM generates more
-            for chat in parsed_chats[:10]: # Limit to 10 chats
+            # 限制最多添加 30 条聊天消息
+            for chat in parsed_chats[:30]: 
                 audience_chat_buffer.append(chat)
                 neuro_input_queue.append(chat)
                 actual_generated_count += 1
             
-            print(f"Generated {actual_generated_count} audience chats. Audience buffer size: {len(audience_chat_buffer)}. Neuro input queue size: {len(neuro_input_queue)}")
+            print(f"已生成 {actual_generated_count} 条观众聊天。观众缓冲区大小: {len(audience_chat_buffer)}。Neuro 输入队列大小: {len(neuro_input_queue)}")
 
         except Exception as e:
-            print(f"Error generating audience chat: {e}")
+            print(f"生成观众聊天时出错: {e}")
             traceback.print_exc()
         
         await asyncio.sleep(chat_generation_interval)
 
-# --- Neuro Processing Background Task ---
-# Helper function to trigger Neuro's processing flow
+# --- Neuro 处理后台任务及初始化函数 ---
+
 def _trigger_neuro_response_flow():
-    """Sets the event to allow neuro_processing_task to proceed."""
+    """设置事件，允许 neuro_processing_task 继续执行。"""
     if not neuro_tts_ready_event.is_set():
         neuro_tts_ready_event.set()
-        print("Triggered Neuro response flow (neuro_tts_ready_event set).")
+        print("已触发 Neuro 响应流程 (neuro_tts_ready_event 已设置)。")
+
+async def _initialize_neuro_session_state_only():
+    """
+    初始化 Neuro 的会话状态：重置记忆并清空队列。
+    不触发 Neuro LLM 处理。
+    在应用启动时和重置端点调用。
+    """
+    print("正在初始化 Neuro 会话状态 (无即时触发)...")
+    audience_chat_buffer.clear()
+    neuro_input_queue.clear()
+    neuro_tts_ready_event.clear() # 确保事件被清除，以便 neuro_processing_task 等待
+    try:
+        letta_client.agents.messages.reset(agent_id=NEURO_AGENT_ID)
+        print(f"Neuro Agent {NEURO_AGENT_ID} 记忆已重置。")
+    except Exception as e:
+        print(f"警告: 重置 Neuro Agent 记忆失败: {e}。它可能保留了之前的上下文。")
+    
+
+
+async def _trigger_neuro_initial_response():
+    """
+    将初始消息添加到 Neuro 的队列并触发其首次响应。
+    由前端在视频播放后调用。
+    """
+    print("正在触发 Neuro 的首次响应 (视频播放后)...")
+    # 将初始提示添加到 Neuro 的输入队列
+    neuro_input_queue.append(INITIAL_NEURO_STARTUP_MESSAGE)
+    print("已将初始提示添加到 Neuro 输入队列，用于首次响应。")
+    
+    _trigger_neuro_response_flow()
+
 
 async def neuro_processing_task():
     """
-    Background task to continuously check neuro_input_queue,
-    process messages with Neuro LLM when TTS is ready,
-    and send responses to the frontend.
+    后台任务，持续检查 neuro_input_queue，
+    在 TTS 就绪时使用 Neuro LLM 处理消息，并将响应发送到前端。
     """
-    neuro_processing_interval = 0.5 # Check queue every 0.5 seconds
-    chats_to_process_per_turn = 50 # Number of random chats to pull from queue for Neuro
-
-    # Flag to ensure initial prompt is handled only once per task run
-    _neuro_processing_task_first_run = True 
+    neuro_processing_interval = 0.5 # 每 0.5 秒检查队列
+    chats_to_process_per_turn = 50 # 每次处理从队列中随机抽取的聊天数量
 
     while True:
-        # Wait until Neuro's TTS is confirmed finished by frontend
-        # This is the "car arrives at station" moment
+        # 等待 Neuro 的 TTS 完成 (由前端确认) 或来自前端的首次触发
         await neuro_tts_ready_event.wait() 
         
-        # Clear the event immediately to prevent re-triggering until new TTS finishes
-        # This is critical for the "wait until TTS is done" logic.
+        # 立即清除事件，以防止在新的 TTS 完成之前再次触发
         neuro_tts_ready_event.clear() 
 
-        # Give Neuro a small break/thinking time after speaking
+        # 给 Neuro 一个短暂的休息/思考时间
         await asyncio.sleep(1) 
 
-        # Add initial prompt if this is the first run of the task and queue is empty
-        if _neuro_processing_task_first_run and not neuro_input_queue:
-            neuro_input_queue.append(INITIAL_NEURO_STARTUP_MESSAGE)
-            print("Added initial prompt to Neuro input queue at neuro_processing_task startup (first run).")
-            _neuro_processing_task_first_run = False 
-        
-        # If the queue is empty, wait a bit more for messages to accumulate before next processing cycle.
+        # 如果队列为空，则等待一段时间，让消息积累，然后进入下一个处理周期
         if not neuro_input_queue:
-            print(f"Neuro input queue is empty. Waiting {neuro_processing_interval}s for more chats.")
+            print(f"Neuro 输入队列为空。等待 {neuro_processing_interval} 秒以获取更多聊天。")
             await asyncio.sleep(neuro_processing_interval)
-            _trigger_neuro_response_flow() # Re-set event to allow next check
+            _trigger_neuro_response_flow() # 重新设置事件以允许再次检查
             continue
         
-        # --- Prepare input for Neuro LLM ---
+        # --- 为 Neuro LLM 准备输入 ---
         current_queue_snapshot = list(neuro_input_queue)
         num_to_sample = min(chats_to_process_per_turn, len(current_queue_snapshot))
         
         if num_to_sample == 0:
-            print("No chats to sample for Neuro despite queue having messages (min/max issue?). Waiting.")
+            print("尽管队列有消息，但没有足够的消息可供 Neuro 采样 (可能是最小/最大问题？)。正在等待。")
             await asyncio.sleep(neuro_processing_interval)
-            _trigger_neuro_response_flow() # Allow retry
+            _trigger_neuro_response_flow() # 允许重试
             continue
 
         selected_chats_for_neuro = random.sample(current_queue_snapshot, num_to_sample)
         
-        # Clear the queue for the next batch after processing
-        # This assumes Neuro "consumes" these messages by reading them
+        # 清空队列，为下一批消息做准备
         neuro_input_queue.clear() 
 
         injected_chat_text = ""
@@ -371,7 +440,7 @@ async def neuro_processing_task():
 
         neuro_llm_input_content = [TextContent(text=injected_chat_text)]
         
-        print(f"Processing Neuro's input with {len(selected_chats_for_neuro)} messages from queue.")
+        print(f"正在处理 Neuro 的输入，包含 {len(selected_chats_for_neuro)} 条队列消息。")
 
         try:
             response = letta_client.agents.messages.create(
@@ -400,14 +469,14 @@ async def neuro_processing_task():
                         if ai_full_response_text != "I couldn't process that. Please try again.":
                             break
             
-            print(f"Neuro's full response generated: '{ai_full_response_text}'")
+            print(f"Neuro 的完整响应已生成: '{ai_full_response_text}'")
 
             sentences = split_text_into_sentences(ai_full_response_text)
             if not sentences:
                 if neuro_tts_websocket and neuro_tts_websocket.client_state == WebSocketState.CONNECTED:
                     await neuro_tts_websocket.send_json({"type": "end"})
-                print("Neuro's response was empty.")
-                _trigger_neuro_response_flow() # If response is empty, Neuro is ready for next input immediately
+                print("Neuro 的响应为空。")
+                _trigger_neuro_response_flow() # 如果响应为空，Neuro 立即准备好接受下一个输入
                 continue
 
             for i, sentence in enumerate(sentences):
@@ -425,7 +494,7 @@ async def neuro_processing_task():
                             "audio_base64": audio_base64
                         })
                     except Exception as e:
-                        print(f"Error during TTS synthesis or sending segment '{sentence}': {e}")
+                        print(f"TTS 合成或发送片段 '{sentence}' 时出错: {e}")
                         if neuro_tts_websocket and neuro_tts_websocket.client_state == WebSocketState.CONNECTED:
                             await neuro_tts_websocket.send_json({
                                 "type": "error",
@@ -437,42 +506,42 @@ async def neuro_processing_task():
             
             if neuro_tts_websocket and neuro_tts_websocket.client_state == WebSocketState.CONNECTED:
                 await neuro_tts_websocket.send_json({"type": "end"})
-            print("Finished sending all segments for Neuro's response.")
-            # Frontend will send 'tts_finished' signal when all audio has actually played.
-            # So, we don't set neuro_tts_ready_event here.
+            print("已完成发送 Neuro 响应的所有片段。")
+            # 前端将在所有音频实际播放完毕后发送 'tts_finished' 信号。
+            # 因此，这里不设置 neuro_tts_ready_event。
 
         except Exception as e:
             traceback.print_exc()
-            print(f"An error occurred in neuro_processing_task: {e}")
+            print(f"在 neuro_processing_task 中发生错误: {e}")
             if neuro_tts_websocket and neuro_tts_websocket.client_state == WebSocketState.CONNECTED:
                 try:
                     await neuro_tts_websocket.send_json({"type": "error", "code": "NEURO_PROCESSING_ERROR", "message": f"Neuro processing error: {e}"})
                 except RuntimeError as se:
-                    print(f"Failed to send error message to Neuro client before closing: {se}")
-            # Ensure event is set on error so processing doesn't get stuck
+                    print(f"在关闭前向 Neuro 客户端发送错误消息失败: {se}")
+            # 确保在错误时设置事件，以防止处理卡住
             _trigger_neuro_response_flow() 
         
         await asyncio.sleep(neuro_processing_interval)
 
 
-# --- WebSocket Endpoints ---
+# --- WebSocket 端点 ---
 
 @app.websocket("/ws/chat_stream")
 async def websocket_neuro_chat(websocket: WebSocket):
     """
-    Handles connection for Neuro's TTS stream (audio & caption) and
-    receives user messages and TTS finished signals.
+    处理 Neuro TTS 流 (音频和字幕) 的连接，并接收用户消息和 TTS 完成信号。
     """
     global neuro_tts_websocket
     
+    # 确保只允许一个 Neuro TTS 客户端连接
     if neuro_tts_websocket and neuro_tts_websocket.client_state == WebSocketState.CONNECTED:
-        print("Another Neuro TTS client tried to connect. Only one is allowed. Closing new connection.")
-        await websocket.close(code=status.WS_1013_UNEXPECTED_CONDITION, reason="Only one Neuro TTS client allowed.")
+        print("另一个 Neuro TTS 客户端尝试连接。只允许一个。关闭新连接。")
+        await websocket.close(code=status.WS_1013_UNEXPECTED_CONDITION, reason="只允许一个 Neuro TTS 客户端。")
         return
 
     neuro_tts_websocket = websocket
     await websocket.accept()
-    print("Neuro TTS WebSocket client connected.")
+    print("Neuro TTS WebSocket 客户端已连接。")
     try:
         while True:
             raw_data = await websocket.receive_text()
@@ -484,37 +553,42 @@ async def websocket_neuro_chat(websocket: WebSocket):
                     user_message_text = parsed_data.get("message", "").strip()
                     username = parsed_data.get("username", "User") 
                     if not user_message_text:
-                        print("Received empty user message, ignoring.")
+                        print("收到空的用户消息，忽略。")
                         continue
                     user_chat_item = {"username": username, "text": user_message_text}
                     audience_chat_buffer.append(user_chat_item)
                     neuro_input_queue.append(user_chat_item)
-                    print(f"User message '{user_message_text}' added to queues. Neuro input queue size: {len(neuro_input_queue)}. Audience buffer size: {len(audience_chat_buffer)}")
+                    print(f"用户消息 '{user_message_text}' 已添加到队列。Neuro 输入队列大小: {len(neuro_input_queue)}。观众缓冲区大小: {len(audience_chat_buffer)}")
                 
                 elif message_type == "tts_finished":
-                    # This signal means frontend has played all TTS audio
-                    print("Received 'tts_finished' signal from frontend. Neuro is ready for next input.")
-                    _trigger_neuro_response_flow() # Set the event to trigger neuro_processing_task
+                    # 此信号表示前端已播放完所有 TTS 音频
+                    print("收到前端的 'tts_finished' 信号。Neuro 已准备好接受下一个输入。")
+                    _trigger_neuro_response_flow() # 设置事件以触发 neuro_processing_task
+                
+                elif message_type == "start_live_stream":
+                    # 收到前端的信号，用于启动 Neuro 的首次响应
+                    print("收到前端的 'start_live_stream' 信号。正在触发 Neuro 首次响应。")
+                    await _trigger_neuro_initial_response() # 这将添加初始消息并触发 LLM
 
             except json.JSONDecodeError:
-                print(f"Received non-JSON message: {raw_data}. Ignoring.")
+                print(f"收到非 JSON 消息: {raw_data}。忽略。")
             except Exception as e:
-                print(f"Error processing received message in neuro_chat_ws: {e}")
+                print(f"在 neuro_chat_ws 中处理接收到的消息时出错: {e}")
                 traceback.print_exc()
 
     except WebSocketDisconnect:
-        print("Neuro TTS WebSocket client disconnected.")
+        print("Neuro TTS WebSocket 客户端已断开连接。")
     except Exception as e:
         traceback.print_exc()
-        print(f"An unexpected Neuro TTS WebSocket error occurred: {e}")
+        print(f"发生意外的 Neuro TTS WebSocket 错误: {e}")
     finally:
+        # 确保 neuro_tts_websocket 设置为 None 并在断开连接时触发事件
         neuro_tts_websocket = None
-        # Ensure event is set if WS disconnects, to prevent background task from getting stuck
-        _trigger_neuro_response_flow()
+        _trigger_neuro_response_flow() # 即使断开连接，也确保事件被设置，以防后台任务卡住
         try:
             if websocket.client_state != WebSocketState.DISCONNECTED: 
                 await websocket.close()
-                print("Neuro TTS WebSocket connection closed.")
+                print("Neuro TTS WebSocket 连接已关闭。")
         except RuntimeError:
             pass
 
@@ -522,70 +596,85 @@ async def websocket_neuro_chat(websocket: WebSocket):
 @app.websocket("/ws/audience_chat_display")
 async def websocket_audience_chat_display(websocket: WebSocket):
     """
-    Handles streaming all chat messages (AI generated + user) to the frontend for display.
+    处理将所有聊天消息 (AI 生成的 + 用户) 流式传输到前端显示。
     """
     await websocket.accept()
-    audience_display_websockets.append(websocket)
-    print("Audience Chat Display WebSocket client connected.")
+    # 全局列表 audience_display_websockets 不再用于直接发送，因为它有并发问题。
+    # 每个连接的此协程都负责将其自身的聊天消息发送出去。
+    print("Audience Chat Display WebSocket 客户端已连接。")
 
-    chat_send_interval = 0.5 # seconds
+    chat_send_interval = 0.5 # 秒
     num_chats_to_send_per_interval = 3 
 
     try:
-        # Send initial backlog of chats
+        # 发送初始积压的聊天消息
         initial_backlog_limit = 50 
         initial_chats_to_send = list(audience_chat_buffer)[-initial_backlog_limit:]
+        
+        # 跟踪此特定客户端连接已发送的最后一条消息的索引
+        current_read_index = 0
+
+        # 发送初始积压
         for chat in initial_chats_to_send:
             try:
+                # 在发送前检查 WebSocket 状态
                 if websocket.client_state == WebSocketState.CONNECTED: 
                     await websocket.send_json({
                         "type": "audience_chat",
                         "username": chat["username"],
                         "text": chat["text"]
                     })
-                    await asyncio.sleep(0.01) 
+                    current_read_index += 1 # 每发送一条聊天，索引就增加
+                    await asyncio.sleep(0.01) # 短暂延迟以防止发送过快
                 else:
-                    print(f"Skipping initial backlog send, WebSocket not connected: {websocket.client_state}")
-                    break
+                    print(f"跳过初始积压发送，WebSocket 未连接: {websocket.client_state}")
+                    break # 如果未连接，则中断
             except Exception as e:
-                print(f"Error sending initial backlog chat: {e}")
+                print(f"发送初始积压聊天时出错: {e}")
                 break 
 
-        last_sent_index = len(audience_chat_buffer) # Start tracking from the end of initial backlog
-
+        # 现在，随着新聊天消息出现在缓冲区中，持续发送
         while True:
+            # 关键检查: 在进一步处理之前，确保 WebSocket 仍处于连接状态
             if websocket.client_state != WebSocketState.CONNECTED:
-                print("Audience Display WebSocket not connected, breaking loop.")
+                print("Audience Display WebSocket 未连接，中断此客户端的循环。")
                 break 
+            
+            # 检查缓冲区中是否有此客户端尚未接收到的新消息
+            if len(audience_chat_buffer) > current_read_index:
+                # 只获取缓冲区中 *新* 的消息
+                new_chats_available = list(audience_chat_buffer)[current_read_index:]
+                chats_chunk = new_chats_available[:num_chats_to_send_per_interval] # 限制块大小
 
-            if len(audience_chat_buffer) > last_sent_index:
-                new_chats_to_send = list(audience_chat_buffer)[last_sent_index:]
-                chats_chunk = new_chats_to_send[:num_chats_to_send_per_interval]
-                
                 for chat in chats_chunk:
                     try:
-                        await websocket.send_json({
-                            "type": "audience_chat",
-                            "username": chat["username"],
-                            "text": chat["text"]
-                        })
+                        if websocket.client_state == WebSocketState.CONNECTED: 
+                            await websocket.send_json({
+                                "type": "audience_chat",
+                                "username": chat["username"],
+                                "text": chat["text"]
+                            })
+                            current_read_index += 1 # 每发送一条聊天，索引就增加
+                        else:
+                            print(f"在发送块期间 WebSocket 断开连接。中断内部循环。")
+                            break 
                     except Exception as e:
-                        print(f"Error sending audience chat: {e}")
+                        print(f"发送观众聊天时出错: {e}")
                         break 
-                last_sent_index += len(chats_chunk)
             
             await asyncio.sleep(chat_send_interval)
 
     except WebSocketDisconnect:
-        print("Audience Chat Display WebSocket client disconnected.")
+        print("Audience Chat Display WebSocket 客户端已断开连接。")
     except Exception as e:
         traceback.print_exc()
-        print(f"An unexpected Audience Chat Display WebSocket error occurred: {e}")
+        print(f"发生意外的 Audience Chat Display WebSocket 错误: {e}")
     finally:
-        if websocket in audience_display_websockets:
-            audience_display_websockets.remove(websocket)
+        # 在断开连接时，此特定协程结束，不再发送数据
         try:
+            # 确保 WebSocket 实际已关闭
             if websocket.client_state != WebSocketState.DISCONNECTED: 
                 await websocket.close()
+                print("Audience Chat Display WebSocket 连接已显式关闭。")
         except RuntimeError:
             pass
