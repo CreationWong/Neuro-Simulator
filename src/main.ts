@@ -4,6 +4,9 @@
 declare var setTimeout: typeof import('timers').setTimeout;
 declare var clearTimeout: typeof import('timers').clearTimeout;
 
+// 导入 Inter 字体 (变体字体，包含所有字重)
+import '@fontsource/inter';
+
 const BACKEND_BASE_URL = 'http://127.0.0.1:8000'; // 后端基础 URL
 const MY_USERNAME = "Files_Transfer"; // 您的用户名
 
