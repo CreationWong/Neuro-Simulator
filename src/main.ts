@@ -13,10 +13,15 @@ const sendButton = document.getElementById('send-button') as HTMLButtonElement;
 const chatMessages = document.getElementById('chat-messages') as HTMLDivElement;
 const neuroCaption = document.getElementById('neuro-caption') as HTMLDivElement;
 const resetButton = document.getElementById('reset-button') as HTMLAnchorElement;
+const streamDisplayArea = document.getElementById('stream-display-area') as HTMLDivElement; // 获取直播画面容器
 
 // 视频元素
 const startupVideoOverlay = document.getElementById('startup-video-overlay') as HTMLDivElement;
 const startupVideo = document.getElementById('startup-video') as HTMLVideoElement;
+
+// 新增：立绘元素
+const neuroStaticAvatarContainer = document.getElementById('neuro-static-avatar-container') as HTMLDivElement;
+const neuroStaticAvatarImg = document.getElementById('neuro-static-avatar') as HTMLImageElement; // 获取立绘图片本身
 
 // 音频播放队列和状态管理
 interface AudioSegment {
@@ -297,6 +302,17 @@ async function sendMessage() {
     chatInput.value = ''; // 清空输入框
 }
 
+// 获取立绘位置的辅助函数
+// 现在直接返回您提供的百分比字符串
+function getNeuroAvatarPosition(stage: 'step1' | 'step2'): { bottom: string; left: string } {
+    if (stage === 'step1') {
+        return { bottom: '-207%', left: '70%' };
+    } else { // stage === 'step2'
+        return { bottom: '-125%', left: '70%' };
+    }
+}
+
+
 // 重置按钮事件监听器
 resetButton.addEventListener('click', async (event) => {
     event.preventDefault(); // 阻止默认的链接行为
@@ -311,6 +327,22 @@ resetButton.addEventListener('click', async (event) => {
     chatMessages.innerHTML = ''; // 清空聊天历史显示
     stopNeuroAudio(); // 立即停止所有正在播放的音频并清空队列
     
+    // 重置立绘状态
+    neuroStaticAvatarContainer.classList.remove('step-2-animate'); // 移除动画类
+    neuroStaticAvatarContainer.style.transition = 'none'; // 暂时禁用过渡
+    neuroStaticAvatarContainer.style.visibility = 'hidden'; // 确保立绘不可见
+
+    // 强制浏览器重绘以应用 `transition: none` 和新的 visibility 值
+    neuroStaticAvatarContainer.offsetHeight; 
+    
+    // 设定初始位置（即 step1 的位置，但不可见）
+    const initialPos = getNeuroAvatarPosition('step1');
+    neuroStaticAvatarContainer.style.bottom = initialPos.bottom;
+    neuroStaticAvatarContainer.style.left = initialPos.left;
+
+    // 因为重置后会立即调用 startMainProcess，所以这里不需要再单独恢复 transition
+    // startMainProcess 内部会处理立绘的初始化和动画
+
     // 关闭现有 WebSocket 连接
     if (neuroWs) {
         neuroWs.close(); // 这将触发 onclose 处理函数
@@ -357,17 +389,32 @@ async function startMainProcess() {
     console.log("启动主流程: 显示视频，等待 10 秒，然后连接 WebSocket。");
 
     // 1. 重置前端 UI 状态以开始新的会话
-    // 关键：立即启用聊天输入框和发送按钮！
     sendButton.disabled = false; 
     chatInput.disabled = false;
 
     chatMessages.innerHTML = ''; // 清空聊天历史显示
     stopNeuroAudio(); // 确保所有音频已停止且状态干净
     
+    // 确保立绘在开始时是隐藏的（visibility: hidden），且处于 step1 的位置，并移除所有动画类
+    neuroStaticAvatarContainer.classList.remove('step-2-animate');
+    neuroStaticAvatarContainer.style.transition = 'none'; // 暂时禁用过渡，确保立即跳到初始位置
+    neuroStaticAvatarContainer.style.visibility = 'hidden'; // 确保隐藏
+    
+    // 强制浏览器重绘以应用 `transition: none` 和新的 visibility 值
+    neuroStaticAvatarContainer.offsetHeight; 
+    // 设定初始位置（即 step1 的位置，但不可见）
+    const initialPos = getNeuroAvatarPosition('step1');
+    neuroStaticAvatarContainer.style.bottom = initialPos.bottom;
+    neuroStaticAvatarContainer.style.left = initialPos.left;
+    
     // 2. 显示并尝试播放视频
     if (startupVideo) {
         startupVideoOverlay.classList.remove('hidden'); // 确保视频叠加层可见
         startupVideo.currentTime = 0; // 将视频重置到开始
+        
+        // 将视频 Z 轴设置高一些，以确保它最初覆盖立绘
+        startupVideoOverlay.style.zIndex = '15'; // 临时提高 Z 轴，以便视频在立绘入场时仍然覆盖立绘
+
         startupVideo.play().catch(e => {
             console.warn("启动视频自动播放被阻止或失败。将按 10 秒延迟继续。错误:", e);
             // 仅记录错误；10 秒超时将处理流程的推进。
@@ -381,19 +428,51 @@ async function startMainProcess() {
     connectAudienceWebSocket();
     console.log("观众 WebSocket 连接已启动 (用于早期聊天显示)。");
 
-    // 4. 等待固定的 10 秒时间
+    // 4. 等待固定的 10 秒时间 (视频播放结束)
     await new Promise(resolve => setTimeout(resolve, VIDEO_DURATION_MS));
-    console.log("10 秒启动视频阶段完成。");
-
-    // 5. 隐藏视频叠加层并连接 Neuro WebSocket
-    if (startupVideoOverlay) {
-        startupVideoOverlay.classList.add('hidden');
-    }
+    console.log("10 秒启动视频阶段完成，视频暂停。");
     
-    // 连接 Neuro WebSocket (观众 WebSocket 已在之前启动)
+    // 视频暂停，但不立即消失
+    startupVideo.pause();
+
+    // 5. 立绘入场动画
+    // Z轴：立绘现在需要高于视频
+    neuroStaticAvatarContainer.style.zIndex = '15'; // 确保立绘在视频之上
+    startupVideoOverlay.style.zIndex = '10'; // 确保视频在立绘之下 (恢复或设置)
+
+    // Stage 1: 变为可见 (无动画，直接显示在 step1 位置)
+    neuroStaticAvatarContainer.style.visibility = 'visible'; // 直接设置为可见
+    console.log("立绘第一阶段动画完成 (露出18%头顶，直接可见)。");
+
+    // 等待 2 秒后（根据原需求，这是立绘在露出18%状态下的持续时间）
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+
+    // Stage 2: 升起露出上半身 (位移 + 加速无减速动画)
+    neuroStaticAvatarContainer.classList.add('step-2-animate'); // 添加位移动画类
+    // 设置加速无减速过渡 
+    neuroStaticAvatarContainer.style.transition = 'bottom 1s cubic-bezier(0.4, 0.0, 1, 1)'; 
+    const step2Pos = getNeuroAvatarPosition('step2');
+    neuroStaticAvatarContainer.style.bottom = step2Pos.bottom; // 触发位移动画
+    // 注意：这里不再设置 height 和 width，让 CSS 中的 width: 40%; height: auto; 来控制
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log("立绘第二阶段动画完成 (露出上半身，动画)。");
+    
+    // 6. 立绘动画结束后视频立即消失，露出背景
+    if (startupVideoOverlay) {
+        startupVideoOverlay.classList.add('hidden'); // 视频立即隐藏
+    }
+    console.log("启动视频已消失，背景显现。");
+
+    // 7. 恢复立绘的默认过渡（无），并确保其留在最终位置
+    neuroStaticAvatarContainer.style.transition = 'none'; // 动画完成后，再次禁用过渡，防止后续意外动画
+    // 确保立绘的 bottom 停留在最终位置
+    // 这里其实不需要特别设置，因为直接设置 style.bottom 优先级最高
+    
+    // 8. 连接 Neuro WebSocket
     connectNeuroWebSocket();
 
-    // 6. 在 Neuro WebSocket 打开后，向后端发送启动 Neuro 初始响应的信号
+    // 9. 在 Neuro WebSocket 打开后，向后端发送启动 Neuro 初始响应的信号
     const sendStartSignal = async () => {
         if (!neuroWs) {
             console.error("Neuro WebSocket 为空，无法发送启动信号。");

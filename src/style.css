@@ -13,6 +13,9 @@
   --header-height: 50px; /* Twitch 页眉高度 */
 
   --neuro-shadow-color: #32003C; /* Neuro 字幕阴影色 */
+  
+  /* 立绘显示宽度百分比，保持固定 */
+  --neuro-avatar-display-width-percent: 50%; 
 }
 
 /* 自定义字体 */
@@ -93,26 +96,57 @@ body {
   position: relative;
   aspect-ratio: 16 / 9;
   background-color: #000;
-  overflow: hidden;
+  overflow: hidden; /* 裁剪超出部分 */
   border-radius: 0;
   box-shadow: none;
   flex-shrink: 0; /* Ensures it doesn't shrink */
 }
 
-/* Live2D Placeholder */
+/* Live2D Placeholder (now just the background) */
 #live2d-display {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 0; /* 最底层 */
   pointer-events: none;
   background-image: url('/background.webp');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
+
+/* Neuro Static Avatar Container */
+#neuro-static-avatar-container {
+  position: absolute;
+  left: 70%; /* 左边缘定位在 70% 处 */
+  transform: translateX(-50%); /* 配合 left: 70% 实现中心在 70% */
+  width: var(--neuro-avatar-display-width-percent); /* 宽度由 CSS 变量控制 */
+  height: auto; /* 高度自适应，保持图片比例 */
+  overflow: visible; /* 允许立绘超出容器边缘 */
+  pointer-events: none;
+  z-index: 15; /* 位于视频和字幕之间 */
+  
+  /* 初始隐藏状态 */
+  visibility: hidden; 
+  
+  /* 默认没有 transition，动画由 JS 动态添加 */
+  transition: none; 
+}
+
+#neuro-static-avatar-container img {
+  width: 100%; /* 图片撑满容器宽度 */
+  height: auto; /* 图片高度自适应，保持比例 */
+  display: block;
+}
+
+/* 动画阶段的 class 只用于触发动画，不直接设置 position */
+#neuro-static-avatar-container.step-2-animate {
+  /* bottom 值由 JS 设置 */
+  transition: bottom 1s cubic-bezier(0.4, 0.0, 1, 1); /* 加速无减速缓动 */
+}
+
 
 /* Neuro Caption Display Area (above stream) */
 #neuro-caption {
@@ -126,10 +160,10 @@ body {
   border-radius: 10px;
   text-align: center;
   font-size: 1.8em;
-  font-weight: bold;
+  font-weight: normal;
   opacity: 1;
   pointer-events: none;
-  z-index: 10;
+  z-index: 20; /* Z轴层级高于立绘 */
   color: white;
   transition: none;
   text-shadow:
@@ -340,17 +374,21 @@ body {
     width: 100%; /* Fill parent #stream-display-area */
     height: 100%; /* Fill parent #stream-display-area */
     background-color: black;
-    z-index: 10; /* Above live2d, below caption/other UI */
+    z-index: 10; 
     display: flex;
     justify-content: center;
     align-items: center;
     opacity: 1;
-    transition: opacity 1s ease-out; /* Smooth fade-out */
+    /* 移除过渡效果，实现直接消失 */
+    transition: none; 
 }
 
 #startup-video-overlay.hidden {
+    /* 视频应该在隐藏时彻底不可见，并且不占用鼠标事件 */
     opacity: 0;
-    pointer-events: none; /* Make it unclickable when hidden */
+    pointer-events: none; 
+    /* 额外设置，确保其在隐藏时不会被浏览器考虑进行布局或渲染 */
+    visibility: hidden; /* 添加这个属性，确保元素在隐藏时不会被浏览器考虑进行布局或渲染 */
 }
 
 #startup-video {
