@@ -14,39 +14,26 @@
       <div class="nav-links">
         <a href="#">浏览</a>
         <a href="#">关注</a>
-        <a href="#" id="reset-button">重置</a> 
+        <!-- 重置按钮已移除 -->
       </div>
     </header>
 
-    <!-- 主内容区域：直播画面 + 聊天室 -->
+    <!-- ... (其他内容不变) ... -->
     <div id="main-content-wrapper">
-      <!-- 左侧：直播画面和信息 -->
       <div id="stream-and-info-container">
-        
-        <!-- 新增: "视口"容器，负责实现黑边和居中 -->
         <div id="stream-display-viewport">
-            <!-- 原有的 "内容区" 容器，将保持 16:9，并由 JS 控制尺寸 -->
-            <div id="stream-display-area">
-              <div id="live2d-display"></div>
-              
-              <!-- Neuro-Sama 立绘容器 -->
-              <div id="neuro-static-avatar-container">
-                <img id="neuro-static-avatar" src="/neurosama.png" alt="Neuro-Sama Static Avatar" />
-              </div>
-
-              <!-- Neuro-Sama 字幕显示区域 (位于直播画面之上) -->
-              <div id="neuro-caption"></div>
-
-              <!-- Startup Video Overlay moved inside stream-display-area -->
-              <div id="startup-video-overlay">
-                <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
-              </div>
+          <div id="stream-display-area">
+            <div id="live2d-display"></div>
+            <div id="neuro-static-avatar-container">
+              <img id="neuro-static-avatar" src="/neurosama.png" alt="Neuro-Sama Static Avatar" />
             </div>
+            <div id="neuro-caption"></div>
+            <div id="startup-video-overlay">
+              <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
+            </div>
+          </div>
         </div>
-
-        <!-- 全新的直播信息区域，包含所有细节 -->
         <div id="stream-info">
-            <!-- ... (此处内容未改变) ... -->
             <div class="streamer-avatar-column">
                 <div class="streamer-avatar-wrapper">
                     <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
@@ -84,7 +71,8 @@
                             <span>观众</span>
                         </div>
                         <div class="stream-duration">
-                            <span class="duration-text">1:38:27</span>
+                            <!-- 已开播时长文本现在由 JS 动态填充 -->
+                            <span class="duration-text" id="stream-duration-text">00:00:00</span>
                             <span>已开播</span>
                         </div>
                     </div>
@@ -105,16 +93,12 @@
             </div>
         </div>
       </div>
-
-      <!-- 右侧：聊天侧边栏 -->
       <div id="chat-sidebar" class="chat-sidebar">
         <div class="chat-content">
           <div class="chat-header">
             <h2>直播聊天</h2>
           </div>
-          <div id="chat-messages" class="messages-display">
-            <!-- 聊天消息会在这里显示 -->
-          </div>
+          <div id="chat-messages" class="messages-display"></div>
           <div class="chat-input-area">
             <input type="text" id="chat-input" placeholder="Send a message..." />
             <button id="send-button">聊天</button>
@@ -122,7 +106,6 @@
         </div>
       </div>
     </div>
-
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

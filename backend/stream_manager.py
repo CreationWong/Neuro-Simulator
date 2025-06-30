@@ -4,6 +4,7 @@ import time
 import os
 import subprocess
 import json
+from shared_state import live_phase_started_event # <-- 从新文件导入
 
 class LiveStreamManager:
     class NeuroAvatarStage:
@@ -17,7 +18,6 @@ class LiveStreamManager:
         AVATAR_INTRO = "avatar_intro"
         LIVE = "live"
     
-    # 新增：事件队列，用于向广播任务发送一次性事件
     event_queue: asyncio.Queue = asyncio.Queue()
 
     _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -42,7 +42,7 @@ class LiveStreamManager:
             return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
 
     _WELCOME_VIDEO_DURATION_SEC = _get_video_duration_ffprobe_static(_WELCOME_VIDEO_PATH_BACKEND)
-    AVATAR_INTRO_TOTAL_DURATION_SEC = 3.0 # 前端负责这个总时长内的动画
+    AVATAR_INTRO_TOTAL_DURATION_SEC = 3.0
 
     def __init__(self):
         self._current_phase: str = self.StreamPhase.OFFLINE
@@ -55,8 +55,11 @@ class LiveStreamManager:
         self._current_phase = self.StreamPhase.OFFLINE
         self._stream_start_global_time = 0.0
         self._is_neuro_speaking = False
-        while not self.event_queue.empty(): # 清空事件队列
+        while not self.event_queue.empty():
             self.event_queue.get_nowait()
+        
+        # 不再需要从 main 导入，直接使用从 shared_state 导入的 event
+        live_phase_started_event.clear()
         print("直播状态已重置为 OFFLINE。")
 
     async def start_new_stream_cycle(self):
@@ -67,46 +70,42 @@ class LiveStreamManager:
         print("正在启动新的直播周期...")
         self._stream_start_global_time = time.time()
         
-        # 阶段 1: 欢迎视频
         self._current_phase = self.StreamPhase.INITIALIZING
         print(f"进入阶段: {self.StreamPhase.INITIALIZING}. 等待 {self._WELCOME_VIDEO_DURATION_SEC:.2f} 秒")
         await asyncio.sleep(self._WELCOME_VIDEO_DURATION_SEC)
         
-        # 阶段 2: 立绘入场
         self._current_phase = self.StreamPhase.AVATAR_INTRO
-        await self.event_queue.put({"type": "start_avatar_intro"})
-        print(f"进入阶段: {self.StreamPhase.AVATAR_INTRO}. 等待 {self.AVATAR_INTRO_TOTAL_DURATION_SEC} 秒 (前端动画时间)")
+        await self.event_queue.put({"type": "start_avatar_intro", "elapsed_time_sec": self.get_elapsed_time()})
+        print(f"进入阶段: {self.StreamPhase.AVATAR_INTRO}. 等待 {self.AVATAR_INTRO_TOTAL_DURATION_SEC} 秒")
         await asyncio.sleep(self.AVATAR_INTRO_TOTAL_DURATION_SEC)
 
-        # 阶段 3: 进入正常直播
         self._current_phase = self.StreamPhase.LIVE
-        await self.event_queue.put({"type": "enter_live_phase"})
+        await self.event_queue.put({"type": "enter_live_phase", "elapsed_time_sec": self.get_elapsed_time()})
         print(f"进入阶段: {self.StreamPhase.LIVE}")
         
-        from stream_chat import add_to_neuro_input_queue
-        from config import INITIAL_NEURO_STARTUP_MESSAGE
-        add_to_neuro_input_queue(INITIAL_NEURO_STARTUP_MESSAGE)
-        print("已将 Neuro 首次响应消息添加到队列。")
+        # 设置事件，解锁后端的 neuro_response_cycle 任务
+        live_phase_started_event.set()
+        print("Live phase started event has been set.")
     
     def set_neuro_speaking_status(self, speaking: bool):
         if self._is_neuro_speaking != speaking:
             self._is_neuro_speaking = speaking
-            # 将说话状态的变化也作为事件放入队列
             asyncio.create_task(self.event_queue.put({"type": "neuro_is_speaking", "speaking": speaking}))
+    
+    def get_elapsed_time(self) -> float:
+        if self._stream_start_global_time > 0:
+            return time.time() - self._stream_start_global_time
+        return 0.0
 
     def get_initial_state_for_client(self) -> dict:
-        """为新连接的客户端获取一次性的初始状态。"""
-        elapsed_time = 0.0
-        if self._stream_start_global_time > 0:
-            elapsed_time = time.time() - self._stream_start_global_time
-
+        elapsed_time = self.get_elapsed_time()
+        base_state = {"elapsed_time_sec": elapsed_time}
         if self._current_phase == self.StreamPhase.INITIALIZING:
-            return {"type": "play_welcome_video", "progress": elapsed_time}
+            return {"type": "play_welcome_video", "progress": elapsed_time, **base_state}
         elif self._current_phase == self.StreamPhase.AVATAR_INTRO:
-            return {"type": "start_avatar_intro"}
-        elif self.StreamPhase.LIVE:
-            return {"type": "enter_live_phase", "is_speaking": self._is_neuro_speaking}
-        
-        return {"type": "offline"} # 默认或错误状态
+            return {"type": "start_avatar_intro", **base_state}
+        elif self._current_phase == self.StreamPhase.LIVE:
+            return {"type": "enter_live_phase", "is_speaking": self._is_neuro_speaking, **base_state}
+        return {"type": "offline", **base_state}
 
 live_stream_manager = LiveStreamManager()
