@@ -22,43 +22,43 @@
     <div id="main-content-wrapper">
       <!-- 左侧：直播画面和信息 -->
       <div id="stream-and-info-container">
-        <!-- 直播画面容器，将保持 16:9 比例 -->
-        <div id="stream-display-area">
-          <div id="live2d-display"></div>
-          
-          <!-- Neuro-Sama 立绘容器 -->
-          <div id="neuro-static-avatar-container">
-            <img id="neuro-static-avatar" src="/neurosama.png" alt="Neuro-Sama Static Avatar" />
-          </div>
+        
+        <!-- 新增: "视口"容器，负责实现黑边和居中 -->
+        <div id="stream-display-viewport">
+            <!-- 原有的 "内容区" 容器，将保持 16:9，并由 JS 控制尺寸 -->
+            <div id="stream-display-area">
+              <div id="live2d-display"></div>
+              
+              <!-- Neuro-Sama 立绘容器 -->
+              <div id="neuro-static-avatar-container">
+                <img id="neuro-static-avatar" src="/neurosama.png" alt="Neuro-Sama Static Avatar" />
+              </div>
 
-          <!-- Neuro-Sama 字幕显示区域 (位于直播画面之上) -->
-          <div id="neuro-caption"></div>
+              <!-- Neuro-Sama 字幕显示区域 (位于直播画面之上) -->
+              <div id="neuro-caption"></div>
 
-          <!-- Startup Video Overlay moved inside stream-display-area -->
-          <div id="startup-video-overlay">
-            <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
-          </div>
+              <!-- Startup Video Overlay moved inside stream-display-area -->
+              <div id="startup-video-overlay">
+                <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
+              </div>
+            </div>
         </div>
 
         <!-- 全新的直播信息区域，包含所有细节 -->
         <div id="stream-info">
+            <!-- ... (此处内容未改变) ... -->
             <div class="streamer-avatar-column">
-                <!-- 头像及 LIVE 指示器 -->
                 <div class="streamer-avatar-wrapper">
                     <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
-                    <!-- 新的 LIVE 指示器 -->
                     <div class="live-indicator-rect">
                         <span class="live-text">LIVE</span>
                     </div>
                 </div>
             </div>
-
             <div class="stream-details-column">
-                <!-- 第一行：主播名称 + 关注/订阅按钮 -->
                 <div class="stream-info-row top-row">
                     <div class="streamer-name-section">
                         <h1 id="streamer-nickname">vedal987</h1>
-                        <!-- 认证徽章 - 新增 SVG 元素 -->
                         <div class="verified-badge">
                             <svg width="16" height="16" viewBox="0 0 16 16" aria-label="已验证的合作伙伴"><path fill-rule="evenodd" d="M12.5 3.5 8 2 3.5 3.5 2 8l1.5 4.5L8 14l4.5-1.5L14 8l-1.5-4.5ZM7 11l4.5-4.5L10 5 7 8 5.5 6.5 4 8l3 3Z" clip-rule="evenodd"></path></svg>
                         </div>
@@ -75,8 +75,6 @@
                         </button>
                     </div>
                 </div>
-
-                <!-- 第二行：直播标题 + 观众人数/时长 -->
                 <div class="stream-info-row mid-row">
                     <h2 id="stream-title-full">neuro-sama is here for u all</h2>
                     <div class="stream-stats-section">
@@ -91,8 +89,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- 第三行：分类和标签 -->
                 <div class="stream-info-row bottom-row">
                     <a href="#" class="stream-category">音乐</a>
                     <div class="stream-tags">

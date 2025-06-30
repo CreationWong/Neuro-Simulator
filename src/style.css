@@ -88,45 +88,48 @@ body {
 
 /* === Main Content Area: Stream + Chat === */
 #main-content-wrapper {
-  flex-grow: 1; /* 占据 header 之外的所有垂直空间 */
-  display: flex; /* 让 stream-and-info-container 和 chat-sidebar 并排 */
-  overflow: hidden; /* 防止 main-content-wrapper 自身出现滚动条 */
-  position: relative; 
+  flex-grow: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
 }
 
 /* Left: Stream and Info Container (直播内容区域可滚动) */
 #stream-and-info-container {
-  flex-grow: 1; /* 占据所有可用宽度 */
-  flex-shrink: 1; /* 允许收缩 */
+  flex-grow: 1;
+  flex-shrink: 1;
   display: flex;
-  flex-direction: column; /* 内部元素垂直堆叠 */
-  padding: 0;
-  
-  /* 关键点：让此容器自身可滚动 */
-  overflow-y: auto; /* 当内容超出时，垂直方向上显示滚动条 */
-  min-height: 0; /* 允许 flex item 在内容溢出时缩小 */
+  flex-direction: column; /* 重要: 让 viewport 和 info 垂直堆叠 */
+  overflow-y: auto;
+  min-height: 0;
 }
 
-/* 隐藏 #stream-and-info-container 的滚动条 (针对 WebKit 浏览器) */
-#stream-and-info-container::-webkit-scrollbar {
-    display: none; /* 完全隐藏滚动条 */
-}
-/* 隐藏 #stream-and-info-container 的滚动条 (针对 Firefox) */
-#stream-and-info-container {
-    scrollbar-width: none; /* Firefox 隐藏滚动条 */
+#stream-and-info-container::-webkit-scrollbar { display: none; }
+#stream-and-info-container { scrollbar-width: none; }
+
+/* === 新增: "视口"容器, 负责黑边和居中 === */
+#stream-display-viewport {
+  flex-grow: 1; /* 占据所有可用的垂直空间 */
+  background-color: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  min-height: 0; /* 对 flexbox 很重要 */
 }
 
-
-/* Stream Display Area (16:9 aspect ratio) */
+/* === 修改: "内容区"容器, 保持16:9, 由JS控制大小 === */
 #stream-display-area {
-  width: 100%;
   position: relative;
-  aspect-ratio: 16 / 9;
   background-color: #000;
   overflow: hidden;
-  border-radius: 0;
-  box-shadow: none;
-  flex-shrink: 0; /* 不允许视频区域收缩，保持固定比例 */
+  /* width, height, aspect-ratio 由 JS 控制 */
+  flex-shrink: 0; /* 防止在 flex 容器中被压缩 */
+  
+  /* 初始状态为不可见 */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
 }
 
 /* Live2D Placeholder (now just the background) */
@@ -196,14 +199,43 @@ body {
     opacity: 1;
 }
 
-/* === New Stream Info Area === */
+/* Startup Video Overlay - adjusted positioning */
+#startup-video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    z-index: 10; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    transition: none; 
+}
+
+#startup-video-overlay.hidden {
+    opacity: 0;
+    pointer-events: none; 
+    visibility: hidden;
+}
+
+#startup-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* === 新的 Stream Info Area === */
 #stream-info {
   display: grid;
-  grid-template-columns: auto 1fr; /* 左侧头像列自适应内容宽度，右侧信息列占据剩余空间 */
-  gap: 12px; /* 头像列与内容列之间的间距 */
+  grid-template-columns: auto 1fr;
+  gap: 12px;
   padding: 10px 20px;
   background-color: var(--twitch-chat-bg);
   border-bottom: 1px solid var(--twitch-border-color);
+  flex-shrink: 0; /* 重要: 确保信息栏高度固定，不被压缩 */
 }
 
 /* 左侧头像列 */
