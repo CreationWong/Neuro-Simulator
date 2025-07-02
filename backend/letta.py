@@ -102,4 +102,4 @@ async def get_neuro_response(chat_messages: list[dict]) -> str:
 
     except Exception as e:
         print(f"错误: 调用 Letta Agent ({NEURO_AGENT_ID}) 失败: {e}")
-        return "与 Letta 的连接似乎有问题，我无法回应。"
+        return "Someone tell Vedal there is a problem with my AI."
