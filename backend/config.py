@@ -11,9 +11,15 @@ LETTA_BASE_URL = os.getenv("LETTA_BASE_URL")
 NEURO_AGENT_ID = os.getenv("AGENT_ID")
 
 AUDIENCE_LLM_PROVIDER = os.getenv("AUDIENCE_LLM_PROVIDER", "gemini").lower()
-AUDIENCE_MODEL_NAME = os.getenv("AUDIENCE_MODEL_NAME", "gemini-2.5-flash-lite-preview-06-17")
+
+# Gemini 配置
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") # 留作未来 OpenAI 支持
+GEMINI_AUDIENCE_MODEL = os.getenv("GEMINI_AUDIENCE_MODEL", "gemini-1.5-flash-latest")
+
+# OpenAI & 兼容 API 配置
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_AUDIENCE_MODEL = os.getenv("OPENAI_AUDIENCE_MODEL", "gpt-3.5-turbo")
+OPENAI_API_BASE_URL = os.getenv("OPENAI_API_BASE_URL")
 
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY")
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION")
@@ -48,12 +54,12 @@ StreamFan: Neuro-Sama you are so cool!
 INITIAL_NEURO_STARTUP_MESSAGE = {"username": "System", "text": "Welcome to the stream, Neuro-Sama! How are you doing today? Your audience is excited to chat with you."}
 
 # --- 用户可配置的直播和聊天行为设置 ---
-AUDIENCE_CHAT_GENERATION_INTERVAL = 10 # 秒 (每次生成聊天的间隔)
-AUDIENCE_LLM_MAX_OUTPUT_TOKENS = 1500 # LLM 最大输出 Token 数 (用于观众聊天生成)
+AUDIENCE_CHAT_GENERATION_INTERVAL = 2 # 秒 (每次生成聊天的间隔)
+AUDIENCE_LLM_MAX_OUTPUT_TOKENS = 500 # LLM 最大输出 Token 数 (用于观众聊天生成)
 AUDIENCE_CHAT_BUFFER_MAX_SIZE = 500 # 观众聊天缓冲区最大消息数
 NEURO_INPUT_QUEUE_MAX_SIZE = 200 # Neuro LLM 输入队列最大消息数
 CHAT_SEND_INTERVAL = 0.5 # 秒 (前端聊天显示 WebSocket 发送消息的间隔)
-NUM_CHATS_TO_SEND_PER_INTERVAL = 3 # 每次向前端发送的聊天数量
+NUM_CHATS_TO_SEND_PER_INTERVAL = 10 # 每次向前端发送的聊天数量
 INITIAL_CHAT_BACKLOG_LIMIT = 50 # 新连接客户端发送的初始聊天历史数量
 
 # Neuro TTS 的默认语音和音高 (可由用户调整)
@@ -71,16 +77,22 @@ CLIENT_ORIGINS = [ # 允许的前端 CORS 来源
 def validate_config():
     """验证必要的环境变量是否已设置。"""
     if not LETTA_API_TOKEN:
-        print("Warning: LETTA_API_TOKEN 环境变量未找到。使用一个虚拟 token 初始化 letta_client。")
+        print("Warning: LETTA_API_TOKEN 环境变量未找到。连接到 Letta Cloud 必须提供有效的 Token。")
     if not LETTA_BASE_URL:
-        raise ValueError("LETTA_BASE_URL 环境变量未找到。请指定您的 Letta 服务器 URL (例如, http://localhost:8283)。")
+        print("Warning: LETTA_BASE_URL 环境变量未找到。使用自托管Letta Server时必须提供。")
     if not NEURO_AGENT_ID:
         raise ValueError("NEURO_AGENT_ID 环境变量未找到。请提供您预先创建的 Neuro Letta Agent 的 ID。")
 
-    if AUDIENCE_LLM_PROVIDER == "gemini" and not GEMINI_API_KEY:
-        print("Warning: GEMINI_API_KEY 环境变量未找到。Gemini Audience LLM 将无法正常运行。")
-    elif AUDIENCE_LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
-        print("Warning: OPENAI_API_KEY 环境变量未找到。OpenAI Audience LLM 将无法正常运行。")
+    # 根据选择的 LLM Provider 验证相关配置
+    if AUDIENCE_LLM_PROVIDER == "gemini":
+        if not GEMINI_API_KEY:
+            print("Warning: GEMINI_API_KEY 环境变量未找到。Gemini Audience LLM 将无法正常运行。")
+    elif AUDIENCE_LLM_PROVIDER == "openai":
+        if not OPENAI_API_KEY:
+            print("Warning: OPENAI_API_KEY 环境变量未找到。OpenAI Audience LLM 将无法正常运行。")
+        if not OPENAI_API_BASE_URL:
+             # 对于非官方 OpenAI 服务，Base URL 至关重要
+            print("Warning: OPENAI_API_BASE_URL 环境变量未找到。如果使用非官方 OpenAI 服务，这会导致连接失败。")
 
     if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
         print("Warning: AZURE_SPEECH_KEY 或 AZURE_SPEECH_REGION 未找到。Azure TTS 功能将无法使用。")

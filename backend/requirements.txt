@@ -4,3 +4,4 @@ google-genai
 python-dotenv
 azure-cognitiveservices-speech
 letta-client
+openai
