@@ -135,7 +135,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-summary.sh
-project_summary.md
+sum.sh
+project_code_archive.md
 venv/
 __pycache__/

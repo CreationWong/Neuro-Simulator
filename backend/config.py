@@ -25,9 +25,6 @@ AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY")
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION")
 
 # --- 用户可配置的 LLM Prompts 和初始消息 ---
-# Neuro Agent 的核心系统提示词应在 Letta 平台或通过 Letta API 配置 Agent 时设定
-# 这里我们只保留用于生成观众聊天的Prompt
-# 以及 Neuro 首次开播时的初始消息 (作为用户消息，引导Neuro开始讲话)
 
 # 用于生成随机聊天消息的用户名池
 USERNAME_POOL = [
@@ -37,38 +34,42 @@ USERNAME_POOL = [
     "PogChamp", "KappaPride", "ModdedMind", "VirtualVoyager", "MatrixMind"
 ]
 
-# 用于生成随机聊天消息的 Audience LLM Prompt
-AUDIENCE_LLM_PROMPT = """You are a Twitch live stream viewer. Generate short, realistic chat messages as if you are watching a stream.
-Your messages should be varied: questions, comments about the streamer (Neuro-Sama), emotes, general banter, or reactions to what Neuro might be saying.
-Do NOT act as the streamer (Neuro-Sama). Do NOT generate full conversations or detailed replies.
-Generate around 30 distinct chat messages. Each message should be prefixed with a fictional username, like 'username: message text'.
-Examples:
-KappaKing: LUL
-ChatterBox: Is Neuro talking about the weather again?
-EmoteSpammer: pog pog pog
-QuestionMark: How are you doing today, Neuro?
-StreamFan: Neuro-Sama you are so cool!
+# 用于生成与 Neuro 发言相关的观众聊天的 Prompt 模板
+AUDIENCE_PROMPT_TEMPLATE = """
+You are a Twitch live stream viewer. Your goal is to generate short, realistic, and relevant chat messages.
+
+The streamer, Neuro-Sama, just said the following:
+---
+"{neuro_speech}"
+---
+
+Based on what Neuro-Sama said, generate a variety of chat messages. Your messages should be:
+- Directly reacting to her words.
+- Asking follow-up questions.
+- Using relevant Twitch emotes (like LUL, Pog, Kappa, etc.).
+- General banter related to the topic.
+- Short and punchy, like real chat messages.
+
+Do NOT act as the streamer. Do NOT generate full conversations.
+Generate around 4-5 distinct chat messages. Each message must be prefixed with a fictional username, like 'ChatterBoy: message text'.
 """
 
-# Neuro 首次开播时的初始消息 (作为 System / 引导性用户消息发送给 Neuro Agent)
-INITIAL_NEURO_STARTUP_MESSAGE = {"username": "System", "text": "Welcome to the stream, Neuro-Sama! How are you doing today? Your audience is excited to chat with you."}
-
 # --- 用户可配置的直播和聊天行为设置 ---
-AUDIENCE_CHAT_GENERATION_INTERVAL = 2 # 秒 (每次生成聊天的间隔)
-AUDIENCE_LLM_MAX_OUTPUT_TOKENS = 500 # LLM 最大输出 Token 数 (用于观众聊天生成)
-AUDIENCE_CHAT_BUFFER_MAX_SIZE = 500 # 观众聊天缓冲区最大消息数
-NEURO_INPUT_QUEUE_MAX_SIZE = 200 # Neuro LLM 输入队列最大消息数
-CHAT_SEND_INTERVAL = 0.5 # 秒 (前端聊天显示 WebSocket 发送消息的间隔)
-NUM_CHATS_TO_SEND_PER_INTERVAL = 10 # 每次向前端发送的聊天数量
-INITIAL_CHAT_BACKLOG_LIMIT = 50 # 新连接客户端发送的初始聊天历史数量
+# 修改：调整为每2秒生成4-5条
+AUDIENCE_CHAT_GENERATION_INTERVAL = 2  # 秒
+NUM_CHATS_TO_GENERATE_PER_BATCH = 5    # 每次请求生成的聊天数量
+AUDIENCE_LLM_MAX_OUTPUT_TOKENS = 300   # 减少 Token 数以匹配少量消息的需求
+AUDIENCE_CHAT_BUFFER_MAX_SIZE = 500
+NEURO_INPUT_QUEUE_MAX_SIZE = 200
+INITIAL_CHAT_BACKLOG_LIMIT = 50
 
 # Neuro TTS 的默认语音和音高 (可由用户调整)
 AZURE_TTS_VOICE_NAME = "en-US-AshleyNeural"
 AZURE_TTS_VOICE_PITCH = 1.25
 
-# --- 应用及 WebSocket 配置 (通常由开发者设定，但也可作为配置) ---
+# --- 应用及 WebSocket 配置 ---
 BACKEND_BASE_URL = "http://127.0.0.1:8000" 
-CLIENT_ORIGINS = [ # 允许的前端 CORS 来源
+CLIENT_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
@@ -77,25 +78,17 @@ CLIENT_ORIGINS = [ # 允许的前端 CORS 来源
 def validate_config():
     """验证必要的环境变量是否已设置。"""
     if not LETTA_API_TOKEN:
-        print("Warning: LETTA_API_TOKEN 环境变量未找到。连接到 Letta Cloud 必须提供有效的 Token。")
-    if not LETTA_BASE_URL:
-        print("Warning: LETTA_BASE_URL 环境变量未找到。使用自托管Letta Server时必须提供。")
+        raise ValueError("LETTA_API_TOKEN 环境变量未找到。")
     if not NEURO_AGENT_ID:
-        raise ValueError("NEURO_AGENT_ID 环境变量未找到。请提供您预先创建的 Neuro Letta Agent 的 ID。")
+        raise ValueError("NEURO_AGENT_ID 环境变量未找到。")
 
-    # 根据选择的 LLM Provider 验证相关配置
-    if AUDIENCE_LLM_PROVIDER == "gemini":
-        if not GEMINI_API_KEY:
-            print("Warning: GEMINI_API_KEY 环境变量未找到。Gemini Audience LLM 将无法正常运行。")
-    elif AUDIENCE_LLM_PROVIDER == "openai":
-        if not OPENAI_API_KEY:
-            print("Warning: OPENAI_API_KEY 环境变量未找到。OpenAI Audience LLM 将无法正常运行。")
-        if not OPENAI_API_BASE_URL:
-             # 对于非官方 OpenAI 服务，Base URL 至关重要
-            print("Warning: OPENAI_API_BASE_URL 环境变量未找到。如果使用非官方 OpenAI 服务，这会导致连接失败。")
+    if AUDIENCE_LLM_PROVIDER == "gemini" and not GEMINI_API_KEY:
+        print("Warning: GEMINI_API_KEY 未设置，观众聊天生成器可能无法工作。")
+    elif AUDIENCE_LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
+        print("Warning: OPENAI_API_KEY 未设置，观众聊天生成器可能无法工作。")
 
     if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
-        print("Warning: AZURE_SPEECH_KEY 或 AZURE_SPEECH_REGION 未找到。Azure TTS 功能将无法使用。")
+        print("Warning: AZURE_SPEECH_KEY 或 AZURE_SPEECH_REGION 未设置，TTS功能将无法使用。")
 
 # 在模块加载时执行验证
 validate_config()

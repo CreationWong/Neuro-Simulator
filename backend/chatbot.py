@@ -2,17 +2,18 @@
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
-from openai import AsyncOpenAI # <-- 导入 AsyncOpenAI
+from openai import AsyncOpenAI
 import random
+import asyncio
 
-# 从 config 模块导入所有需要的配置
 from config import (
     GEMINI_API_KEY, GEMINI_AUDIENCE_MODEL,
     OPENAI_API_KEY, OPENAI_AUDIENCE_MODEL, OPENAI_API_BASE_URL,
-    AUDIENCE_LLM_PROVIDER, AUDIENCE_LLM_PROMPT
+    AUDIENCE_LLM_PROVIDER, AUDIENCE_PROMPT_TEMPLATE
 )
+# --- 核心修改：导入整个模块，而不是模块内的变量 ---
+import shared_state
 
-# --- Audience LLM 抽象接口 ---
 class AudienceLLMClient:
     """Audience LLM 客户端的抽象类/接口。"""
     async def generate_chat_messages(self, prompt: str, max_tokens: int) -> str:
@@ -58,7 +59,6 @@ class OpenAIAudienceLLM(AudienceLLMClient):
         print(f"已初始化 OpenAIAudienceLLM，模型: {self.model_name}，API Base: {base_url}")
 
     async def generate_chat_messages(self, prompt: str, max_tokens: int) -> str:
-        """使用 OpenAI 兼容的 API 生成聊天消息。"""
         try:
             response = await self.client.chat.completions.create(
                 model=self.model_name,
@@ -74,25 +74,28 @@ class OpenAIAudienceLLM(AudienceLLMClient):
                 return ""
         except Exception as e:
             print(f"调用 OpenAI 兼容 API 时出错: {e}")
-            # 抛出异常或返回空字符串，让上层处理
             raise
 
-# 根据配置获取 Audience LLM 客户端实例
+async def get_dynamic_audience_prompt() -> str:
+    """
+    根据 Neuro 的最新发言动态生成观众聊天的 Prompt。
+    """
+    current_neuro_speech = ""
+    # --- 核心修改：通过模块名访问变量和锁 ---
+    async with shared_state.neuro_last_speech_lock:
+        current_neuro_speech = shared_state.neuro_last_speech
+
+    prompt = AUDIENCE_PROMPT_TEMPLATE.format(neuro_speech=current_neuro_speech)
+    return prompt
+
+
 def get_audience_llm_client() -> AudienceLLMClient:
     """根据配置选择并返回 Audience LLM 客户端实例。"""
     if AUDIENCE_LLM_PROVIDER == "gemini":
-        return GeminiAudienceLLM(
-            api_key=GEMINI_API_KEY, 
-            model_name=GEMINI_AUDIENCE_MODEL
-        )
+        return GeminiAudienceLLM(api_key=GEMINI_API_KEY, model_name=GEMINI_AUDIENCE_MODEL)
     elif AUDIENCE_LLM_PROVIDER == "openai":
-       return OpenAIAudienceLLM(
-           api_key=OPENAI_API_KEY,
-           model_name=OPENAI_AUDIENCE_MODEL,
-           base_url=OPENAI_API_BASE_URL
-       )
+       return OpenAIAudienceLLM(api_key=OPENAI_API_KEY, model_name=OPENAI_AUDIENCE_MODEL, base_url=OPENAI_API_BASE_URL)
     else:
         raise ValueError(f"不支持的 AUDIENCE_LLM_PROVIDER: {AUDIENCE_LLM_PROVIDER}")
 
-# 全局实例
 audience_llm_client = get_audience_llm_client()
