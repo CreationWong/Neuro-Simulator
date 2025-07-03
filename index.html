@@ -78,7 +78,8 @@
       <div id="stream-and-info-container">
         <div id="stream-display-viewport">
           <div id="stream-display-area">
-            <div id="live2d-display"></div>
+            <!-- --- 核心修改点 (3): 添加 data-darkreader-ignore --- -->
+            <div id="live2d-display" data-darkreader-ignore></div>
             <div id="neuro-static-avatar-container">
               <img id="neuro-static-avatar" src="/neurosama.png" alt="Neuro-Sama Static Avatar" />
             </div>
@@ -87,7 +88,6 @@
               <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
             </div>
           </div>
-          <!-- 新增：收起时显示在视频上的展开按钮，现在在stream-display-area外面 -->
           <button id="show-chat-button" class="video-overlay-chat-button" aria-label="展开聊天">
               <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M16 16V4h2v12h-2zM6 9l2.501-2.5-1.5-1.5-5 5 5 5 1.5-1.5-2.5-2.5h8V9H6z"></path></svg>
           </button>
@@ -97,7 +97,8 @@
                 <div class="streamer-avatar-wrapper">
                     <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
                     <div class="live-indicator-rect">
-                        <span class="live-text">LIVE</span>
+                        <!-- --- 核心修改点 (2): 为 span 添加 ID --- -->
+                        <span class="live-text" id="live-indicator-text">LIVE</span>
                     </div>
                 </div>
             </div>
