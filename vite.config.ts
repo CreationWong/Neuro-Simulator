@@ -24,4 +24,16 @@ export default defineConfig({
         : {},
     }),
   ],
+  server: {
+    watch: {
+      ignored: [
+        // 忽略 Python 虚拟环境中的所有文件
+        "**/backend/venv/**",
+        // 忽略 node_modules 中的所有文件
+        "**/node_modules/**",
+        // 可选：忽略 Python 缓存文件
+        "**/__pycache__/**"
+      ]
+    }
+  }
 })
