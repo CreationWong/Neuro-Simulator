@@ -54,37 +54,200 @@ body {
   color: var(--twitch-text-color);
 }
 
-/* === Twitch 页眉 === */
+/* === Twitch 页眉 (已更新) === */
 #twitch-header {
   height: var(--header-height);
   background-color: var(--twitch-chat-bg);
   display: flex;
+  justify-content: space-between; /* 左右两边对齐 */
   align-items: center;
-  padding: 0 20px;
+  padding: 0 1rem; /* 左右内边距 */
   border-bottom: 1px solid var(--twitch-border-color);
   flex-shrink: 0; /* 确保头部不收缩 */
   z-index: 100;
   color: var(--twitch-text-color);
+  gap: 1rem; /* 内部元素之间的间距 */
 }
 
-#twitch-header .logo {
-  font-weight: bold;
-  font-size: 1.4em;
-  color: var(--twitch-purple);
-  margin-right: auto;
+.top-nav-left, .top-nav-center, .top-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* 内部元素之间的默认间距 */
 }
 
-#twitch-header .nav-links a {
-  color: var(--twitch-text-color);
-  text-decoration: none;
-  margin-left: 20px;
-  font-weight: 500;
-  transition: color 0.2s;
+/* --- 左侧导航 --- */
+.top-nav-left {
+    flex-shrink: 0; /* 防止被压缩 */
 }
 
-#twitch-header .nav-links a:hover {
-  color: var(--twitch-purple);
+/* Twitch Logo 容器 */
+.twitch-logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    margin-left: 0.5rem; /* 与左侧按钮的间距 */
 }
+
+.twitch-logo-container {
+    margin: 0; /* 移除 figure 默认 margin */
+    /* 核心：倒置 logo */
+    transform: scaleY(-1); /* 垂直翻转 */
+    transition: transform 0.3s ease-out; /* 添加动画效果 */
+}
+
+.twitch-logo-container:hover {
+    transform: scaleY(1); /* 鼠标悬停时恢复正常，增加趣味性 */
+}
+
+.twitch-logo-svg .logo-body {
+    fill: var(--twitch-purple); /* Logo 主体颜色 */
+}
+.twitch-logo-svg .logo-face {
+    fill: var(--twitch-chat-bg); /* Logo 面部颜色 */
+}
+.twitch-logo-svg .logo-eye-path {
+    fill: var(--twitch-purple); /* Logo 眼睛颜色 */
+}
+
+/* 导航链接 (关注, 浏览) */
+.nav-links-main {
+    display: flex;
+    gap: 1.5rem; /* 链接之间的间距 */
+    margin-left: 1.5rem; /* 与 Logo 的间距 */
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--twitch-text-color);
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-link:hover {
+    background-color: var(--twitch-hover-bg);
+    color: var(--twitch-purple); /* 悬停时文本变紫 */
+}
+
+.nav-link p {
+    margin: 0; /* 移除 p 标签默认 margin */
+}
+
+.nav-link-icon-wrapper svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor; /* 确保 SVG 图标颜色随父元素变动 */
+}
+
+/* --- 中间搜索栏 --- */
+.top-nav-center {
+    flex-grow: 1; /* 占据中心大部分空间 */
+    display: flex;
+    justify-content: center;
+}
+
+.search-container {
+    display: flex;
+    width: 100%;
+    max-width: 400px; /* 限制搜索栏最大宽度 */
+    border: 1px solid var(--twitch-border-color);
+    border-radius: 4px;
+    overflow: hidden; /* 确保边框和内容一致 */
+    background-color: var(--twitch-button-bg);
+}
+
+.search-input {
+    flex-grow: 1;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background-color: transparent; /* 背景透明，使用父容器的背景 */
+    color: var(--twitch-text-color);
+    font-size: 0.95rem;
+    outline: none;
+}
+.search-input::placeholder {
+    color: var(--twitch-secondary-text-color);
+}
+
+.search-button {
+    background-color: transparent; /* 背景透明 */
+    border: none;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--twitch-secondary-text-color); /* 默认灰色 */
+    transition: background-color 0.2s, color 0.2s;
+}
+.search-button svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+.search-button:hover {
+    background-color: var(--twitch-hover-bg);
+    color: var(--twitch-text-color); /* 悬停时变深 */
+}
+
+/* --- 右侧功能按钮和用户头像 --- */
+.top-nav-right {
+    flex-shrink: 0;
+    gap: 0.75rem; /* 按钮之间的间距 */
+}
+
+.nav-icon-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--twitch-secondary-text-color); /* 默认灰色 */
+    transition: background-color 0.2s, color 0.2s;
+}
+.nav-icon-button svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+.nav-icon-button:hover {
+    background-color: var(--twitch-hover-bg);
+    color: var(--twitch-text-color); /* 悬停时变深 */
+}
+
+.nav-user-avatar-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0; /* 头像按钮无内边距 */
+    border-radius: 50%;
+    width: 32px; /* 头像容器大小 */
+    height: 32px;
+    overflow: hidden; /* 确保图片圆形裁剪 */
+    flex-shrink: 0;
+}
+.user-avatar-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.user-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
 
 /* === Main Content Area: Stream + Chat === */
 #main-content-wrapper {
@@ -449,64 +612,126 @@ body {
 }
 
 
-/* === Right Chat Sidebar === */
-.chat-sidebar {
-  width: var(--sidebar-width);
-  background-color: var(--twitch-chat-bg);
-  flex-shrink: 0; /* 确保聊天侧边栏宽度不变 */
-  display: flex;
-  flex-direction: column; /* 内部元素垂直堆叠 */
-  border-left: 1px solid var(--twitch-border-color);
-  z-index: 50;
-  height: 100%; /* 关键点：固定聊天侧边栏的高度，使其与其父容器的高度一致 */
+/* 新增：视频上的展开聊天按钮 */
+#show-chat-button {
+    position: absolute;
+    top: 1rem; /* 距离顶部 1rem */
+    right: 1rem; /* 距离右侧 1rem */
+    z-index: 60; /* 确保在视频内容和 Neuro 立绘之上 */
+    background-color: rgba(0, 0, 0, 0.6); /* 半透明背景 */
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white; /* 图标颜色 */
+    transition: background-color 0.2s, opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    opacity: 0; /* 默认隐藏 */
+    visibility: hidden; /* 默认隐藏 */
+    pointer-events: none; /* 默认不响应事件 */
 }
 
-/* Chat Content Area (inside sidebar) */
-.chat-content {
-  flex-grow: 1; /* 占据所有可用高度 */
+#show-chat-button svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+#show-chat-button:hover {
+    background-color: rgba(0, 0, 0, 0.8); /* 悬停时颜色更深 */
+}
+
+/* 当侧边栏收缩时，显示这个按钮 */
+body.chat-collapsed #show-chat-button {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto; /* 响应事件 */
+}
+
+
+/* === Right Chat Sidebar (已更新) === */
+#chat-sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width); 
+  background-color: var(--twitch-chat-bg);
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 15px;
-}
-
-/* Chat Header */
-.chat-header {
-  padding-bottom: 10px;
-  margin-bottom: 15px;
-  border-bottom: 1px solid var(--twitch-border-color);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  flex-shrink: 0; /* 确保头部不收缩 */
-}
-.chat-header h2 {
-  margin: 0;
-  font-size: 1em;
-  color: var(--twitch-text-color);
-  flex-grow: 1;
-  text-align: center;
-}
-
-/* Message Display Area (the scrollable part) */
-.messages-display {
-  flex-grow: 1; /* 让聊天消息区域占据所有可用高度 */
-  overflow-y: auto; /* 聊天消息区域可垂直滚动 */
-  padding-right: 10px; /* 留出滚动条空间 */
-  margin-bottom: 15px;
-  min-height: 0; /* 允许 flex item 在内容溢出时缩小 */
-  /* 使用精确计算的 max-height，确保聊天区域不会挤压输入框 */
-  max-height: calc(100vh - var(--header-height) - (15px * 2) - 46px - 55px); 
-  /* 
-     计算解释：
-     100vh - 整个视口高度
-     - var(--header-height) (50px): 页眉高度
-     - (15px * 2): .chat-content 的上/下内边距
-     - 46px: .chat-header 的大致高度 (h2 字高 + padding-bottom + margin-bottom + border-bottom)
-     - 55px: .chat-input-area 的大致高度 (input padding + height + margin-top)
-  */
+  border-left: 1px solid var(--twitch-border-color);
+  z-index: 50;
+  height: 100%;
   
-  /* 自定义滚动条样式 (Firefox) */
+  transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
+}
+
+/* 当侧边栏收缩时，隐藏其内容并完全收缩 */
+#chat-sidebar.collapsed {
+    width: 0; 
+    min-width: 0; 
+    overflow: hidden; 
+    /* 确保内部内容不可见，不响应事件 */
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Chat Header (新的结构) */
+.chat-sidebar-header {
+  height: 3.5rem; /* 固定高度，约 56px */
+  display: flex;
+  justify-content: space-between; /* 标题和按钮左右对齐 */
+  align-items: center;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--twitch-border-color);
+  flex-shrink: 0;
+}
+
+.chat-sidebar-header .chat-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--twitch-text-color);
+}
+
+.chat-toggle-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--twitch-secondary-text-color);
+    transition: background-color 0.2s, color 0.2s, transform 0.3s ease-in-out;
+}
+.chat-toggle-button svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+.chat-toggle-button:hover {
+    background-color: var(--twitch-hover-bg);
+    color: var(--twitch-text-color);
+}
+
+/* 侧边栏收缩时，按钮旋转 */
+#chat-sidebar.collapsed .chat-toggle-button {
+    transform: rotate(180deg);
+}
+
+
+/* Message Display Area */
+.messages-display {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0.5rem 1rem; /* 新的内边距 */
+  min-height: 0;
+}
+
+/* 自定义滚动条样式 (Firefox) */
+.messages-display {
   scrollbar-width: thin; /* 较细的滚动条 */
   scrollbar-color: #B0B0B0 var(--twitch-hover-bg); /* 拇指颜色 轨道颜色 */
 }
@@ -526,28 +751,37 @@ body {
   background: #888; /* 滚动条拇指 hover 颜色 */
 }
 
+
 /* 单条消息样式 */
 .message {
-  padding: 4px 0;
-  margin-bottom: 4px;
+  padding: 0.25rem 0; /* 减少上下内边距 */
+  margin-bottom: 0.25rem; /* 减少下边距 */
   border-radius: 0;
   max-width: 100%;
   word-wrap: break-word;
   color: var(--twitch-text-color);
   text-align: left;
+  line-height: 1.3; /* 行高 */
 }
 
 .message .username {
   font-weight: bold;
-  margin-right: 5px;
+  margin-right: 0.35rem; /* 调整间距 */
+  font-size: 0.95rem; /* 调整字体大小 */
 }
+
+/* 消息文本 */
+.message span:not(.username) {
+    font-size: 0.95rem;
+}
+
 
 /* 消息类型样式 */
 .message.user-sent-message {
     background-color: rgba(145, 71, 255, 0.1);
     border-radius: 4px;
-    padding: 4px 8px;
-    margin-bottom: 6px;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.5rem;
     border-left: 3px solid var(--twitch-purple);
 }
 .message.user-sent-message .username {
@@ -557,15 +791,15 @@ body {
 .message.audience-ai-message {
     background-color: rgba(0, 0, 0, 0.03);
     border-radius: 4px;
-    padding: 4px 8px;
-    margin-bottom: 6px;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
 .message.system-message {
     color: var(--twitch-secondary-text-color);
     font-style: italic;
     text-align: center;
-    padding: 4px 8px;
+    padding: 0.25rem 0.5rem;
 }
 .message.system-message .username {
     font-weight: normal;
@@ -573,22 +807,56 @@ body {
 }
 
 
-/* 输入区域 */
+/* Input Area (新的结构) */
 .chat-input-area {
   display: flex;
-  gap: 10px;
+  flex-direction: column; /* 工具栏、输入框、发送按钮垂直堆叠 */
+  gap: 0.5rem; /* 内部元素间距 */
+  padding: 0.75rem 1rem; /* 内部内边距 */
+  border-top: 1px solid var(--twitch-border-color);
   flex-shrink: 0;
-  margin-top: auto;
+}
+
+.chat-input-toolbar {
+    display: flex;
+    gap: 0.25rem; /* 按钮之间的小间距 */
+}
+
+.chat-toolbar-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--twitch-secondary-text-color);
+    transition: background-color 0.2s, color 0.2s;
+}
+.chat-toolbar-button svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+.chat-toolbar-button .chat-badge-icon { /* 针对徽章图片的样式 */
+    width: 20px;
+    height: 20px;
+}
+.chat-toolbar-button:hover {
+    background-color: var(--twitch-hover-bg);
+    color: var(--twitch-text-color);
 }
 
 #chat-input {
-  flex-grow: 1;
-  padding: 10px 15px;
+  /* 调整输入框样式以适应 Twitch 风格 */
+  height: 2.25rem; /* 固定高度，约 36px */
+  padding: 0 0.75rem; /* 左右内边距 */
   border: 1px solid var(--twitch-border-color);
   border-radius: 4px;
-  background-color: #FFFFFF;
+  background-color: var(--twitch-button-bg); /* 与按钮背景色一致 */
   color: var(--twitch-text-color);
-  font-size: 1em;
+  font-size: 0.95rem;
   outline: none;
 }
 #chat-input::placeholder {
@@ -596,26 +864,53 @@ body {
 }
 #chat-input:focus {
   border-color: var(--twitch-purple);
+  box-shadow: 0 0 0 2px rgba(145, 71, 255, 0.2); /* 模仿 Twitch 的聚焦阴影 */
 }
 
-#send-button {
-  padding: 10px 15px;
-  background-color: var(--twitch-purple);
-  color: white;
+.chat-send-area {
+    display: flex;
+    justify-content: space-between; /* 点数显示和按钮左右对齐 */
+    align-items: center;
+    margin-top: 0.5rem; /* 与输入框的间距 */
+}
+
+.chat-points-display {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--twitch-secondary-text-color);
+}
+.chat-points-display svg,
+.chat-points-display .channel-points-icon { /* 注意这里包含了 .channel-points-icon */
+    width: 18px;
+    height: 18px;
+    fill: currentColor; /* SVG 颜色随父元素 */
+    object-fit: contain; /* 确保图片不会被裁切 */
+}
+.chat-points-display .points-value {
+    color: var(--twitch-text-color);
+    font-weight: 600;
+}
+
+#send-button.chat-send-button { /* 使用更具体的类名 */
+  padding: 0.5rem 1rem; /* 调整内边距 */
+  background-color: var(--twitch-primary-button-bg);
+  color: var(--twitch-primary-button-text-color);
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1.2em;
-  font-weight: bold;
+  font-size: 0.95rem; /* 调整字体大小 */
+  font-weight: 600; /* 调整字重 */
   transition: background-color 0.2s;
 }
 
-#send-button:hover:not(:disabled) {
-  background-color: #7728FF;
+#send-button.chat-send-button:hover:not(:disabled) {
+  background-color: var(--twitch-primary-button-hover-bg);
 }
 
-#send-button:disabled {
-  background-color: #B0B0B0;
+#send-button.chat-send-button:disabled {
+  background-color: #B0B0B0; /* 禁用时的背景色 */
   cursor: not-allowed;
 }
 

@@ -1,5 +1,4 @@
 // src/core/appInitializer.ts
-// (代码与上一次完全相同，无需修改)
 
 import { WebSocketClient } from '../services/websocketClient';
 import { ApiClient } from '../services/apiClient';
@@ -11,6 +10,7 @@ import { showNeuroCaption, hideNeuroCaption } from '../ui/neuroCaption';
 import { UserInput } from '../ui/userInput';
 import { LayoutManager } from './layoutManager';
 import { StreamTimer } from '../ui/streamTimer';
+import { ChatSidebar } from '../ui/chatSidebar'; // <-- 新增导入
 import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, BackendErrorMessage, UserInputMessage } from '../types/common';
 
 const BACKEND_BASE_URL = 'http://127.0.0.1:8000'; 
@@ -26,6 +26,7 @@ export class AppInitializer {
     private userInput: UserInput;   
     private layoutManager: LayoutManager;
     private streamTimer: StreamTimer;
+    private chatSidebar: ChatSidebar; // <-- 新增属性
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
 
@@ -36,14 +37,12 @@ export class AppInitializer {
         
         const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
 
-        // --- 核心修改：只初始化一个客户端 ---
         this.wsClient = new WebSocketClient({
-            url: BACKEND_BASE_URL.replace('http', 'ws') + '/ws/stream', // <-- 连接到新的统一端点
+            url: BACKEND_BASE_URL.replace('http', 'ws') + '/ws/stream', 
             autoReconnect: true,
             onMessage: universalMessageHandler,
             onDisconnect: () => this.goOffline("与服务器的连接已断开。正在尝试重新连接..."),
         });
-        // 移除 this.audienceWsClient 的初始化
 
         this.audioPlayer = new AudioPlayer();
         this.videoPlayer = new VideoPlayer();
@@ -51,6 +50,7 @@ export class AppInitializer {
         this.chatDisplay = new ChatDisplay();
         this.userInput = new UserInput();
         this.userInput.onSendMessage((messageText: string) => this.sendUserMessage(messageText));
+        this.chatSidebar = new ChatSidebar(); // <-- 实例化 ChatSidebar
     }
 
     public start(): void {
@@ -58,8 +58,7 @@ export class AppInitializer {
         this.isStarted = true;
         this.layoutManager.start();
         this.goOffline("正在连接到服务器...");
-        this.wsClient.connect(); // <-- 只连接一次
-        // 移除 this.audienceWsClient.connect();
+        this.wsClient.connect(); 
     }
 
     private goOffline(systemMessage: string): void {
@@ -71,6 +70,9 @@ export class AppInitializer {
         hideNeuroCaption();
         this.streamTimer.stop();
         this.userInput.setInputDisabled(true);
+        // 确保离线时侧边栏是展开的，以便用户能看到连接消息
+        this.chatSidebar.setCollapsed(false); 
+
         this.chatDisplay.appendChatMessage({
             type: "chat_message", username: "System", text: systemMessage, is_user_message: false
         });
@@ -90,17 +92,20 @@ export class AppInitializer {
                 this.currentPhase = 'initializing';
                 this.videoPlayer.showAndPlayVideo(message.progress);
                 this.userInput.setInputDisabled(true);
+                this.chatSidebar.setCollapsed(false); // 确保视频播放时侧边栏展开
                 break;
             case 'start_avatar_intro':
                 this.currentPhase = 'avatar_intro';
                 this.neuroAvatar.startIntroAnimation(() => { this.videoPlayer.hideVideo(); });
                 this.userInput.setInputDisabled(true);
+                this.chatSidebar.setCollapsed(false); // 确保头像入场时侧边栏展开
                 break;
             case 'enter_live_phase':
                 this.currentPhase = 'live';
                 this.videoPlayer.hideVideo();
                 this.neuroAvatar.setStage('step2', true); 
                 this.userInput.setInputDisabled((message as any).is_speaking ?? false);
+                this.chatSidebar.setCollapsed(false); // 确保进入直播阶段侧边栏展开
                 break;
             case 'neuro_is_speaking':
                 if (this.currentPhase === 'live') {
@@ -109,24 +114,23 @@ export class AppInitializer {
                 if (!(message as any).speaking) hideNeuroCaption();
                 break;
             case 'neuro_speech_segment':
-                if (message.is_end) {
-                    this.audioPlayer.setAllSegmentsReceived(); 
-                } else if (message.audio_base64 && message.text && typeof message.duration === 'number') { // <-- 检查 duration 类型
-                    this.audioPlayer.addAudioSegment(message.text, message.audio_base64, message.duration); // <-- 传递 duration
+                if (message.is_end) this.audioPlayer.setAllSegmentsReceived(); 
+                else if (message.audio_base64 && message.text && typeof message.duration === 'number') { 
+                    this.audioPlayer.addAudioSegment(message.text, message.audio_base64, message.duration);
                 } else {
                     console.warn("Received neuro_speech_segment message with missing audio/text/duration:", message);
                 }
                 break;
-            case 'neuro_error_signal': // <-- 新增的处理 case
+            case 'neuro_error_signal': 
                 console.warn("Received neuro_error_signal from backend.");
-                // 显示固定的错误字幕
                 showNeuroCaption("Someone tell Vedal there is a problem with my AI.");
-                // 播放预置的错误音效
                 this.audioPlayer.playErrorSound();
                 break;
             case 'chat_message':
-                if (!(message.is_user_message && message.username === MY_USERNAME)) {
-                    this.chatDisplay.appendChatMessage(message);
+                // 当侧边栏收缩时，不显示 AI 生成的观众聊天，只显示用户自己的消息
+                // 这能模拟聊天被“隐藏”的感觉
+                if (!this.chatSidebar.getIsCollapsed() || message.is_user_message) {
+                   this.chatDisplay.appendChatMessage(message);
                 }
                 break;
             case 'error':
@@ -137,7 +141,7 @@ export class AppInitializer {
     
     private sendUserMessage(messageText: string): void {
         const message = { type: "user_message", message: messageText, username: MY_USERNAME };
-        this.wsClient.send(message); // <-- 确保使用单一客户端发送
+        this.wsClient.send(message); 
         this.chatDisplay.appendChatMessage({ type: "chat_message", username: MY_USERNAME, text: messageText, is_user_message: true });
     }
 

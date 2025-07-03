@@ -8,17 +8,72 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- Twitch 风格页眉 -->
+    <!-- Twitch 风格页眉 (已在上次提交中修改) -->
     <header id="twitch-header">
-      <div class="logo">Neuro-Simulator</div>
-      <div class="nav-links">
-        <a href="#">浏览</a>
-        <a href="#">关注</a>
-        <!-- 重置按钮已移除 -->
+      <div class="top-nav-left">
+        <a href="/" class="twitch-logo-link" aria-label="Twitch 主页">
+          <figure class="twitch-logo-container">
+            <svg class="twitch-logo-svg" overflow="visible" width="40px" height="40px" version="1.1" viewBox="0 0 40 40" x="0px" y="0px">
+              <g>
+                <polygon points="13 8 8 13 8 31 14 31 14 36 19 31 23 31 32 22 32 8" class="logo-body"></polygon>
+                <polygon points="26 25 30 21 30 10 14 10 14 25 18 25 18 29 22 25" class="logo-face"></polygon>
+                <g class="logo-eyes">
+                  <path d="M20,14 L22,14 L22,20 L20,20 L20,14 Z M27,14 L27,20 L25,20 L25,14 L27,14 Z" class="logo-eye-path"></path>
+                </g>
+              </g>
+            </svg>
+          </figure>
+        </a>
+        <div class="nav-links-main">
+          <a class="nav-link" href="#">
+            <p>正在关注</p>
+            <div class="nav-link-icon-wrapper">
+              <svg width="20px" height="20px" version="1.1" viewBox="0 0 20 20" x="0px" y="0px"><path d="M9.171 4.171A4 4 0 0 0 6.343 3H6a4 4 0 0 0-4 4v.343a4 4 0 0 0 1.172 2.829L10 17l6.828-6.828A4 4 0 0 0 18 7.343V7a4 4 0 0 0-4-4h-.343a4 4 0 0 0-2.829 1.172L10 5l-.829-.829zm.829 10 5.414-5.414A2 2 0 0 0 16 7.343V7a2 2 0 0 0-2-2h-.343a2 2 0 0 0-1.414.586L10 7.828 7.757 5.586A2 2 0 0 0 6.343 5H6a2 2 0 0 0-2 2v.343a2 2 0 0 0 .586 1.414L10 14.172z" fill-rule="evenodd"></path></svg>
+            </div>
+          </a>
+          <a class="nav-link" href="#">
+            <p>浏览</p>
+            <div class="nav-link-icon-wrapper">
+              <svg width="20px" height="20px" version="1.1" viewBox="0 0 20 20" x="0px" y="0px"><g><path d="M5 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2V4h8a2 2 0 0 0-2-2H5z"></path><path d="M7 8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V8zm2 0h6v8H9V8z" fill-rule="evenodd"></path></g></svg>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div class="top-nav-center">
+        <div class="search-container">
+          <input type="search" class="search-input" placeholder="搜索" />
+          <button class="search-button" aria-label="搜索按钮">
+            <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path d="M13.192 14.606a7 7 0 1 1 1.414-1.414l3.101 3.1-1.414 1.415-3.1-3.1zM14 9A5 5 0 1 1 4 9a5 5 0 0 1 10 0z" fill-rule="evenodd"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="top-nav-right">
+        <button class="nav-icon-button" aria-label="Prime 优惠">
+          <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="M13.798 10.456 10 6.657l-3.798 3.799L4 8.805V13h12V8.805l-2.202 1.65zM18 5v8a2 2 0 0 1-2 2H4a2.002 2.002 0 0 1-2-2V5l4 3 4-4 4 4 4-3z" clip-rule="evenodd"></path></svg>
+        </button>
+        <button class="nav-icon-button" aria-label="打开通知">
+          <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="M4 3h12l2 4v10H2V7l2-4zm.236 4H8v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V7h3.764l-1-2H5.236l-1 2zM16 9h-2.17A3.001 3.001 0 0 1 11 11H9a3.001 3.001 0 0 1-2.83-2H4v6h12V9z" clip-rule="evenodd"></path></svg>
+        </button>
+        <button class="nav-icon-button" aria-label="悄悄话">
+          <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="M7.828 13 10 15.172 12.172 13H15V5H5v8h2.828zM10 18l-3-3H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2l-3 3z" clip-rule="evenodd"></path></svg>
+        </button>
+        <button class="nav-icon-button" aria-label="购买呼币">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="m3 12 7-10 7 10-7 6-7-6zm2.678-.338L10 5.487l4.322 6.173-.85.728L10 11l-3.473 1.39-.849-.729z" clip-rule="evenodd"></path></svg>
+        </button>
+        <button class="nav-icon-button" aria-label="免费体验无广告观赏">
+          <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path d="M10.114 9.622 11 7 7.175 9.323a.382.382 0 0 0 .013.65l.698.405L7 13l3.825-2.323a.382.382 0 0 0-.012-.65l-.699-.405z"></path><path fill-rule="evenodd" d="M18 7h-2V4H2v12h14v-3h2V7zm-4-1v3h2v2h-2v3H4V6h10z" clip-rule="evenodd"></path></svg>
+        </button>
+        
+        <button class="nav-user-avatar-button" aria-expanded="false" aria-label="用户菜单">
+          <div class="user-avatar-wrapper">
+            <img class="user-avatar-img" alt="用户头像" src="/avatar.webp" style="object-fit: cover;">
+          </div>
+        </button>
       </div>
     </header>
 
-    <!-- ... (其他内容不变) ... -->
     <div id="main-content-wrapper">
       <div id="stream-and-info-container">
         <div id="stream-display-viewport">
@@ -31,6 +86,11 @@
             <div id="startup-video-overlay">
               <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
             </div>
+            
+            <!-- 新增：收起时显示在视频上的展开按钮 -->
+            <button id="show-chat-button" class="video-overlay-chat-button" aria-label="展开聊天">
+                <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M16 16V4h2v12h-2zM6 9l2.501-2.5-1.5-1.5-5 5 5 5 1.5-1.5-2.5-2.5h8V9H6z"></path></svg>
+            </button>
           </div>
         </div>
         <div id="stream-info">
@@ -71,7 +131,6 @@
                             <span>观众</span>
                         </div>
                         <div class="stream-duration">
-                            <!-- 已开播时长文本现在由 JS 动态填充 -->
                             <span class="duration-text" id="stream-duration-text">00:00:00</span>
                             <span>已开播</span>
                         </div>
@@ -93,15 +152,44 @@
             </div>
         </div>
       </div>
+
+      <!-- 右侧聊天侧边栏 -->
       <div id="chat-sidebar" class="chat-sidebar">
-        <div class="chat-content">
-          <div class="chat-header">
-            <h2>直播聊天</h2>
+        <!-- 顶部收缩按钮和聊天标题 -->
+        <div class="chat-sidebar-header">
+          <h2 class="chat-title">直播聊天</h2>
+          <button id="toggle-chat-button" class="chat-toggle-button" aria-label="重叠聊天">
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M4 16V4H2v12h2zm9-1-1.5-1.5L14 11H6V9h8l-2.5-2.5L13 5l5 5-5 5z"></path></svg>
+          </button>
+        </div>
+        
+        <!-- 聊天消息显示区 -->
+        <div id="chat-messages" class="messages-display"></div>
+        
+        <!-- 聊天输入区 -->
+        <div class="chat-input-area">
+          <div class="chat-input-toolbar">
+            <!-- 模拟的徽章和表情按钮 -->
+            <button class="chat-toolbar-button" aria-label="聊天室身份">
+              <img alt="订阅者徽章" class="chat-badge-icon" src="https://assets.twitch.tv/assets/light-11f485845b62bbd59fe8.svg">
+            </button>
+            <button class="chat-toolbar-button" aria-label="欢呼">
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M14 4V2h-2v2h2z"></path><path fill-rule="evenodd" d="M10.293 8.293 16 14 4 18l-2-2L6 4l2.879 2.879A2.99 2.99 0 0 1 11 6h1v2h-1a.997.997 0 0 0-.707.293zm-3.419-.59-.643 1.93 2.67 4.625 2.254-.751-2.08-3.604-2.201-2.2zM4.498 14.83l.887-2.662 1.58 2.735-2.033.677-.434-.75z" clip-rule="evenodd"></path><path d="M16 5V4h2v1a3 3 0 0 1-3 3h-1V6h1a1 1 0 0 0 1-1zm2 5v2h-2v-2h2z"></path></svg>
+            </button>
+            <button class="chat-toolbar-button" aria-label="表情符号选择器">
+              <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><g><path d="M7 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm7-1a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-4 4a2 2 0 0 0 2-2H8a2 2 0 0 0 2 2z"></path><path d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0zm-2 0a6 6 0 1 1-12 0 6 6 0 0 1 12 0z" fill-rule="evenodd"></path></g></svg>
+            </button>
           </div>
-          <div id="chat-messages" class="messages-display"></div>
-          <div class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="Send a message..." />
-            <button id="send-button">聊天</button>
+          <input type="text" id="chat-input" placeholder="发送消息" />
+          <div class="chat-send-area">
+             <div class="chat-points-display">
+                <svg width="20" height="20" viewBox="0 0 20 20"><path fill-rule="evenodd" d="m3 12 7-10 7 10-7 6-7-6zm2.678-.338L10 5.487l4.322 6.173-.85.728L10 11l-3.473 1.39-.849-.729z" clip-rule="evenodd"></path></svg>
+                <span class="points-value">0</span>
+                <!-- 频道点数 logo 路径已更新 -->
+                <img class="channel-points-icon" src="/avatar.webp" alt="频道点数">
+                <span class="points-value">0</span>
+             </div>
+             <button id="send-button" class="chat-send-button">聊天</button>
           </div>
         </div>
       </div>
