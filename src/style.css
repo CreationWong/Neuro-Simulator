@@ -1,5 +1,4 @@
 /* src/style.css */
-
 /* 定义 Twitch 常用颜色变量 - 白色主题 */
 :root {
   --twitch-purple: #9147FF; /* 主强调色 */
@@ -9,7 +8,6 @@
   --twitch-secondary-text-color: #6A6A6D; /* 次要文字颜色，中等灰色 */
   --twitch-border-color: #D3D3D3; /* 边框颜色，浅灰色 */
   --twitch-hover-bg: #EFEFF1; /* 浅灰色 hover 背景 */
-
   /* Twitch 特定颜色和值 */
   --twitch-button-bg: #EFEFF1; /* 按钮默认背景色 */
   --twitch-button-text-color: #0E0E10; /* 按钮默认文字颜色 */
@@ -20,16 +18,14 @@
   --twitch-tag-bg: #EFEFF1; /* 标签背景色 */
   --twitch-tag-text-color: #6A6A6D; /* 标签文字颜色 */
   --twitch-live-red: #EB0400; /* 直播红色指示点/方块 */
-
   --sidebar-width: 340px; /* 聊天侧边栏的宽度 */
   --header-height: 50px; /* Twitch 页眉高度 */
-
   --neuro-shadow-color: #32003C; /* Neuro 字幕阴影色 */
-  
   /* 立绘显示宽度百分比，保持固定 */
-  --neuro-avatar-display-width-percent: 50%; 
+  --neuro-avatar-display-width-percent: 50%;
+  /* 新增：通用过渡效果变量 */
+  --fast-transition: background-color 0.2s, color 0.2s;
 }
-
 /* 自定义字体 - First Coffee */
 @font-face {
   font-family: 'First Coffee';
@@ -37,7 +33,6 @@
   font-weight: normal;
   font-style: normal;
 }
-
 /* 全局 HTML 和 Body 样式 */
 html, body {
   height: 100%;
@@ -45,209 +40,183 @@ html, body {
   padding: 0;
   overflow: hidden; /* 确保 body 不滚动 */
 }
-
 body {
-  font-family: 'Inter', Arial, sans-serif; /* 全局使用 Inter 字体 (需在 main.ts 导入 @fontsource/inter) */
+  font-family: 'Inter', Arial, sans-serif;
   display: flex;
-  flex-direction: column; /* 垂直堆叠 header 和 main content */
+  flex-direction: column;
   background-color: var(--twitch-dark-bg);
   color: var(--twitch-text-color);
 }
 
-/* === Twitch 页眉 (已更新) === */
+/* =================================== */
+/* === 通用样式类 (优化核心) === */
+/* =================================== */
+
+/* --- 通用图标按钮基础样式 --- */
+.search-button,
+.nav-icon-button,
+.chat-toggle-button,
+.chat-toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--twitch-secondary-text-color);
+  transition: var(--fast-transition);
+}
+/* --- 通用图标按钮 Hover 效果 --- */
+.search-button:hover,
+.nav-icon-button:hover,
+.chat-toggle-button:hover,
+.chat-toolbar-button:hover {
+  background-color: var(--twitch-hover-bg);
+  color: var(--twitch-text-color);
+}
+/* --- 通用 20px SVG 图标样式 --- */
+.nav-link-icon-wrapper svg,
+.search-button svg,
+.nav-icon-button svg,
+#show-chat-button svg,
+.chat-toggle-button svg,
+.chat-toolbar-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+/* --- 通用绝对定位全屏覆盖 --- */
+#live2d-display,
+#startup-video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* =================================== */
+/* === 组件样式 (已优化) === */
+/* =================================== */
+
+/* === Twitch 页眉 === */
 #twitch-header {
   height: var(--header-height);
   background-color: var(--twitch-chat-bg);
   display: flex;
-  justify-content: space-between; /* 左右两边对齐 */
+  justify-content: space-between;
   align-items: center;
-  padding: 0 1rem; /* 左右内边距 */
+  padding: 0 1rem;
   border-bottom: 1px solid var(--twitch-border-color);
-  flex-shrink: 0; /* 确保头部不收缩 */
+  flex-shrink: 0;
   z-index: 100;
   color: var(--twitch-text-color);
-  gap: 1rem; /* 内部元素之间的间距 */
+  gap: 1rem;
 }
-
 .top-nav-left, .top-nav-center, .top-nav-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem; /* 内部元素之间的默认间距 */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-
-/* --- 左侧导航 --- */
-.top-nav-left {
-    flex-shrink: 0; /* 防止被压缩 */
+.top-nav-left, .top-nav-right {
+  flex-shrink: 0;
 }
-
-/* Twitch Logo 容器 */
 .twitch-logo-link {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    margin-left: 0.5rem; /* 与左侧按钮的间距 */
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  margin-left: 0.5rem;
 }
-
 .twitch-logo-container {
-    margin: 0; /* 移除 figure 默认 margin */
-    /* 核心：倒置 logo */
-    transform: scaleY(-1); /* 垂直翻转 */
-    transition: transform 0.3s ease-out; /* 添加动画效果 */
+  margin: 0;
+  transform: scaleY(-1);
+  transition: transform 0.3s ease-out;
 }
-
 .twitch-logo-container:hover {
-    transform: scaleY(1); /* 鼠标悬停时恢复正常，增加趣味性 */
+  transform: scaleY(1);
 }
+.twitch-logo-svg .logo-body { fill: var(--twitch-purple); }
+.twitch-logo-svg .logo-face { fill: var(--twitch-chat-bg); }
+.twitch-logo-svg .logo-eye-path { fill: var(--twitch-purple); }
 
-.twitch-logo-svg .logo-body {
-    fill: var(--twitch-purple); /* Logo 主体颜色 */
-}
-.twitch-logo-svg .logo-face {
-    fill: var(--twitch-chat-bg); /* Logo 面部颜色 */
-}
-.twitch-logo-svg .logo-eye-path {
-    fill: var(--twitch-purple); /* Logo 眼睛颜色 */
-}
-
-/* 导航链接 (关注, 浏览) */
 .nav-links-main {
-    display: flex;
-    gap: 1.5rem; /* 链接之间的间距 */
-    margin-left: 1.5rem; /* 与 Logo 的间距 */
+  display: flex;
+  gap: 1.5rem;
+  margin-left: 1.5rem;
 }
-
 .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    text-decoration: none;
-    color: var(--twitch-text-color);
-    font-weight: 500;
-    font-size: 0.95rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    transition: background-color 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--twitch-text-color);
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: var(--fast-transition);
 }
-
 .nav-link:hover {
-    background-color: var(--twitch-hover-bg);
-    color: var(--twitch-purple); /* 悬停时文本变紫 */
+  background-color: var(--twitch-hover-bg);
+  color: var(--twitch-purple);
 }
+.nav-link p { margin: 0; }
 
-.nav-link p {
-    margin: 0; /* 移除 p 标签默认 margin */
-}
-
-.nav-link-icon-wrapper svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor; /* 确保 SVG 图标颜色随父元素变动 */
-}
-
-/* --- 中间搜索栏 --- */
 .top-nav-center {
-    flex-grow: 1; /* 占据中心大部分空间 */
-    display: flex;
-    justify-content: center;
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
 }
-
 .search-container {
-    display: flex;
-    width: 100%;
-    max-width: 400px; /* 限制搜索栏最大宽度 */
-    border: 1px solid var(--twitch-border-color);
-    border-radius: 4px;
-    overflow: hidden; /* 确保边框和内容一致 */
-    background-color: var(--twitch-button-bg);
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--twitch-border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--twitch-button-bg);
 }
-
 .search-input {
-    flex-grow: 1;
-    padding: 0.5rem 0.75rem;
-    border: none;
-    background-color: transparent; /* 背景透明，使用父容器的背景 */
-    color: var(--twitch-text-color);
-    font-size: 0.95rem;
-    outline: none;
+  flex-grow: 1;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background-color: transparent;
+  color: var(--twitch-text-color);
+  font-size: 0.95rem;
+  outline: none;
 }
-.search-input::placeholder {
-    color: var(--twitch-secondary-text-color);
-}
-
+.search-input::placeholder { color: var(--twitch-secondary-text-color); }
 .search-button {
-    background-color: transparent; /* 背景透明 */
-    border: none;
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--twitch-secondary-text-color); /* 默认灰色 */
-    transition: background-color 0.2s, color 0.2s;
+  padding: 0.5rem 0.75rem; /* 独立 padding */
+  background-color: transparent;
 }
-.search-button svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor;
-}
-.search-button:hover {
-    background-color: var(--twitch-hover-bg);
-    color: var(--twitch-text-color); /* 悬停时变深 */
-}
-
-/* --- 右侧功能按钮和用户头像 --- */
-.top-nav-right {
-    flex-shrink: 0;
-    gap: 0.75rem; /* 按钮之间的间距 */
-}
-
-.nav-icon-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--twitch-secondary-text-color); /* 默认灰色 */
-    transition: background-color 0.2s, color 0.2s;
-}
-.nav-icon-button svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor;
-}
-.nav-icon-button:hover {
-    background-color: var(--twitch-hover-bg);
-    color: var(--twitch-text-color); /* 悬停时变深 */
-}
-
+.top-nav-right { gap: 0.75rem; }
+.nav-icon-button { padding: 0.5rem; } /* 独立 padding */
 .nav-user-avatar-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0; /* 头像按钮无内边距 */
-    border-radius: 50%;
-    width: 32px; /* 头像容器大小 */
-    height: 32px;
-    overflow: hidden; /* 确保图片圆形裁剪 */
-    flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 .user-avatar-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .user-avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
-
 
 /* === Main Content Area: Stream + Chat === */
 #main-content-wrapper {
@@ -256,61 +225,40 @@ body {
   overflow: hidden;
   position: relative;
 }
-
-/* Left: Stream and Info Container (直播内容区域可滚动) */
 #stream-and-info-container {
   flex-grow: 1;
   flex-shrink: 1;
   display: flex;
-  flex-direction: column; /* 重要: 让 viewport 和 info 垂直堆叠 */
+  flex-direction: column;
   overflow-y: auto;
   min-height: 0;
+  scrollbar-width: none; /* Firefox */
 }
+#stream-and-info-container::-webkit-scrollbar { display: none; } /* Webkit */
 
-#stream-and-info-container::-webkit-scrollbar { display: none; }
-#stream-and-info-container { scrollbar-width: none; }
-
-/* === 新增: "视口"容器, 负责黑边和居中 === */
 #stream-display-viewport {
-  flex-grow: 1; /* 占据所有可用的垂直空间 */
+  flex-grow: 1;
   background-color: #000;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  min-height: 0; /* 对 flexbox 很重要 */
+  min-height: 0;
 }
-
-/* === 修改: "内容区"容器, 保持16:9, 由JS控制大小 === */
 #stream-display-area {
   position: relative;
   background-color: #000;
   overflow: hidden;
-  /* width, height, aspect-ratio 由 JS 控制 */
-  flex-shrink: 0; /* 防止在 flex 容器中被压缩 */
-  
-  /* 初始状态为不可见 */
+  flex-shrink: 0;
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
 }
-
-/* Live2D Placeholder (now just the background) */
 #live2d-display {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
   z-index: 0;
   pointer-events: none;
-  background-image: url('/background.webp');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: url('/background.webp') center/cover no-repeat;
 }
-
-/* Neuro Static Avatar Container */
 #neuro-static-avatar-container {
   position: absolute;
   left: 70%;
@@ -320,21 +268,17 @@ body {
   overflow: visible;
   pointer-events: none;
   z-index: 15;
-  visibility: hidden; 
-  transition: none; 
+  visibility: hidden;
+  transition: none;
 }
-
 #neuro-static-avatar-container img {
   width: 100%;
   height: auto;
   display: block;
 }
-
 #neuro-static-avatar-container.step-2-animate {
   transition: bottom 1s cubic-bezier(0.4, 0.0, 1, 1);
 }
-
-/* Neuro Caption Display Area (above stream) */
 #neuro-caption {
   position: absolute;
   bottom: 5%;
@@ -344,53 +288,39 @@ body {
   padding: 10px 20px;
   border-radius: 10px;
   text-align: center;
-  font-size: clamp(0px, 2.5vw, 40px); 
+  font-size: clamp(0px, 2.5vw, 40px);
   font-weight: normal;
   opacity: 1;
   pointer-events: none;
   z-index: 20;
   color: white;
   transition: none;
-  text-shadow:
-    0 0 4px var(--neuro-shadow-color),
-    0 0 4px var(--neuro-shadow-color),
-    0 0 4px var(--neuro-shadow-color);
+  text-shadow: 0 0 4px var(--neuro-shadow-color), 0 0 4px var(--neuro-shadow-color), 0 0 4px var(--neuro-shadow-color);
   font-family: 'First Coffee', cursive;
 }
+#neuro-caption.show { opacity: 1; }
 
-#neuro-caption.show {
-    opacity: 1;
-}
-
-/* Startup Video Overlay - adjusted positioning */
 #startup-video-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: black;
-    z-index: 10; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 1;
-    transition: none; 
+  background-color: black;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 1;
+  transition: none;
 }
-
 #startup-video-overlay.hidden {
-    opacity: 0;
-    pointer-events: none; 
-    visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
-
 #startup-video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
-/* === 新的 Stream Info Area === */
+/* === Stream Info Area === */
 #stream-info {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -398,263 +328,209 @@ body {
   padding: 10px 20px;
   background-color: var(--twitch-chat-bg);
   border-bottom: 1px solid var(--twitch-border-color);
-  flex-shrink: 0; /* 重要: 确保信息栏高度固定，不被压缩 */
+  flex-shrink: 0;
 }
-
-/* 左侧头像列 */
 .streamer-avatar-column {
-    display: flex;
-    flex-direction: column; /* 让头像和 LIVE 指示器垂直堆叠 */
-    align-items: center; /* 水平居中 */
-    justify-content: flex-start; /* 将头像推到顶部，再用 margin-top 调整 */
-    flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
 }
-
 .streamer-avatar-wrapper {
-    position: relative;
-    margin-top: 15px; /* 您的调整：头像顶部下沉 */
-    margin-bottom: 10px; /* 您的调整：头像与 LIVE 间距 */
+  position: relative;
+  margin-top: 15px;
+  margin-bottom: 10px;
 }
-
 #streamer-avatar {
-  width: 60px; /* 调整头像大小 */
-  height: 60px; /* 调整头像大小 */
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-
-/* 新的 LIVE 指示器 */
 .live-indicator-rect {
-    background-color: var(--twitch-live-red);
-    color: white;
-    font-size: 0.7em; /* 您的调整 */
-    font-weight: 700;
-    padding: 2px 5px; /* 您的调整 */
-    border-radius: 4px;
-    position: absolute;
-    bottom: -5px; /* 您的调整 */
-    left: 50%;
-    transform: translateX(-50%); /* 水平居中 */
-    white-space: nowrap; /* 防止 LIVE 文本换行 */
-    z-index: 2; /* 确保在最上层 */
-    border: 2px solid var(--twitch-chat-bg); /* 添加白色边框 */
+  background-color: var(--twitch-live-red);
+  color: white;
+  font-size: 0.7em;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 2;
+  border: 2px solid var(--twitch-chat-bg);
 }
-
-/* 右侧详细信息列 */
 .stream-details-column {
-    display: flex;
-    flex-direction: column; /* 内部三行垂直堆叠 */
-    flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
-
-/* 每一行的通用样式 */
 .stream-info-row {
-    display: flex;
-    justify-content: space-between; /* 内部左右两部分推到两端 */
-    align-items: center; /* 垂直居中对齐 */
-    width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
-
-/* 第一行：主播名称 + 认证徽章 + 关注/订阅按钮 */
-.stream-info-row.top-row {
-    margin-bottom: 5px; /* 您的调整 */
-}
+.stream-info-row.top-row { margin-bottom: 5px; }
 .streamer-name-section {
-    display: flex;
-    align-items: center;
-    gap: 5px; /* 主播名称和认证徽章之间的间距 */
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 #streamer-nickname {
   margin: 0;
-  font-size: 1.2em; /* 您的调整 */
+  font-size: 1.2em;
   color: var(--twitch-text-color);
   line-height: 1.2;
   font-weight: 600;
 }
-/* 认证徽章样式 */
 .verified-badge {
-    display: flex; /* 确保 SVG 能正确对齐 */
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 .verified-badge svg {
-    width: 16px; /* 徽章图标大小 */
-    height: 16px;
-    fill: var(--twitch-purple); /* 认证图标颜色为 Twitch 紫色 */
+  width: 16px;
+  height: 16px;
+  fill: var(--twitch-purple);
 }
 .action-buttons-section {
-    display: flex;
-    gap: 8px; /* 按钮之间的间距 */
+  display: flex;
+  gap: 8px;
 }
-
-/* 第二行：直播标题 + 观众人数/时长 */
-.stream-info-row.mid-row {
-    margin-bottom: 0; /* 您的调整 */
-}
+.stream-info-row.mid-row { margin-bottom: 0; }
 #stream-title-full {
-    margin: 0; /* 移除默认 margin */
-    font-size: 0.9em; /* 您的调整 */
-    font-weight: 600;
-    color: var(--twitch-text-color);
-    line-height: 1.3;
-    flex-grow: 1; /* 标题占据可用空间 */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  margin: 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--twitch-text-color);
+  line-height: 1.3;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .stream-stats-section {
-    display: flex;
-    gap: 15px; /* 观众人数和时长之间的间距 */
-    align-items: center;
-    font-size: 0.9em;
-    color: var(--twitch-secondary-text-color);
-    flex-shrink: 0; /* 防止被压缩 */
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  font-size: 0.9em;
+  color: var(--twitch-secondary-text-color);
+  flex-shrink: 0;
 }
 .viewer-count, .stream-duration {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .viewer-count svg {
-    width: 1.1em;
-    height: 1.1em;
-    fill: currentColor;
-    margin-top: -1px; /* 微调对齐 */
+  width: 1.1em;
+  height: 1.1em;
+  fill: currentColor;
+  margin-top: -1px;
 }
-.viewer-count strong {
-    font-weight: 600;
-    color: var(--twitch-text-color);
+.viewer-count strong, .stream-duration .duration-text {
+  font-weight: 600;
+  color: var(--twitch-text-color);
 }
-.stream-duration .duration-text {
-    font-weight: 600;
-    color: var(--twitch-text-color);
-}
-
-/* 第三行：分类和标签 */
 .stream-info-row.bottom-row {
-    align-items: center; /* 您的调整 */
-    margin-top: 4px; /* 您的调整 */
+  align-items: center;
+  margin-top: 4px;
 }
 .stream-category {
-    font-size: 0.9em; /* 您的调整 */
-    color: var(--twitch-purple);
-    text-decoration: none;
-    font-weight: 600;
-    margin-right: 10px;
-    transition: color 0.2s;
-    flex-shrink: 0;
+  font-size: 0.9em;
+  color: var(--twitch-purple);
+  text-decoration: none;
+  font-weight: 600;
+  margin-right: 10px;
+  transition: color 0.2s;
+  flex-shrink: 0;
 }
-.stream-category:hover {
-    text-decoration: underline;
-}
+.stream-category:hover { text-decoration: underline; }
 .stream-tags {
-    display: flex;
-    flex-wrap: wrap; /* 标签自动换行 */
-    gap: 6px;
-    flex-grow: 1;
-    align-items: center; /* 标签内部垂直居中 */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-grow: 1;
+  align-items: center;
 }
 .stream-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 8px; /* 填充确保其高度与 category 相同 */
-    border-radius: 100px;
-    background-color: var(--twitch-tag-bg);
-    color: var(--twitch-tag-text-color);
-    font-size: 0.7em; /* 您的调整 */
-    font-weight: 600; /* 您的调整 */
-    text-decoration: none;
-    transition: background-color 0.2s;
-    height: 20px; /* 显式设置高度以匹配 category，并使 padding 均匀 */
-    box-sizing: border-box; /* 确保 padding 包含在 height 内 */
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 100px;
+  background-color: var(--twitch-tag-bg);
+  color: var(--twitch-tag-text-color);
+  font-size: 0.7em;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s;
+  height: 20px;
+  box-sizing: border-box;
 }
-.stream-tag:hover {
-    background-color: var(--twitch-button-hover-bg);
-}
-
+.stream-tag:hover { background-color: var(--twitch-button-hover-bg); }
 
 /* Generic Twitch Button Style */
 .twitch-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.9em;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: background-color 0.2s, color 0.2s;
-    outline: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: var(--fast-transition);
+  outline: none;
+  background-color: var(--twitch-button-bg);
+  color: var(--twitch-button-text-color);
 }
-
 .twitch-button svg {
-    width: 1.2em;
-    height: 1.2em;
-    fill: currentColor;
+  width: 1.2em;
+  height: 1.2em;
+  fill: currentColor;
 }
-
-/* Default Button (e.g., Follow button when not followed) */
-.twitch-button {
-    background-color: var(--twitch-button-bg);
-    color: var(--twitch-button-text-color);
-}
-.twitch-button:hover {
-    background-color: var(--twitch-button-hover-bg);
-}
-
-/* Primary Button (e.g., Subscribe button) */
+.twitch-button:hover { background-color: var(--twitch-button-hover-bg); }
 .twitch-button.subscribe-button {
-    background-color: var(--twitch-primary-button-bg);
-    color: var(--twitch-primary-button-text-color);
+  background-color: var(--twitch-primary-button-bg);
+  color: var(--twitch-primary-button-text-color);
 }
 .twitch-button.subscribe-button:hover {
-    background-color: #772CE8; /* 维持上次给的精确颜色，而不是变体 */
+  background-color: var(--twitch-primary-button-hover-bg);
 }
 
-
-/* 新增：视频上的展开聊天按钮 */
+/* === Chat & Overlays === */
 #show-chat-button {
-    position: absolute;
-    top: 1rem; /* 距离顶部 1rem */
-    right: 1rem; /* 距离右侧 1rem */
-    z-index: 60; /* 确保在视频内容和 Neuro 立绘之上 */
-    background-color: rgba(0, 0, 0, 0.6); /* 半透明背景 */
-    border: none;
-    border-radius: 4px;
-    padding: 0.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white; /* 图标颜色 */
-    transition: background-color 0.2s, opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-    opacity: 0; /* 默认隐藏 */
-    visibility: hidden; /* 默认隐藏 */
-    pointer-events: none; /* 默认不响应事件 */
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 60;
+  background-color: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: background-color 0.2s, opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
-
-#show-chat-button svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor;
-}
-
-#show-chat-button:hover {
-    background-color: rgba(0, 0, 0, 0.8); /* 悬停时颜色更深 */
-}
-
-/* 当侧边栏收缩时，显示这个按钮 */
+#show-chat-button:hover { background-color: rgba(0, 0, 0, 0.8); }
 body.chat-collapsed #show-chat-button {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto; /* 响应事件 */
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
-
-
-/* === Right Chat Sidebar (已更新) === */
 #chat-sidebar {
   width: var(--sidebar-width);
-  min-width: var(--sidebar-width); 
+  min-width: var(--sidebar-width);
   background-color: var(--twitch-chat-bg);
   flex-shrink: 0;
   display: flex;
@@ -662,282 +538,163 @@ body.chat-collapsed #show-chat-button {
   border-left: 1px solid var(--twitch-border-color);
   z-index: 50;
   height: 100%;
-  
   transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
 }
-
-/* 当侧边栏收缩时，隐藏其内容并完全收缩 */
 #chat-sidebar.collapsed {
-    width: 0; 
-    min-width: 0; 
-    overflow: hidden; 
-    /* 确保内部内容不可见，不响应事件 */
-    visibility: hidden;
-    pointer-events: none;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
 }
-
-/* Chat Header (新的结构) */
 .chat-sidebar-header {
-  height: 3.5rem; /* 固定高度，约 56px */
+  height: 3.5rem;
   display: flex;
-  justify-content: space-between; /* 标题和按钮左右对齐 */
+  justify-content: space-between;
   align-items: center;
   padding: 0 1rem;
   border-bottom: 1px solid var(--twitch-border-color);
   flex-shrink: 0;
 }
-
 .chat-sidebar-header .chat-title {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
   color: var(--twitch-text-color);
 }
-
 .chat-toggle-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--twitch-secondary-text-color);
-    transition: background-color 0.2s, color 0.2s, transform 0.3s ease-in-out;
+  padding: 0.5rem; /* 独立 padding */
+  transition: var(--fast-transition), transform 0.3s ease-in-out;
 }
-.chat-toggle-button svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor;
-}
-.chat-toggle-button:hover {
-    background-color: var(--twitch-hover-bg);
-    color: var(--twitch-text-color);
-}
+#chat-sidebar.collapsed .chat-toggle-button { transform: rotate(180deg); }
 
-/* 侧边栏收缩时，按钮旋转 */
-#chat-sidebar.collapsed .chat-toggle-button {
-    transform: rotate(180deg);
-}
-
-
-/* Message Display Area */
 .messages-display {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 0.5rem 1rem; /* 新的内边距 */
+  padding: 0.5rem 1rem;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #B0B0B0 var(--twitch-hover-bg);
 }
-
-/* 自定义滚动条样式 (Firefox) */
-.messages-display {
-  scrollbar-width: thin; /* 较细的滚动条 */
-  scrollbar-color: #B0B0B0 var(--twitch-hover-bg); /* 拇指颜色 轨道颜色 */
-}
-/* 自定义滚动条样式 (WebKit/Chrome) */
-.messages-display::-webkit-scrollbar {
-  width: 8px; /* 滚动条宽度 */
-}
+.messages-display::-webkit-scrollbar { width: 8px; }
 .messages-display::-webkit-scrollbar-track {
-  background: var(--twitch-hover-bg); /* 滚动条轨道背景 */
+  background: var(--twitch-hover-bg);
   border-radius: 4px;
 }
 .messages-display::-webkit-scrollbar-thumb {
-  background: #B0B0B0; /* 滚动条拇指颜色 */
+  background: #B0B0B0;
   border-radius: 4px;
 }
-.messages-display::-webkit-scrollbar-thumb:hover {
-  background: #888; /* 滚动条拇指 hover 颜色 */
-}
+.messages-display::-webkit-scrollbar-thumb:hover { background: #888; }
 
-
-/* 单条消息样式 */
 .message {
-  padding: 0.25rem 0; /* 减少上下内边距 */
-  margin-bottom: 0.25rem; /* 减少下边距 */
-  border-radius: 0;
+  padding: 0.25rem 0;
+  margin-bottom: 0.25rem;
   max-width: 100%;
   word-wrap: break-word;
   color: var(--twitch-text-color);
   text-align: left;
-  line-height: 1.3; /* 行高 */
+  line-height: 1.3;
 }
-
 .message .username {
   font-weight: bold;
-  margin-right: 0.35rem; /* 调整间距 */
-  font-size: 0.95rem; /* 调整字体大小 */
+  margin-right: 0.35rem;
+  font-size: 0.95rem;
 }
-
-/* 消息文本 */
-.message span:not(.username) {
-    font-size: 0.95rem;
+.message span:not(.username) { font-size: 0.95rem; }
+.message.user-sent-message, .message.audience-ai-message {
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  margin-bottom: 0.5rem;
 }
-
-
-/* 消息类型样式 */
 .message.user-sent-message {
-    background-color: rgba(145, 71, 255, 0.1);
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    margin-bottom: 0.5rem;
-    border-left: 3px solid var(--twitch-purple);
+  background-color: rgba(145, 71, 255, 0.1);
+  border-left: 3px solid var(--twitch-purple);
 }
-.message.user-sent-message .username {
-    color: var(--twitch-purple);
-}
-
-.message.audience-ai-message {
-    background-color: rgba(0, 0, 0, 0.03);
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
+.message.user-sent-message .username { color: var(--twitch-purple); }
+.message.audience-ai-message { background-color: rgba(0, 0, 0, 0.03); }
 .message.system-message {
-    color: var(--twitch-secondary-text-color);
-    font-style: italic;
-    text-align: center;
-    padding: 0.25rem 0.5rem;
+  color: var(--twitch-secondary-text-color);
+  font-style: italic;
+  text-align: center;
+  padding: 0.25rem 0.5rem;
 }
 .message.system-message .username {
-    font-weight: normal;
-    color: var(--twitch-secondary-text-color);
+  font-weight: normal;
+  color: var(--twitch-secondary-text-color);
 }
 
-
-/* Input Area (新的结构) */
 .chat-input-area {
   display: flex;
-  flex-direction: column; /* 工具栏、输入框、发送按钮垂直堆叠 */
-  gap: 0.5rem; /* 内部元素间距 */
-  padding: 0.75rem 1rem; /* 内部内边距 */
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
   border-top: 1px solid var(--twitch-border-color);
   flex-shrink: 0;
 }
-
 .chat-input-toolbar {
-    display: flex;
-    gap: 0.25rem; /* 按钮之间的小间距 */
+  display: flex;
+  gap: 0.25rem;
 }
-
-.chat-toolbar-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.4rem;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--twitch-secondary-text-color);
-    transition: background-color 0.2s, color 0.2s;
+.chat-toolbar-button { padding: 0.4rem; } /* 独立 padding */
+.chat-toolbar-button .chat-badge-icon {
+  width: 20px;
+  height: 20px;
 }
-.chat-toolbar-button svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor;
-}
-.chat-toolbar-button .chat-badge-icon { /* 针对徽章图片的样式 */
-    width: 20px;
-    height: 20px;
-}
-.chat-toolbar-button:hover {
-    background-color: var(--twitch-hover-bg);
-    color: var(--twitch-text-color);
-}
-
 #chat-input {
-  /* 调整输入框样式以适应 Twitch 风格 */
-  height: 2.25rem; /* 固定高度，约 36px */
-  padding: 0 0.75rem; /* 左右内边距 */
+  height: 2.25rem;
+  padding: 0 0.75rem;
   border: 1px solid var(--twitch-border-color);
   border-radius: 4px;
-  background-color: var(--twitch-button-bg); /* 与按钮背景色一致 */
+  background-color: var(--twitch-button-bg);
   color: var(--twitch-text-color);
   font-size: 0.95rem;
   outline: none;
 }
-#chat-input::placeholder {
-  color: var(--twitch-secondary-text-color);
-}
+#chat-input::placeholder { color: var(--twitch-secondary-text-color); }
 #chat-input:focus {
   border-color: var(--twitch-purple);
-  box-shadow: 0 0 0 2px rgba(145, 71, 255, 0.2); /* 模仿 Twitch 的聚焦阴影 */
+  box-shadow: 0 0 0 2px rgba(145, 71, 255, 0.2);
 }
-
 .chat-send-area {
-    display: flex;
-    justify-content: space-between; /* 点数显示和按钮左右对齐 */
-    align-items: center;
-    margin-top: 0.5rem; /* 与输入框的间距 */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
 }
-
 .chat-points-display {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.85rem;
-    color: var(--twitch-secondary-text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--twitch-secondary-text-color);
 }
 .chat-points-display svg,
-.chat-points-display .channel-points-icon { /* 注意这里包含了 .channel-points-icon */
-    width: 18px;
-    height: 18px;
-    fill: currentColor; /* SVG 颜色随父元素 */
-    object-fit: contain; /* 确保图片不会被裁切 */
+.chat-points-display .channel-points-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  object-fit: contain;
 }
 .chat-points-display .points-value {
-    color: var(--twitch-text-color);
-    font-weight: 600;
+  color: var(--twitch-text-color);
+  font-weight: 600;
 }
-
-#send-button.chat-send-button { /* 使用更具体的类名 */
-  padding: 0.5rem 1rem; /* 调整内边距 */
+#send-button.chat-send-button {
+  padding: 0.5rem 1rem;
   background-color: var(--twitch-primary-button-bg);
   color: var(--twitch-primary-button-text-color);
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem; /* 调整字体大小 */
-  font-weight: 600; /* 调整字重 */
+  font-size: 0.95rem;
+  font-weight: 600;
   transition: background-color 0.2s;
 }
-
 #send-button.chat-send-button:hover:not(:disabled) {
   background-color: var(--twitch-primary-button-hover-bg);
 }
-
 #send-button.chat-send-button:disabled {
-  background-color: #B0B0B0; /* 禁用时的背景色 */
+  background-color: #B0B0B0;
   cursor: not-allowed;
-}
-
-/* Startup Video Overlay - adjusted positioning */
-#startup-video-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: black;
-    z-index: 10; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 1;
-    transition: none; 
-}
-
-#startup-video-overlay.hidden {
-    opacity: 0;
-    pointer-events: none; 
-    visibility: hidden;
-}
-
-#startup-video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
 }

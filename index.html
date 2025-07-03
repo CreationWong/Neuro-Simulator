@@ -86,12 +86,11 @@
             <div id="startup-video-overlay">
               <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
             </div>
-            
-            <!-- 新增：收起时显示在视频上的展开按钮 -->
-            <button id="show-chat-button" class="video-overlay-chat-button" aria-label="展开聊天">
-                <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M16 16V4h2v12h-2zM6 9l2.501-2.5-1.5-1.5-5 5 5 5 1.5-1.5-2.5-2.5h8V9H6z"></path></svg>
-            </button>
           </div>
+          <!-- 新增：收起时显示在视频上的展开按钮，现在在stream-display-area外面 -->
+          <button id="show-chat-button" class="video-overlay-chat-button" aria-label="展开聊天">
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M16 16V4h2v12h-2zM6 9l2.501-2.5-1.5-1.5-5 5 5 5 1.5-1.5-2.5-2.5h8V9H6z"></path></svg>
+          </button>
         </div>
         <div id="stream-info">
             <div class="streamer-avatar-column">
