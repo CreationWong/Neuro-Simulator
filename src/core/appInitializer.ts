@@ -109,8 +109,13 @@ export class AppInitializer {
                 if (!(message as any).speaking) hideNeuroCaption();
                 break;
             case 'neuro_speech_segment':
-                if (message.is_end) this.audioPlayer.setAllSegmentsReceived(); 
-                else if (message.audio_base64 && message.text) this.audioPlayer.addAudioSegment(message.text, message.audio_base64);
+                if (message.is_end) {
+                    this.audioPlayer.setAllSegmentsReceived(); 
+                } else if (message.audio_base64 && message.text && typeof message.duration === 'number') { // <-- 检查 duration 类型
+                    this.audioPlayer.addAudioSegment(message.text, message.audio_base64, message.duration); // <-- 传递 duration
+                } else {
+                    console.warn("Received neuro_speech_segment message with missing audio/text/duration:", message);
+                }
                 break;
             case 'neuro_error_signal': // <-- 新增的处理 case
                 console.warn("Received neuro_error_signal from backend.");

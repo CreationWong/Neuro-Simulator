@@ -5,6 +5,7 @@ import { showNeuroCaption, hideNeuroCaption } from '../ui/neuroCaption';
 interface AudioSegment {
     text: string;
     audio: HTMLAudioElement;
+    duration: number; // <-- 新增：保存每个片段的时长
 }
 
 export class AudioPlayer {
@@ -12,30 +13,27 @@ export class AudioPlayer {
     private isPlayingAudio: boolean = false;
     private currentPlayingAudio: HTMLAudioElement | null = null;
     private allSegmentsReceived: boolean = false;
-    private errorSound: HTMLAudioElement; // <-- 新增：专门用于播放错误音效的实例
+    private errorSound: HTMLAudioElement; 
 
     constructor() {
-        // 在构造函数中初始化错误音效
-        this.errorSound = new Audio('/error.mp3'); // 路径指向 public/error.mp3
+        this.errorSound = new Audio('/error.mp3'); 
         console.log("AudioPlayer initialized.");
     }
 
-    /**
-     * 新增：播放预置的错误音效。
-     */
     public playErrorSound(): void {
-        // 在播放错误音效前，确保停止所有正在进行的语音
         this.stopAllAudio(); 
-
         console.log("Playing dedicated error sound...");
         this.errorSound.play().catch(e => {
             console.error("Error playing dedicated error sound:", e);
         });
     }
 
-    public addAudioSegment(text: string, audioBase64: string): void {
+    /**
+     * 新增：添加音频片段时传入 duration
+     */
+    public addAudioSegment(text: string, audioBase64: string, duration: number): void { // <-- 增加 duration 参数
         const audio = new Audio('data:audio/mp3;base64,' + audioBase64);
-        this.audioQueue.push({ text, audio });
+        this.audioQueue.push({ text, audio, duration }); // <-- 存储 duration
         console.log(`Audio segment added to queue. Queue size: ${this.audioQueue.length}`);
         if (!this.isPlayingAudio) {
             this.playNextAudioSegment();
@@ -48,7 +46,8 @@ export class AudioPlayer {
             const currentSegment = this.audioQueue.shift()!;
             this.currentPlayingAudio = currentSegment.audio;
             
-            showNeuroCaption(currentSegment.text);
+            // --- 核心修改：调用 showNeuroCaption 时传入时长 ---
+            showNeuroCaption(currentSegment.text, currentSegment.duration);
 
             this.currentPlayingAudio.play().catch(e => {
                 console.error("Error playing audio segment:", e);
@@ -64,12 +63,13 @@ export class AudioPlayer {
             }, { once: true });
         } else if (this.audioQueue.length === 0 && this.allSegmentsReceived) {
             console.log("Neuro's full audio response played.");
-            hideNeuroCaption();
+            hideNeuroCaption(); // 所有片段播放完毕才隐藏字幕
         }
     }
     
     public setAllSegmentsReceived(): void {
         this.allSegmentsReceived = true;
+        // 如果所有片段都已接收且队列已空且当前没有在播放，立即隐藏字幕
         if (this.audioQueue.length === 0 && !this.isPlayingAudio) {
             hideNeuroCaption();
         }
@@ -84,7 +84,7 @@ export class AudioPlayer {
         this.audioQueue.length = 0;
         this.isPlayingAudio = false;
         this.allSegmentsReceived = false;
-        hideNeuroCaption();
+        hideNeuroCaption(); // 强制隐藏字幕
         console.log("Neuro audio playback stopped, queue cleared.");
     }
 }
