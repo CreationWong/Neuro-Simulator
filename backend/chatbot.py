@@ -9,9 +9,10 @@ import asyncio
 from config import (
     GEMINI_API_KEY, GEMINI_AUDIENCE_MODEL,
     OPENAI_API_KEY, OPENAI_AUDIENCE_MODEL, OPENAI_API_BASE_URL,
-    AUDIENCE_LLM_PROVIDER, AUDIENCE_PROMPT_TEMPLATE
+    AUDIENCE_LLM_PROVIDER, AUDIENCE_PROMPT_TEMPLATE,
+    AUDIENCE_LLM_TEMPERATURE,
+    NUM_CHATS_TO_GENERATE_PER_BATCH
 )
-# --- 核心修改：导入整个模块，而不是模块内的变量 ---
 import shared_state
 
 class AudienceLLMClient:
@@ -33,7 +34,11 @@ class GeminiAudienceLLM(AudienceLLMClient):
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
             contents=[{"role": "user", "parts": [{"text": prompt}]}],
-            config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=max_tokens)
+            # --- 核心修改：使用 config 中的温度值 ---
+            config=types.GenerateContentConfig(
+                temperature=AUDIENCE_LLM_TEMPERATURE, 
+                max_output_tokens=max_tokens
+            )
         )
         
         raw_chat_text = ""
@@ -63,7 +68,8 @@ class OpenAIAudienceLLM(AudienceLLMClient):
             response = await self.client.chat.completions.create(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
+                # --- 核心修改：使用 config 中的温度值 ---
+                temperature=AUDIENCE_LLM_TEMPERATURE,
                 max_tokens=max_tokens,
             )
             
@@ -78,16 +84,18 @@ class OpenAIAudienceLLM(AudienceLLMClient):
 
 async def get_dynamic_audience_prompt() -> str:
     """
-    根据 Neuro 的最新发言动态生成观众聊天的 Prompt。
+    根据 Neuro 的最新发言和配置动态生成完整的观众聊天 Prompt。
     """
     current_neuro_speech = ""
-    # --- 核心修改：通过模块名访问变量和锁 ---
     async with shared_state.neuro_last_speech_lock:
         current_neuro_speech = shared_state.neuro_last_speech
 
-    prompt = AUDIENCE_PROMPT_TEMPLATE.format(neuro_speech=current_neuro_speech)
+    # 使用 .format() 方法填充所有占位符
+    prompt = AUDIENCE_PROMPT_TEMPLATE.format(
+        neuro_speech=current_neuro_speech,
+        num_chats_to_generate=NUM_CHATS_TO_GENERATE_PER_BATCH
+    )
     return prompt
-
 
 def get_audience_llm_client() -> AudienceLLMClient:
     """根据配置选择并返回 Audience LLM 客户端实例。"""

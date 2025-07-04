@@ -84,9 +84,19 @@ async def fetch_and_process_audience_chats():
         for line in raw_chat_text.split('\n'):
             line = line.strip()
             if ':' in line:
-                username, text = line.split(':', 1)
-                if username.strip() and text.strip(): parsed_chats.append({"username": username.strip(), "text": text.strip()})
-            elif line: parsed_chats.append({"username": random.choice(config.USERNAME_POOL), "text": line})
+                username_raw, text = line.split(':', 1)
+                username = username_raw.strip()
+
+                # --- 核心修改：如果用户名在黑名单中，就替换掉它 ---
+                if username in config.USERNAME_BLOCKLIST:
+                    username = random.choice(config.USERNAME_POOL)
+                    print(f"  -> 强制替换用户名: LLM 生成 '{username_raw}'，替换为 '{username}'。")
+
+                if username and text.strip(): 
+                    parsed_chats.append({"username": username, "text": text.strip()})
+            elif line: 
+                # 如果没有冒号，即 LLM 直接输出文本，也为其分配一个随机用户名
+                parsed_chats.append({"username": random.choice(config.USERNAME_POOL), "text": line})
         
         # 为了避免消息风暴，即使API返回很多，我们也只取配置的数量
         chats_to_broadcast = parsed_chats[:config.NUM_CHATS_TO_GENERATE_PER_BATCH]
@@ -101,7 +111,7 @@ async def fetch_and_process_audience_chats():
         
         print(f"  <- 聊天生成任务完成，广播了 {len(chats_to_broadcast)} 条消息。")
     except Exception as e:
-        # 在独立的任务中捕获异常，防止一个失败的任务影响整个应用
+        traceback.print_exc() # 打印详细的错误堆栈
         print(f"错误: 单个聊天生成任务失败: {e}")
 
 
@@ -110,7 +120,6 @@ async def generate_audience_chat_task():
     这是一个“调度器”函数。它以固定的频率创建新的聊天生成任务。
     """
     print("观众聊天调度器: 任务启动。")
-    await shared_state.live_phase_started_event.wait()
     
     while True:
         # 创建一个新的并发任务，但不等待它完成 (fire-and-forget)
@@ -149,46 +158,97 @@ async def prepare_speech_package(ai_full_response_text: str) -> dict | None:
     return {"segments": synthesized_segments, "total_duration": total_duration}
 
 async def neuro_response_cycle():
+    """
+    Neuro 的核心响应循环。
+    采用“预合成，后分发”的半流式模式：
+    1. 一次性获取完整文本。
+    2. 并行合成所有句子的 TTS。
+    3. 逐句、带停顿地广播已合成的音频片段。
+    """
     await shared_state.live_phase_started_event.wait()
     print("Neuro响应周期: 任务启动。")
     is_first_response = True
+    
     while True:
         try:
             if is_first_response:
                 print("首次响应: 注入开场白。")
-                add_to_neuro_input_queue({"username": "System", "text": "The stream has just started. Greet your audience and say hello!"})
+                add_to_neuro_input_queue({"username": "System", "text": config.NEURO_INITIAL_GREETING})
                 is_first_response = False
             elif is_neuro_input_queue_empty():
                 await asyncio.sleep(1)
                 continue
             
+            # --- 1. 获取聊天上下文并从 LLM 获取完整响应 ---
             current_queue_snapshot = get_all_neuro_input_chats()
-            selected_chats = random.sample(current_queue_snapshot, min(50, len(current_queue_snapshot)))
+            sample_size = min(config.NEURO_INPUT_CHAT_SAMPLE_SIZE, len(current_queue_snapshot))
+            selected_chats = random.sample(current_queue_snapshot, sample_size)
             ai_full_response_text = await get_neuro_response(selected_chats)
             
+            # 更新共享状态
             async with shared_state.neuro_last_speech_lock:
                 if ai_full_response_text and ai_full_response_text.strip():
                     shared_state.neuro_last_speech = ai_full_response_text
                     print(f"共享状态已更新: '{shared_state.neuro_last_speech[:50]}...'")
                 else:
                     shared_state.neuro_last_speech = "(Neuro-Sama is currently silent...)"
+                    print("警告: 从 Letta 获取的响应为空，跳过本轮。")
+                    continue
 
-            speech_package = await prepare_speech_package(ai_full_response_text)
+            # --- 2. 将响应分割成句子 ---
+            sentences = re.split(r'(?<=[.!?])\s+', ai_full_response_text.replace('\n', ' ').strip())
+            sentences = [s.strip() for s in sentences if s.strip()]
 
-            if not speech_package:
-                print("错误: 语音包准备失败。将在15秒后重试。")
-                await connection_manager.broadcast({"type": "neuro_error_signal"})
-                await asyncio.sleep(15)
+            if not sentences:
+                print("警告: 无法从文本中分割出有效句子，跳过本轮。")
                 continue
 
+            # --- 3. 并行进行所有句子的 TTS 合成 ---
+            print(f"开始并行合成 {len(sentences)} 个句子...")
+            synthesis_tasks = [synthesize_audio_segment(s) for s in sentences]
+            synthesis_results = await asyncio.gather(*synthesis_tasks, return_exceptions=True)
+            print("所有句子合成完毕。")
+
+            # --- 4. 准备好所有待广播的语音包 ---
+            speech_packages = []
+            for i, result in enumerate(synthesis_results):
+                if isinstance(result, Exception):
+                    print(f"警告: 跳过一个合成失败的句子。文本: '{sentences[i][:30]}...', 错误: {result}")
+                    continue
+                
+                audio_base64, audio_duration = result
+                speech_packages.append({
+                    "type": "neuro_speech_segment",
+                    "segment_id": i,
+                    "text": sentences[i],
+                    "audio_base64": audio_base64,
+                    "duration": audio_duration,
+                    "is_end": False
+                })
+
+            if not speech_packages:
+                print("错误: 所有句子的 TTS 合成都失败了。跳过本轮。")
+                await connection_manager.broadcast({"type": "neuro_error_signal"})
+                await asyncio.sleep(15) # 等待较长时间再重试
+                continue
+
+            # --- 5. 逐个分发（广播）已合成的语音包 ---
             live_stream_manager.set_neuro_speaking_status(True)
-            for segment in speech_package["segments"]:
-                await connection_manager.broadcast({"type": "neuro_speech_segment", **segment, "is_end": False})
-            await connection_manager.broadcast({"type": "neuro_speech_segment", "is_end": True})
             
-            await asyncio.sleep(speech_package['total_duration'])
+            for i, package in enumerate(speech_packages):
+                print(f"  -> 广播句子 {i+1}/{len(speech_packages)}: '{package['text'][:30]}...'")
+                await connection_manager.broadcast(package)
+                # 等待当前句子的音频播放时间，模拟说话的停顿
+                await asyncio.sleep(package['duration'])
+            
+            # --- 6. 所有句子处理完毕后，发送结束信号 ---
+            print("  -> 所有句子广播完毕，发送结束信号。")
+            await connection_manager.broadcast({"type": "neuro_speech_segment", "is_end": True})
             live_stream_manager.set_neuro_speaking_status(False)
-            await asyncio.sleep(3.0)
+
+            # --- 7. 进入冷却期 ---
+            print(f"发言结束，进入 {config.NEURO_POST_SPEECH_COOLDOWN_SEC} 秒冷却期。")
+            await asyncio.sleep(config.NEURO_POST_SPEECH_COOLDOWN_SEC)
 
         except Exception as e:
             traceback.print_exc()
