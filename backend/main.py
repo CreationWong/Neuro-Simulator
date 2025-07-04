@@ -44,6 +44,7 @@ async def startup_event():
         await reset_neuro_agent_memory()
     except Exception as e:
         print(f"启动时重置 Letta Agent 记忆失败: {e}")
+    asyncio.create_task(live_stream_manager.broadcast_stream_metadata())
     asyncio.create_task(live_stream_manager.start_new_stream_cycle()) 
     asyncio.create_task(broadcast_events_task())
     asyncio.create_task(generate_audience_chat_task()) 
@@ -263,6 +264,11 @@ async def websocket_stream_endpoint(websocket: WebSocket):
     try:
         initial_event = live_stream_manager.get_initial_state_for_client()
         await connection_manager.send_personal_message(initial_event, websocket)
+        metadata_event = {
+            "type": "update_stream_metadata",
+            **config.STREAM_METADATA
+        }
+        await connection_manager.send_personal_message(metadata_event, websocket)
         initial_chats = get_recent_audience_chats(config.INITIAL_CHAT_BACKLOG_LIMIT)
         for chat in initial_chats:
             await connection_manager.send_personal_message({"type": "chat_message", **chat, "is_user_message": False}, websocket)

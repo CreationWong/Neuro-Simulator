@@ -12,8 +12,9 @@ import { LayoutManager } from './layoutManager';
 import { StreamTimer } from '../ui/streamTimer';
 import { ChatSidebar } from '../ui/chatSidebar';
 import { LiveIndicator } from '../ui/liveIndicator'; // 导入简化的 LiveIndicator
+import { StreamInfoDisplay } from '../ui/streamInfoDisplay';
 import { WakeLockManager } from '../utils/wakeLockManager'; // 导入 WakeLockManager
-import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, UserInputMessage } from '../types/common';
+import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, UserInputMessage, StreamMetadataMessage } from '../types/common';
 
 const BACKEND_BASE_URL = 'http://127.0.0.1:8000'; 
 const MY_USERNAME = "Files_Transfer"; 
@@ -30,6 +31,7 @@ export class AppInitializer {
     private streamTimer: StreamTimer;
     private chatSidebar: ChatSidebar;
     private liveIndicator: LiveIndicator; // 新增 LiveIndicator 属性
+    private streamInfoDisplay: StreamInfoDisplay;
     private wakeLockManager: WakeLockManager; // 新增 WakeLockManager 属性
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
@@ -59,6 +61,7 @@ export class AppInitializer {
         
         // 实例化新模块
         this.liveIndicator = new LiveIndicator();
+        this.streamInfoDisplay = new StreamInfoDisplay();
         this.wakeLockManager = new WakeLockManager();
     }
 
@@ -109,6 +112,9 @@ export class AppInitializer {
         }
 
         switch (message.type) {
+            case 'update_stream_metadata':
+                this.streamInfoDisplay.update(message as StreamMetadataMessage);
+                break;
             case 'play_welcome_video':
                 this.currentPhase = 'initializing';
                 this.videoPlayer.showAndPlayVideo(message.progress);

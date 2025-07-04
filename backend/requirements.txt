@@ -5,3 +5,5 @@ python-dotenv
 azure-cognitiveservices-speech
 letta-client
 openai
+pyyaml
+pydantic

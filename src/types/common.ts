@@ -27,6 +27,15 @@ export interface NeuroSpeechSegmentMessage extends WebSocketMessage {
     is_end: boolean;     // 是否是本次发言的最后一个片段
 }
 
+// 直播元数据更新消息
+export interface StreamMetadataMessage extends WebSocketMessage {
+    type: "update_stream_metadata";
+    streamer_nickname: string;
+    stream_title: string;
+    stream_category: string;
+    stream_tags: string[];
+}
+
 // 聊天消息
 export interface ChatMessage extends WebSocketMessage {
     type: "chat_message";

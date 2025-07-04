@@ -4,6 +4,7 @@ import time
 import os
 import subprocess
 import json
+import config
 from shared_state import live_phase_started_event # <-- 从新文件导入
 
 class LiveStreamManager:
@@ -50,6 +51,17 @@ class LiveStreamManager:
         self._is_neuro_speaking: bool = False
         self.reset_stream_state()
         print("LiveStreamManager 初始化完成。")
+
+    async def broadcast_stream_metadata(self):
+        """
+        将 config.py 中的直播元数据打包并放入事件队列进行广播。
+        """
+        metadata_event = {
+            "type": "update_stream_metadata",
+            **config.STREAM_METADATA
+        }
+        await self.event_queue.put(metadata_event)
+        print("直播元数据已放入广播队列。")
 
     def reset_stream_state(self):
         self._current_phase = self.StreamPhase.OFFLINE
