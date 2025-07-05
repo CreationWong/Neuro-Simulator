@@ -1,0 +1,84 @@
+# settings.yaml.example
+# 这是Neuro-Sama模拟器的配置文件示例。
+# 你可以复制这个文件为 settings.yaml 并修改其中的值。
+# 优先级: API/运行时修改 > 环境变量 > settings.yaml > 代码默认值
+
+# --- API密钥 (强烈建议使用环境变量来设置这些值) ---
+api_keys:
+  letta_token: "YOUR_LETTA_TOKEN_HERE"
+  letta_base_url: ""
+  neuro_agent_id: "YOUR_AGENT_ID_HERE"
+  gemini_api_key: "YOUR_GEMINI_KEY_HERE"
+  openai_api_key: "YOUR_OPENAI_KEY_HERE"
+  openai_api_base_url: ""
+  azure_speech_key: "YOUR_AZURE_KEY_HERE"
+  azure_speech_region: "YOUR_AZURE_REGION_HERE"
+
+# --- 直播元数据 (将被前端动态加载) ---
+stream_metadata:
+  streamer_nickname: "vedal987"
+  stream_title: "neuro-sama is here for u all"
+  stream_category: "谈天说地"
+  stream_tags: ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"]
+
+# --- Neuro-Sama 行为与节奏 ---
+neuro_behavior:
+  input_chat_sample_size: 10
+  post_speech_cooldown_sec: 1.0
+  initial_greeting: "The stream has just started. Greet your audience and say hello!"
+
+# --- 观众聊天模拟 ---
+audience_simulation:
+  llm_provider: "gemini" # 'gemini' 或 'openai'
+  gemini_model: "gemini-1.5-flash-latest"
+  openai_model: "gpt-3.5-turbo"
+  llm_temperature: 1.0
+  chat_generation_interval_sec: 2
+  chats_per_batch: 3
+  max_output_tokens: 300
+  # 这个Prompt模板中的 {neuro_speech} 和 {num_chats_to_generate} 会被动态替换。
+  prompt_template: |
+    You are a Twitch live stream viewer. Your goal is to generate short, realistic, and relevant chat messages.
+    The streamer, Neuro-Sama, just said the following:
+    ---
+    {neuro_speech}
+    ---
+    Based on what Neuro-Sama said, generate a variety of chat messages. Your messages should be:
+    - Directly reacting to her words.
+    - Asking follow-up questions.
+    - Using relevant Twitch emotes (like LUL, Pog, Kappa, etc.).
+    - General banter related to the topic.
+    - Short and punchy, like real chat messages.
+    Do NOT act as the streamer. Do NOT generate full conversations.
+    Generate exactly {num_chats_to_generate} distinct chat messages. Each message must be prefixed with a DIFFERENT fictional username, like 'ChatterBoy: message text', 'EmoteFan: message text'.
+  username_blocklist: ["ChatterBoy", "EmoteFan", "Username", "User"]
+  username_pool:
+    - "ChatterBox"
+    - "EmoteLord"
+    - "QuestionMark"
+    - "StreamFan"
+    - "PixelPundit"
+    - "CodeSage"
+    - "DataDiver"
+    - "ByteBard"
+
+# --- 音频合成 (TTS) ---
+tts:
+  voice_name: "en-US-AshleyNeural"
+  voice_pitch: 1.25
+
+# --- 数据流与性能 ---
+performance:
+  neuro_input_queue_max_size: 200
+  audience_chat_buffer_max_size: 500
+  initial_chat_backlog_limit: 50
+
+# --- Web服务器与CORS ---
+# 注意：host和port在生产环境中通常由部署工具（如Gunicorn, Docker）管理，
+# 此处主要用于uvicorn本地开发。
+server:
+  host: "127.0.0.1"
+  port: 8000
+  client_origins:
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"

@@ -1,141 +1,151 @@
 # backend/config.py
 import os
-from dotenv import load_dotenv
+import yaml
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+import logging
 
-# 加载环境变量
-load_dotenv()
+# 配置日志记录器
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- 用户可配置的 API 密钥和模型 ---
-LETTA_API_TOKEN = os.getenv("LETTA_API_TOKEN")
-LETTA_BASE_URL = os.getenv("LETTA_BASE_URL")
-NEURO_AGENT_ID = os.getenv("AGENT_ID")
+# --- 1. 定义配置的结构 (Schema) ---
 
-AUDIENCE_LLM_PROVIDER = os.getenv("AUDIENCE_LLM_PROVIDER", "gemini").lower()
+class ApiKeysSettings(BaseModel):
+    letta_token: Optional[str] = None
+    letta_base_url: Optional[str] = None
+    neuro_agent_id: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    openai_api_base_url: Optional[str] = None
+    azure_speech_key: Optional[str] = None
+    azure_speech_region: Optional[str] = None
 
-# Gemini 配置
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_AUDIENCE_MODEL = os.getenv("GEMINI_AUDIENCE_MODEL", "gemini-1.5-flash-latest")
+class StreamMetadataSettings(BaseModel):
+    streamer_nickname: str = "vedal987"
+    stream_title: str = "neuro-sama is here for u all"
+    stream_category: str = "谈天说地"
+    stream_tags: List[str] = Field(default_factory=lambda: ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"])
 
-# OpenAI & 兼容 API 配置
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_AUDIENCE_MODEL = os.getenv("OPENAI_AUDIENCE_MODEL", "gpt-3.5-turbo")
-OPENAI_API_BASE_URL = os.getenv("OPENAI_API_BASE_URL")
+class NeuroBehaviorSettings(BaseModel):
+    input_chat_sample_size: int = 10
+    post_speech_cooldown_sec: float = 1.0
+    initial_greeting: str = "The stream has just started. Greet your audience and say hello!"
 
-AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY")
-AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION")
-
-# ==============================================================================
-# --- Neuro-Sama 行为与节奏配置 ---
-# ==============================================================================
-
-# Neuro 从聊天队列中一次读取多少条消息作为回应的上下文
-# 值越小，反应越快，但可能忽略早期信息。值越大，看得越广，但可能被旧信息干扰。
-NEURO_INPUT_CHAT_SAMPLE_SIZE = 10
-
-# Neuro 说完一整段话后，强制等待多少秒再开始下一次回应。
-# 这给了观众反应的时间，调整直播节奏。
-NEURO_POST_SPEECH_COOLDOWN_SEC = 1.0
-
-# 直播开始时，Neuro 的第一句开场白。
-NEURO_INITIAL_GREETING = "The stream has just started. Greet your audience and say hello!"
-
-# ==============================================================================
-# --- 观众聊天模拟配置 ---
-# ==============================================================================
-
-# 控制观众聊天生成的多样性 (LLM temperature)。
-# 值越高，聊天内容越有创意/越混乱。值越低，内容越可预测/越保守。
-AUDIENCE_LLM_TEMPERATURE = 1.0
-
-# 观众聊天生成的频率（秒）
-AUDIENCE_CHAT_GENERATION_INTERVAL = 2
-
-# 每次请求生成的聊天数量。这个值会自动注入到下面的 Prompt 中。
-NUM_CHATS_TO_GENERATE_PER_BATCH = 3
-
-# 观众聊天LLM的最大输出Token
-AUDIENCE_LLM_MAX_OUTPUT_TOKENS = 300
-
-# 用于生成与 Neuro 发言相关的观众聊天的 Prompt 模板
-AUDIENCE_PROMPT_TEMPLATE = """
+class AudienceSimSettings(BaseModel):
+    llm_provider: str = "gemini"
+    gemini_model: str = "gemini-1.5-flash-latest"
+    openai_model: str = "gpt-3.5-turbo"
+    llm_temperature: float = 1.0
+    chat_generation_interval_sec: int = 2
+    chats_per_batch: int = 3
+    max_output_tokens: int = 300
+    prompt_template: str = Field(default="""
 You are a Twitch live stream viewer. Your goal is to generate short, realistic, and relevant chat messages.
-
 The streamer, Neuro-Sama, just said the following:
 ---
-"{neuro_speech}"
+{neuro_speech}
 ---
-
 Based on what Neuro-Sama said, generate a variety of chat messages. Your messages should be:
 - Directly reacting to her words.
 - Asking follow-up questions.
 - Using relevant Twitch emotes (like LUL, Pog, Kappa, etc.).
 - General banter related to the topic.
 - Short and punchy, like real chat messages.
-
 Do NOT act as the streamer. Do NOT generate full conversations.
 Generate exactly {num_chats_to_generate} distinct chat messages. Each message must be prefixed with a DIFFERENT fictional username, like 'ChatterBoy: message text', 'EmoteFan: message text'.
-"""
-# --- 添加一个不希望出现的用户名列表，这些将被强制替换 ---
-USERNAME_BLOCKLIST = ["ChatterBoy", "EmoteFan", "Username", "User"] # 可以在这里添加 LLM 倾向于复用的用户名
+""")
+    username_blocklist: List[str] = Field(default_factory=lambda: ["ChatterBoy", "EmoteFan", "Username", "User"])
+    username_pool: List[str] = Field(default_factory=lambda: [
+        "ChatterBox", "EmoteLord", "QuestionMark", "StreamFan", "PixelPundit",
+        "CodeSage", "DataDiver", "ByteBard", "LogicLover", "AI_Enthusiast"
+    ])
 
+class TTSSettings(BaseModel):
+    voice_name: str = "en-US-AshleyNeural"
+    voice_pitch: float = 1.25
 
-# 用于生成随机聊天消息的用户名池 (当 LLM 未提供用户名时的后备)
-USERNAME_POOL = [
-    "ChatterBox", "EmoteLord", "QuestionMark", "StreamFan", "PixelPundit",
-    "CodeSage", "DataDiver", "ByteBard", "LogicLover", "AI_Enthusiast",
-    "SynthWave", "CyberPunk", "NoSleepGang", "JustHere", "LurkMaster",
-    "PogChamp", "KappaPride", "ModdedMind", "VirtualVoyager", "MatrixMind"
-]
+class PerformanceSettings(BaseModel):
+    neuro_input_queue_max_size: int = 200
+    audience_chat_buffer_max_size: int = 500
+    initial_chat_backlog_limit: int = 50
 
-# ==============================================================================
-# --- 直播元数据配置 ---
-# ==============================================================================
-STREAM_METADATA = {
-    "streamer_nickname": "vedal987",
-    "stream_title": "neuro-sama is here for u all",
-    "stream_category": "谈天说地",
-    "stream_tags": ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"]
-}
+class ServerSettings(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = 8000
+    client_origins: List[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"])
 
-# ==============================================================================
-# --- 数据流与性能配置 ---
-# ==============================================================================
+class AppSettings(BaseModel):
+    api_keys: ApiKeysSettings = Field(default_factory=ApiKeysSettings)
+    stream_metadata: StreamMetadataSettings = Field(default_factory=StreamMetadataSettings)
+    neuro_behavior: NeuroBehaviorSettings = Field(default_factory=NeuroBehaviorSettings)
+    audience_simulation: AudienceSimSettings = Field(default_factory=AudienceSimSettings)
+    tts: TTSSettings = Field(default_factory=TTSSettings)
+    performance: PerformanceSettings = Field(default_factory=PerformanceSettings)
+    server: ServerSettings = Field(default_factory=ServerSettings)
 
-# 聊天队列和缓冲区的最大大小
-AUDIENCE_CHAT_BUFFER_MAX_SIZE = 500
-NEURO_INPUT_QUEUE_MAX_SIZE = 200
-INITIAL_CHAT_BACKLOG_LIMIT = 50
+# --- 2. 加载和管理配置的逻辑 ---
 
-# ==============================================================================
-# --- 其他固定配置 ---
-# ==============================================================================
+CONFIG_FILE_PATH = "settings.yaml"
 
-# Neuro TTS 的默认语音和音高
-AZURE_TTS_VOICE_NAME = "en-US-AshleyNeural"
-AZURE_TTS_VOICE_PITCH = 1.25
+def _load_config_from_yaml() -> dict:
+    if not os.path.exists(CONFIG_FILE_PATH):
+        logging.warning(f"{CONFIG_FILE_PATH} not found. Using default settings. You can create it from settings.yaml.example.")
+        return {}
+    try:
+        with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logging.error(f"Error loading or parsing {CONFIG_FILE_PATH}: {e}")
+        return {}
 
-# 应用及 WebSocket 配置
-BACKEND_BASE_URL = "http://127.0.0.1:8000"
-CLIENT_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+def _load_config_from_env(settings_model: AppSettings):
+    api_keys = settings_model.api_keys
+    api_keys.letta_token = os.getenv("LETTA_API_TOKEN", api_keys.letta_token)
+    api_keys.letta_base_url = os.getenv("LETTA_BASE_URL", api_keys.letta_base_url)
+    api_keys.neuro_agent_id = os.getenv("AGENT_ID", api_keys.neuro_agent_id)
+    api_keys.gemini_api_key = os.getenv("GEMINI_API_KEY", api_keys.gemini_api_key)
+    api_keys.openai_api_key = os.getenv("OPENAI_API_KEY", api_keys.openai_api_key)
+    api_keys.openai_api_base_url = os.getenv("OPENAI_API_BASE_URL", api_keys.openai_api_base_url)
+    api_keys.azure_speech_key = os.getenv("AZURE_SPEECH_KEY", api_keys.azure_speech_key)
+    api_keys.azure_speech_region = os.getenv("AZURE_SPEECH_REGION", api_keys.azure_speech_region)
 
-# --- 验证配置 ---
-def validate_config():
-    """验证必要的环境变量是否已设置。"""
-    if not LETTA_API_TOKEN:
-        raise ValueError("LETTA_API_TOKEN 环境变量未找到。")
-    if not NEURO_AGENT_ID:
-        raise ValueError("NEURO_AGENT_ID 环境变量未找到。")
+def load_settings() -> AppSettings:
+    yaml_config = _load_config_from_yaml()
+    # Pydantic v2: 创建一个模型实例，并用字典更新它
+    base_settings = AppSettings.model_validate(yaml_config)
+    
+    _load_config_from_env(base_settings)
 
-    if AUDIENCE_LLM_PROVIDER == "gemini" and not GEMINI_API_KEY:
-        print("Warning: GEMINI_API_KEY 未设置，观众聊天生成器可能无法工作。")
-    elif AUDIENCE_LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
-        print("Warning: OPENAI_API_KEY 未设置，观众聊天生成器可能无法工作。")
+    if not base_settings.api_keys.letta_token or not base_settings.api_keys.neuro_agent_id:
+        raise ValueError("Critical config missing: LETTA_API_TOKEN or AGENT_ID must be set in settings.yaml or environment variables.")
+        
+    logging.info("Configuration loaded successfully.")
+    return base_settings
 
-    if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
-        print("Warning: AZURE_SPEECH_KEY 或 AZURE_SPEECH_REGION 未设置，TTS功能将无法使用。")
+def save_settings(settings_to_save: AppSettings):
+    try:
+        config_dict = settings_to_save.model_dump(mode='json')
+        with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
+            yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False, indent=2)
+        logging.info(f"Configuration saved to {CONFIG_FILE_PATH}")
+    except Exception as e:
+        logging.error(f"Failed to save configuration to {CONFIG_FILE_PATH}: {e}")
 
-# 在模块加载时执行验证
-validate_config()
+# --- 3. 创建全局可访问的配置实例 ---
+settings = load_settings()
+
+# --- 4. 运行时更新配置的函数 ---
+async def update_and_broadcast_settings(new_settings_data: dict):
+    global settings
+    # 使用 model_copy 和 update 来创建新的、更新后的配置实例
+    updated_settings = settings.model_copy(update=new_settings_data, deep=True)
+    settings = updated_settings
+    
+    save_settings(settings)
+    
+    # 广播需要同步的更改
+    if 'stream_metadata' in new_settings_data:
+        from stream_manager import live_stream_manager
+        await live_stream_manager.broadcast_stream_metadata()
+    
+    logging.info("Runtime configuration updated.")

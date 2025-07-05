@@ -4,8 +4,8 @@ import time
 import os
 import subprocess
 import json
-import config
-from shared_state import live_phase_started_event # <-- 从新文件导入
+from config import settings # <-- 核心变化
+from shared_state import live_phase_started_event
 
 class LiveStreamManager:
     class NeuroAvatarStage:
@@ -54,11 +54,12 @@ class LiveStreamManager:
 
     async def broadcast_stream_metadata(self):
         """
-        将 config.py 中的直播元数据打包并放入事件队列进行广播。
+        将 settings 对象中的直播元数据打包并放入事件队列进行广播。
         """
+        # 使用 settings 对象来获取元数据
         metadata_event = {
             "type": "update_stream_metadata",
-            **config.STREAM_METADATA
+            **settings.stream_metadata.model_dump() # <-- 核心变化
         }
         await self.event_queue.put(metadata_event)
         print("直播元数据已放入广播队列。")
@@ -69,8 +70,6 @@ class LiveStreamManager:
         self._is_neuro_speaking = False
         while not self.event_queue.empty():
             self.event_queue.get_nowait()
-        
-        # 不再需要从 main 导入，直接使用从 shared_state 导入的 event
         live_phase_started_event.clear()
         print("直播状态已重置为 OFFLINE。")
 
@@ -95,7 +94,6 @@ class LiveStreamManager:
         await self.event_queue.put({"type": "enter_live_phase", "elapsed_time_sec": self.get_elapsed_time()})
         print(f"进入阶段: {self.StreamPhase.LIVE}")
         
-        # 设置事件，解锁后端的 neuro_response_cycle 任务
         live_phase_started_event.set()
         print("Live phase started event has been set.")
     
