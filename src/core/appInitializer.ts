@@ -1,7 +1,6 @@
 // src/core/appInitializer.ts
 
 import { WebSocketClient } from '../services/websocketClient';
-import { ApiClient } from '../services/apiClient';
 import { AudioPlayer } from '../services/audioPlayer';
 import { VideoPlayer } from '../stream/videoPlayer';
 import { NeuroAvatar } from '../stream/neuroAvatar';
@@ -21,7 +20,6 @@ const MY_USERNAME = "Files_Transfer";
 
 export class AppInitializer {
     private wsClient: WebSocketClient;
-    private apiClient: ApiClient;
     private audioPlayer: AudioPlayer;
     private videoPlayer: VideoPlayer;
     private neuroAvatar: NeuroAvatar;
@@ -39,7 +37,6 @@ export class AppInitializer {
     constructor() {
         this.layoutManager = new LayoutManager();
         this.streamTimer = new StreamTimer();
-        this.apiClient = new ApiClient(BACKEND_BASE_URL);
         
         const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
 

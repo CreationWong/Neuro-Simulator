@@ -32,13 +32,12 @@ export function showNeuroCaption(text: string, duration?: number): void {
 
         const totalChars = text.length;
         let displayedText = '';
-        let currentTime = 0;
 
         const displayWord = (index: number) => {
             if (index < words.length) {
                 const word = words[index];
                 // 简单的估算：每个单词的显示时间与该单词包含的字符数成正比
-                // 这里的 1.2 是一个调整系数，可以根据实际效果调整
+                // 这里的 1.05 是一个调整系数，可以根据实际效果调整
                 const wordDuration = (word.length / totalChars) * duration! * 1.05; 
                 
                 // 确保至少有一个最小延迟，避免过快显示

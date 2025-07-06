@@ -5,7 +5,7 @@ export class ChatSidebar {
     private toggleButton: HTMLButtonElement; // 侧边栏内部的收缩按钮
     private showChatButton: HTMLButtonElement; // 视频上方的展开按钮
     private isCollapsed: boolean = false;
-    private bodyElement: HTMLBodyElement; // 用于添加/移除全局类
+    private bodyElement: HTMLElement; // 用于添加/移除全局类
 
     constructor() {
         this.sidebarElement = document.getElementById('chat-sidebar') as HTMLDivElement;
