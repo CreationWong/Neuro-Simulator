@@ -7,3 +7,5 @@ letta-client
 openai
 pyyaml
 pydantic
+jinja2
+python-multipart
