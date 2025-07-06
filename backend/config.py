@@ -24,7 +24,7 @@ class StreamMetadataSettings(BaseModel):
     streamer_nickname: str = "vedal987"
     stream_title: str = "neuro-sama is here for u all"
     stream_category: str = "谈天说地"
-    stream_tags: List[str] = Field(default_factory=lambda: ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"])
+    stream_tags: List[str] = Field(default_factory=lambda: ["Vtuber"])
 
 class NeuroBehaviorSettings(BaseModel):
     input_chat_sample_size: int = 10
