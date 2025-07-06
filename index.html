@@ -68,7 +68,7 @@
         
         <button class="nav-user-avatar-button" aria-expanded="false" aria-label="用户菜单">
           <div class="user-avatar-wrapper">
-            <img class="user-avatar-img" alt="用户头像" src="/avatar.webp" style="object-fit: cover;">
+            <img class="user-avatar-img" alt="用户头像" src="/user_avatar.webp" style="object-fit: cover;">
           </div>
         </button>
       </div>
@@ -184,6 +184,36 @@
              <button id="send-button" class="chat-send-button">聊天</button>
           </div>
         </div>
+      </div>
+    </div>
+    <div id="settings-modal" class="settings-modal-container hidden">
+      <div id="settings-modal-overlay" class="modal-overlay"></div>
+      <div class="modal-content">
+        <header class="modal-header">
+          <h2>设置</h2>
+          <button id="settings-close-button" class="modal-close-button">&times;</button>
+        </header>
+        <main class="modal-body">
+          <div class="setting-item">
+            <label for="username-setting-input">用户名</label>
+            <input type="text" id="username-setting-input" class="modal-input" placeholder="输入你的聊天昵称">
+          </div>
+          <div class="setting-item avatar-setting">
+            <label>头像</label>
+            <div class="avatar-preview-container">
+              <img id="avatar-setting-preview" src="/avatar.webp" alt="Avatar Preview" class="avatar-preview">
+              <input type="file" id="avatar-setting-upload" accept="image/*" class="avatar-upload-input">
+              <button id="avatar-upload-button" class="twitch-button">上传图片</button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label for="backend-url-input">后端地址</label>
+            <input type="text" id="backend-url-input" class="modal-input" placeholder="例如：ws://127.0.0.1:8000">
+          </div>
+        </main>
+        <footer class="modal-footer">
+          <button id="settings-save-button" class="twitch-button subscribe-button">保存并重连</button>
+        </footer>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

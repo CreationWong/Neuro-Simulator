@@ -10,13 +10,11 @@ import { UserInput } from '../ui/userInput';
 import { LayoutManager } from './layoutManager';
 import { StreamTimer } from '../ui/streamTimer';
 import { ChatSidebar } from '../ui/chatSidebar';
-import { LiveIndicator } from '../ui/liveIndicator'; // 导入简化的 LiveIndicator
+import { LiveIndicator } from '../ui/liveIndicator';
 import { StreamInfoDisplay } from '../ui/streamInfoDisplay';
-import { WakeLockManager } from '../utils/wakeLockManager'; // 导入 WakeLockManager
+import { WakeLockManager } from '../utils/wakeLockManager';
 import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, UserInputMessage, StreamMetadataMessage } from '../types/common';
-
-const BACKEND_BASE_URL = 'http://127.0.0.1:8000'; 
-const MY_USERNAME = "Files_Transfer"; 
+import { SettingsModal, AppSettings } from '../ui/settingsModal';
 
 export class AppInitializer {
     private wsClient: WebSocketClient;
@@ -28,9 +26,13 @@ export class AppInitializer {
     private layoutManager: LayoutManager;
     private streamTimer: StreamTimer;
     private chatSidebar: ChatSidebar;
-    private liveIndicator: LiveIndicator; // 新增 LiveIndicator 属性
+    private liveIndicator: LiveIndicator;
     private streamInfoDisplay: StreamInfoDisplay;
-    private wakeLockManager: WakeLockManager; // 新增 WakeLockManager 属性
+    private wakeLockManager: WakeLockManager;
+    
+    private settingsModal: SettingsModal;
+    private currentSettings: AppSettings;
+
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
 
@@ -38,13 +40,20 @@ export class AppInitializer {
         this.layoutManager = new LayoutManager();
         this.streamTimer = new StreamTimer();
         
-        const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
+        this.currentSettings = SettingsModal.getSettings();
+        this.settingsModal = new SettingsModal((newSettings) => this.handleSettingsUpdate(newSettings));
+        
+        const backendWsUrl = this.currentSettings.backendUrl 
+            ? `${this.currentSettings.backendUrl}/ws/stream`
+            : '';
 
+        const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
+        
         this.wsClient = new WebSocketClient({
-            url: BACKEND_BASE_URL.replace('http', 'ws') + '/ws/stream', 
+            url: backendWsUrl,
             autoReconnect: true,
             onMessage: universalMessageHandler,
-            // 当 WebSocket 断开时，调用 goOffline
+            onOpen: () => this.updateUiWithSettings(),
             onDisconnect: () => this.goOffline(),
         });
 
@@ -55,27 +64,72 @@ export class AppInitializer {
         this.userInput = new UserInput();
         this.userInput.onSendMessage((messageText: string) => this.sendUserMessage(messageText));
         this.chatSidebar = new ChatSidebar();
-        
-        // 实例化新模块
         this.liveIndicator = new LiveIndicator();
         this.streamInfoDisplay = new StreamInfoDisplay();
         this.wakeLockManager = new WakeLockManager();
+        
+        this.setupSettingsModalTrigger();
     }
 
     public start(): void {
         if (this.isStarted) return;
         this.isStarted = true;
+
         this.layoutManager.start();
-        // 初始化时进入离线状态，这将隐藏 LIVE 指示器
-        this.goOffline(); 
-        this.wsClient.connect(); 
+        this.goOffline();
+        
+        this.updateUiWithSettings();
+        
+        if (this.wsClient.getUrl()) {
+            this.wsClient.connect();
+        } else {
+            console.warn("Backend URL is not configured. Opening settings modal.");
+            this.settingsModal.open();
+        }
+    }
+
+    private setupSettingsModalTrigger(): void {
+        const trigger = document.querySelector('.nav-user-avatar-button');
+        if (trigger) {
+            trigger.addEventListener('click', () => {
+                this.settingsModal.open();
+            });
+        }
+    }
+
+    private handleSettingsUpdate(newSettings: AppSettings): void {
+        console.log("Settings updated. Re-initializing connection with new settings:", newSettings);
+        this.currentSettings = newSettings;
+        
+        this.updateUiWithSettings();
+
+        this.wsClient.disconnect();
+        
+        setTimeout(() => {
+            const newUrl = newSettings.backendUrl ? `${newSettings.backendUrl}/ws/stream` : '';
+            this.wsClient.setUrl(newUrl);
+            if(newUrl) {
+                this.wsClient.connect();
+            } else {
+                console.warn("Cannot connect: Backend URL is empty after update.");
+            }
+        }, 500);
     }
 
     /**
-     * 将应用设置为离线状态。
-     * 这会隐藏所有直播内容、停止计时器、禁用输入，并隐藏 LIVE 指示器。
+     * 根据当前的`this.currentSettings`更新UI元素，主要是头像
      */
+    private updateUiWithSettings(): void {
+        // --- 核心修复点 ---
+        // 只选择类为 .user-avatar-img 的图片，不再错误地包含 .channel-points-icon
+        const userAvatars = document.querySelectorAll('.user-avatar-img') as NodeListOf<HTMLImageElement>;
+        userAvatars.forEach(img => img.src = this.currentSettings.avatarDataUrl);
+        
+        console.log(`UI updated with username: ${this.currentSettings.username} and avatar.`);
+    }
+
     private goOffline(): void {
+        console.log("Entering OFFLINE state.");
         this.currentPhase = 'offline';
         this.hideStreamContent();
         this.audioPlayer.stopAllAudio();
@@ -83,23 +137,17 @@ export class AppInitializer {
         this.neuroAvatar.setStage('hidden', true);
         hideNeuroCaption();
         this.streamTimer.stop();
+        this.streamTimer.reset();
         this.userInput.setInputDisabled(true);
-
-        // 使用 LiveIndicator 和 WakeLockManager
         this.liveIndicator.hide();
         this.wakeLockManager.releaseWakeLock();
     }
 
-    /**
-     * 处理从后端收到的所有 WebSocket 消息。
-     */
     private handleWebSocketMessage(message: WebSocketMessage): void {
-        // 当收到第一条有效的流消息时，认为连接成功
         if (this.currentPhase === 'offline' && ['play_welcome_video', 'start_avatar_intro', 'enter_live_phase'].includes(message.type)) {
+            console.log("Connection successful, transitioning from OFFLINE to active state.");
             this.showStreamContent();
             this.chatDisplay.clearChat();
-            
-            // 显示 LIVE 指示器并请求屏幕唤醒锁
             this.liveIndicator.show();
             this.wakeLockManager.requestWakeLock();
         }
@@ -117,20 +165,17 @@ export class AppInitializer {
                 this.videoPlayer.showAndPlayVideo(message.progress);
                 this.userInput.setInputDisabled(true);
                 break;
-
             case 'start_avatar_intro':
                 this.currentPhase = 'avatar_intro';
                 this.neuroAvatar.startIntroAnimation(() => { this.videoPlayer.hideVideo(); });
                 this.userInput.setInputDisabled(true);
                 break;
-
             case 'enter_live_phase':
                 this.currentPhase = 'live';
                 this.videoPlayer.hideVideo();
                 this.neuroAvatar.setStage('step2', true); 
                 this.userInput.setInputDisabled((message as any).is_speaking ?? false);
                 break;
-
             case 'neuro_is_speaking':
                 if (this.currentPhase === 'live') {
                     this.userInput.setInputDisabled((message as any).speaking);
@@ -139,7 +184,6 @@ export class AppInitializer {
                     hideNeuroCaption();
                 }
                 break;
-
             case 'neuro_speech_segment':
                 const segment = message as NeuroSpeechSegmentMessage;
                 if (segment.is_end) {
@@ -150,34 +194,36 @@ export class AppInitializer {
                     console.warn("Received neuro_speech_segment message with missing audio/text/duration:", segment);
                 }
                 break;
-
             case 'neuro_error_signal': 
                 console.warn("Received neuro_error_signal from backend.");
                 showNeuroCaption("Someone tell Vedal there is a problem with my AI.");
                 this.audioPlayer.playErrorSound();
                 break;
-
             case 'chat_message':
-                // 只有当侧边栏展开或消息是用户自己发送的时，才显示聊天
                 if (!this.chatSidebar.getIsCollapsed() || (message as ChatMessage).is_user_message) {
                    this.chatDisplay.appendChatMessage(message as ChatMessage);
                 }
                 break;
-
             case 'error':
                 this.chatDisplay.appendChatMessage({ type: "chat_message", username: "System", text: `后端错误: ${(message as any).message}`, is_user_message: false });
                 break;
         }
     }
     
-    /**
-     * 发送用户输入的消息到后端，并立即在本地显示。
-     */
     private sendUserMessage(messageText: string): void {
-        const message: UserInputMessage = { type: "user_message", message: messageText, username: MY_USERNAME };
+        const message: UserInputMessage = {
+            type: "user_message",
+            message: messageText,
+            username: this.currentSettings.username
+        };
         this.wsClient.send(message); 
         
-        const localChatMessage: ChatMessage = { type: "chat_message", username: MY_USERNAME, text: messageText, is_user_message: true };
+        const localChatMessage: ChatMessage = {
+            type: "chat_message",
+            username: this.currentSettings.username,
+            text: messageText,
+            is_user_message: true
+        };
         this.chatDisplay.appendChatMessage(localChatMessage);
     }
 

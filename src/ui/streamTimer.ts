@@ -3,7 +3,7 @@
 export class StreamTimer {
     private timerElement: HTMLSpanElement;
     private intervalId: number | null = null;
-    private streamStartTime: number = 0; // Unix timestamp (ms) of stream start
+    private streamStartTime: number = 0;
 
     constructor() {
         this.timerElement = document.getElementById('stream-duration-text') as HTMLSpanElement;
@@ -13,6 +13,7 @@ export class StreamTimer {
         this.reset();
     }
 
+    // --- MODIFIED ---
     private formatTime(totalSeconds: number): string {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -20,19 +21,25 @@ export class StreamTimer {
 
         const pad = (num: number) => String(num).padStart(2, '0');
 
-        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+        if (hours > 0) {
+            return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+        } else {
+            return `${minutes}:${pad(seconds)}`;
+        }
     }
 
     private updateDisplay(): void {
         if (this.streamStartTime > 0) {
             const elapsedMilliseconds = Date.now() - this.streamStartTime;
             const elapsedSeconds = elapsedMilliseconds / 1000;
-            this.timerElement.textContent = this.formatTime(elapsedSeconds);
+            // --- MODIFIED ---
+            // 初始化时可能显示 0:00 而不是 NaN:NaN
+            this.timerElement.textContent = this.formatTime(Math.max(0, elapsedSeconds));
         }
     }
 
     public start(initialSeconds: number = 0): void {
-        this.stop(); // Ensure no multiple intervals are running
+        this.stop();
         this.streamStartTime = Date.now() - (initialSeconds * 1000);
         this.updateDisplay();
         this.intervalId = window.setInterval(() => this.updateDisplay(), 1000);
@@ -50,7 +57,8 @@ export class StreamTimer {
     public reset(): void {
         this.stop();
         this.streamStartTime = 0;
-        this.timerElement.textContent = "00:00:00";
+        // --- MODIFIED ---
+        this.timerElement.textContent = "0:00"; // 初始显示
         console.log("Stream timer reset.");
     }
 }

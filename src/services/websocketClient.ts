@@ -14,7 +14,7 @@ interface WebSocketClientOptions {
 
 export class WebSocketClient {
     private ws: WebSocket | null = null;
-    private readonly url: string;
+    private url: string;
     private readonly options: WebSocketClientOptions;
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 10;
@@ -24,6 +24,14 @@ export class WebSocketClient {
     constructor(options: WebSocketClientOptions) {
         this.url = options.url;
         this.options = options;
+    }
+
+    public setUrl(newUrl: string): void {
+        this.url = newUrl;
+    }
+
+    public getUrl(): string {
+        return this.url;
     }
 
     public connect(): void {
