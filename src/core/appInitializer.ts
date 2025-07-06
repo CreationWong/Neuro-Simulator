@@ -52,6 +52,7 @@ export class AppInitializer {
         this.wsClient = new WebSocketClient({
             url: backendWsUrl,
             autoReconnect: true,
+            maxReconnectAttempts: this.currentSettings.reconnectAttempts,
             onMessage: universalMessageHandler,
             onOpen: () => this.updateUiWithSettings(),
             onDisconnect: () => this.goOffline(),
@@ -103,13 +104,17 @@ export class AppInitializer {
         
         this.updateUiWithSettings();
 
+        const newUrl = newSettings.backendUrl ? `${newSettings.backendUrl}/ws/stream` : '';
+        this.wsClient.updateOptions({
+            url: newUrl,
+            maxReconnectAttempts: newSettings.reconnectAttempts,
+        });
+
         this.wsClient.disconnect();
         
         setTimeout(() => {
-            const newUrl = newSettings.backendUrl ? `${newSettings.backendUrl}/ws/stream` : '';
-            this.wsClient.setUrl(newUrl);
-            if(newUrl) {
-                this.wsClient.connect();
+            if(this.wsClient.getUrl()) {
+                    this.wsClient.connect();
             } else {
                 console.warn("Cannot connect: Backend URL is empty after update.");
             }
