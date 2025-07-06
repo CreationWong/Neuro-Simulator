@@ -4,7 +4,7 @@ import time
 import os
 from config import settings
 from shared_state import live_phase_started_event
-from tinytag import TinyTag, TinyTagException
+from mutagen.mp4 import MP4, MP4StreamInfoError
 
 class LiveStreamManager:
     class NeuroAvatarStage:
@@ -24,32 +24,27 @@ class LiveStreamManager:
     _WELCOME_VIDEO_PATH_BACKEND = os.path.join(_current_dir, "media", "neuro_start.mp4")
     _WELCOME_VIDEO_DURATION_SEC_DEFAULT = 10.0
     
-    # --- NEW: 使用 tinytag 获取时长的静态方法 ---
+    # --- NEW: 使用 mutagen 获取时长的静态方法 ---
     @staticmethod
-    def _get_video_duration_tinytag_static(video_path: str) -> float:
-        """使用 tinytag 库快速获取视频时长。"""
+    def _get_video_duration_mutagen_static(video_path: str) -> float:
+        """使用 mutagen 库可靠地获取 MP4 视频时长。"""
         if not os.path.exists(video_path):
             print(f"警告: 视频文件 '{video_path}' 不存在。将使用默认值。")
             return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
         try:
-            tag = TinyTag.get(video_path)
-            duration = tag.duration
-            if duration:
-                print(f"已通过 tinytag 成功读取视频 '{video_path}' 时长: {duration:.2f} 秒。")
-                return duration
-            else:
-                print(f"警告: tinytag 未能从 '{video_path}' 中读取到时长。将使用默认值。")
-                return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
-        except TinyTagException as e:
-            print(f"使用 tinytag 获取视频时长时出错: {e}. 将使用默认视频时长。")
+            video = MP4(video_path)
+            duration = video.info.length
+            print(f"已通过 mutagen 成功读取视频 '{video_path}' 时长: {duration:.2f} 秒。")
+            return duration
+        except MP4StreamInfoError:
+            print(f"警告: mutagen 无法解析 '{video_path}' 的流信息。它可能不是一个标准的MP4文件。将使用默认值。")
             return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
         except Exception as e:
-            print(f"处理视频文件时发生未知错误: {e}. 将使用默认视频时长。")
+            print(f"使用 mutagen 获取视频时长时出错: {e}. 将使用默认视频时长。")
             return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
 
-    # --- 核心修改点 ---
-    # 调用新的方法来初始化视频时长
-    _WELCOME_VIDEO_DURATION_SEC = _get_video_duration_tinytag_static(_WELCOME_VIDEO_PATH_BACKEND)
+    # --- 核心修改点: 调用新的 mutagen 方法 ---
+    _WELCOME_VIDEO_DURATION_SEC = _get_video_duration_mutagen_static(_WELCOME_VIDEO_PATH_BACKEND)
     AVATAR_INTRO_TOTAL_DURATION_SEC = 3.0
 
     def __init__(self):
