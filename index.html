@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- Twitch 风格页眉 (已在上次提交中修改) -->
     <header id="twitch-header">
       <div class="top-nav-left">
         <a href="/" class="twitch-logo-link" aria-label="Twitch 主页">
@@ -78,7 +77,6 @@
       <div id="stream-and-info-container">
         <div id="stream-display-viewport">
           <div id="stream-display-area">
-            <!-- --- 核心修改点 (3): 添加 data-darkreader-ignore --- -->
             <div id="live2d-display" data-darkreader-ignore></div>
             <div id="neuro-static-avatar-container">
               <img id="neuro-static-avatar" src="/neurosama.png" alt="Neuro-Sama Static Avatar" />
@@ -97,7 +95,6 @@
                 <div class="streamer-avatar-wrapper">
                     <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
                     <div class="live-indicator-rect">
-                        <!-- --- 核心修改点 (2): 为 span 添加 ID --- -->
                         <span class="live-text" id="live-indicator-text">LIVE</span>
                     </div>
                 </div>
@@ -209,6 +206,11 @@
           <div class="setting-item">
             <label for="backend-url-input">后端地址</label>
             <input type="text" id="backend-url-input" class="modal-input" placeholder="例如：ws://127.0.0.1:8000">
+          </div>
+          <div class="setting-item">
+            <label for="reconnect-attempts-input">最大重连次数</label>
+            <input type="number" id="reconnect-attempts-input" class="modal-input" placeholder="输入一个数字">
+            <p class="setting-description">连接失败后的自动重试次数。设置为 -1 可无限重试。</p>
           </div>
         </main>
         <footer class="modal-footer">

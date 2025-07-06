@@ -5,6 +5,7 @@ export interface AppSettings {
     username: string;
     avatarDataUrl: string;
     backendUrl: string;
+    reconnectAttempts: number; // <-- 新增
 }
 
 // 定义回调函数的类型
@@ -21,6 +22,7 @@ export class SettingsModal {
     private avatarPreview: HTMLImageElement;
     private avatarUploadInput: HTMLInputElement;
     private avatarUploadButton: HTMLButtonElement;
+    private reconnectAttemptsInput: HTMLInputElement;   
 
     private onSave: onSaveCallback;
 
@@ -37,6 +39,7 @@ export class SettingsModal {
         this.avatarPreview = document.getElementById('avatar-setting-preview') as HTMLImageElement;
         this.avatarUploadInput = document.getElementById('avatar-setting-upload') as HTMLInputElement;
         this.avatarUploadButton = document.getElementById('avatar-upload-button') as HTMLButtonElement;
+        this.reconnectAttemptsInput = document.getElementById('reconnect-attempts-input') as HTMLInputElement;
         
         if (!this.modalContainer) throw new Error("Settings modal container not found!");
 
@@ -71,6 +74,7 @@ export class SettingsModal {
             username: this.usernameInput.value.trim() || 'User',
             avatarDataUrl: this.avatarPreview.src,
             backendUrl: this.backendUrlInput.value.trim(),
+            reconnectAttempts: parseInt(this.reconnectAttemptsInput.value, 10) || -1,
         };
 
         // 持久化到 localStorage
@@ -99,6 +103,7 @@ export class SettingsModal {
         this.usernameInput.value = savedSettings.username;
         this.avatarPreview.src = savedSettings.avatarDataUrl;
         this.backendUrlInput.value = savedSettings.backendUrl;
+        this.reconnectAttemptsInput.value = String(savedSettings.reconnectAttempts);
     }
     
     /**
@@ -116,9 +121,10 @@ export class SettingsModal {
         }
         // 返回默认值
         return {
-            username: 'Files_Transfer',
+            username: 'One_of_Swarm',
             avatarDataUrl: '/user_avatar.webp', // 默认头像路径
             backendUrl: 'ws://127.0.0.1:8000',
+            reconnectAttempts: -1,  
         };
     }
 }
