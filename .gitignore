@@ -135,6 +135,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+settings.yaml
 sum.sh
 project_code_archive.md
 venv/

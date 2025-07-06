@@ -1,7 +1,7 @@
 # backend/letta.py
 from letta_client import Letta, MessageCreate, TextContent, LlmConfig, AssistantMessage
 from fastapi import HTTPException, status
-from config import settings # <-- 核心变化
+from config import settings
 
 # 初始化 Letta 客户端
 letta_client: Letta | None = None
@@ -52,12 +52,45 @@ def get_letta_client():
     return letta_client
 
 async def reset_neuro_agent_memory():
-    if letta_client is None or not settings.api_keys.neuro_agent_id: return
+    """
+    重置 Agent 的记忆，包括：
+    1. 清空所有消息历史记录。
+    2. 清空指定的 'conversation_summary' 核心内存块。
+    """
+    agent_id = settings.api_keys.neuro_agent_id
+    if letta_client is None or not agent_id: 
+        print("Letta client 或 Agent ID 未配置，跳过重置。")
+        return
+
+    # --- 步骤 1: 重置消息历史记录 (上下文) ---
     try:
-        letta_client.agents.messages.reset(agent_id=settings.api_keys.neuro_agent_id)
-        print(f"Neuro Agent {settings.api_keys.neuro_agent_id} 记忆已重置。")
+        letta_client.agents.messages.reset(agent_id=agent_id)
+        print(f"Neuro Agent (ID: {agent_id}) 的消息历史已成功重置。")
     except Exception as e:
-        print(f"警告: 重置 Neuro Agent 记忆失败: {e}。")
+        print(f"警告: 重置 Agent 消息历史失败: {e}。")
+
+    # --- 步骤 2: 清空 'conversation_summary' 核心内存块 ---
+    block_label_to_clear = "conversation_summary"
+    try:
+        print(f"正在尝试清空核心记忆块: '{block_label_to_clear}'...")
+        
+        # 调用 modify 方法，将 value 设置为空字符串
+        letta_client.agents.blocks.modify(
+            agent_id=agent_id,
+            block_label=block_label_to_clear,
+            value="" 
+        )
+        
+        print(f"核心记忆块 '{block_label_to_clear}' 已成功清空。")
+    except Exception as e:
+        # 优雅地处理块不存在的情况
+        # API 在找不到块时通常会返回包含 404 或 "not found" 的错误
+        error_str = str(e).lower()
+        if "not found" in error_str or "404" in error_str:
+             print(f"信息: 核心记忆块 '{block_label_to_clear}' 不存在，无需清空。")
+        else:
+             print(f"警告: 清空核心记忆块 '{block_label_to_clear}' 失败: {e}。")
+
 
 async def get_neuro_response(chat_messages: list[dict]) -> str:
     if letta_client is None or not settings.api_keys.neuro_agent_id:
