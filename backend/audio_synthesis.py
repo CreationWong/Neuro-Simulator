@@ -3,7 +3,7 @@ import html
 import base64
 import azure.cognitiveservices.speech as speechsdk
 import asyncio
-from config import settings # <-- 核心变化
+from config import config_manager
 
 async def synthesize_audio_segment(text: str, voice_name: str = None, pitch: float = None) -> tuple[str, float]:
     """
@@ -11,16 +11,16 @@ async def synthesize_audio_segment(text: str, voice_name: str = None, pitch: flo
     如果 voice_name 或 pitch 未提供，则使用配置中的默认值。
     返回 Base64 编码的音频字符串和音频时长（秒）。
     """
-    # 使用 settings 中的值
-    azure_key = settings.api_keys.azure_speech_key
-    azure_region = settings.api_keys.azure_speech_region
+    # 使用 config_manager.settings 中的值
+    azure_key = config_manager.settings.api_keys.azure_speech_key
+    azure_region = config_manager.settings.api_keys.azure_speech_region
     
     if not azure_key or not azure_region:
         raise ValueError("Azure Speech Key 或 Region 未在配置中设置。")
 
     # 如果未传入参数，则使用配置的默认值
-    final_voice_name = voice_name if voice_name is not None else settings.tts.voice_name
-    final_pitch = pitch if pitch is not None else settings.tts.voice_pitch
+    final_voice_name = voice_name if voice_name is not None else config_manager.settings.tts.voice_name
+    final_pitch = pitch if pitch is not None else config_manager.settings.tts.voice_pitch
 
     speech_config = speechsdk.SpeechConfig(subscription=azure_key, region=azure_region)
     speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3)

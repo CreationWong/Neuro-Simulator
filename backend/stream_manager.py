@@ -2,7 +2,7 @@
 import asyncio
 import time
 import os
-from config import settings
+from config import config_manager
 from shared_state import live_phase_started_event
 from mutagen.mp4 import MP4, MP4StreamInfoError
 
@@ -58,7 +58,7 @@ class LiveStreamManager:
         """将直播元数据放入事件队列进行广播。"""
         metadata_event = {
             "type": "update_stream_metadata",
-            **settings.stream_metadata.model_dump()
+            **config_manager.settings.stream_metadata.model_dump()
         }
         await self.event_queue.put(metadata_event)
         print("直播元数据已放入广播队列。")

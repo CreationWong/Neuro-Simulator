@@ -1,27 +1,27 @@
 # backend/letta.py
 from letta_client import Letta, MessageCreate, TextContent, LlmConfig, AssistantMessage
 from fastapi import HTTPException, status
-from config import settings
+from config import config_manager
 
 # 初始化 Letta 客户端
 letta_client: Letta | None = None
 try:
-    if not settings.api_keys.letta_token:
+    if not config_manager.settings.api_keys.letta_token:
         raise ValueError("LETTA_API_TOKEN is not set. Cannot initialize Letta client.")
     
     # 使用 settings 对象进行配置
-    client_args = {'token': settings.api_keys.letta_token}
-    if settings.api_keys.letta_base_url:
-        client_args['base_url'] = settings.api_keys.letta_base_url
-        print(f"Letta client is being initialized for self-hosted URL: {settings.api_keys.letta_base_url}")
+    client_args = {'token': config_manager.settings.api_keys.letta_token}
+    if config_manager.settings.api_keys.letta_base_url:
+        client_args['base_url'] = config_manager.settings.api_keys.letta_base_url
+        print(f"Letta client is being initialized for self-hosted URL: {config_manager.settings.api_keys.letta_base_url}")
     else:
         print("Letta client is being initialized for Letta Cloud.")
 
     letta_client = Letta(**client_args)
 
-    if settings.api_keys.neuro_agent_id:
+    if config_manager.settings.api_keys.neuro_agent_id:
         try:
-            agent_data = letta_client.agents.retrieve(agent_id=settings.api_keys.neuro_agent_id)
+            agent_data = letta_client.agents.retrieve(agent_id=config_manager.settings.api_keys.neuro_agent_id)
             print(f"成功获取 Letta Agent 详情，ID: {agent_data.id}")
             llm_model_info = "N/A"
             if hasattr(agent_data, 'model') and agent_data.model:
@@ -40,7 +40,7 @@ try:
                 print("  -> 警告: Neuro Agent 没有配置 system_prompt。请在 Letta UI 或通过 API 设置。")
 
         except Exception as e:
-            error_msg = f"错误: 无法获取 Neuro Letta Agent (ID: {settings.api_keys.neuro_agent_id})。请确保 ID 正确，且服务可访问。详情: {e}"
+            error_msg = f"错误: 无法获取 Neuro Letta Agent (ID: {config_manager.settings.api_keys.neuro_agent_id})。请确保 ID 正确，且服务可访问。详情: {e}"
             print(error_msg)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
 except Exception as e:
@@ -57,7 +57,7 @@ async def reset_neuro_agent_memory():
     1. 清空所有消息历史记录。
     2. 清空指定的 'conversation_summary' 核心内存块。
     """
-    agent_id = settings.api_keys.neuro_agent_id
+    agent_id = config_manager.settings.api_keys.neuro_agent_id
     if letta_client is None or not agent_id: 
         print("Letta client 或 Agent ID 未配置，跳过重置。")
         return
@@ -93,7 +93,7 @@ async def reset_neuro_agent_memory():
 
 
 async def get_neuro_response(chat_messages: list[dict]) -> str:
-    if letta_client is None or not settings.api_keys.neuro_agent_id:
+    if letta_client is None or not config_manager.settings.api_keys.neuro_agent_id:
         print("警告: Letta client 或 Agent ID 未配置，无法获取响应。")
         return "我暂时无法回应，请稍后再试。"
 
@@ -111,7 +111,7 @@ async def get_neuro_response(chat_messages: list[dict]) -> str:
 
     try:
         response = letta_client.agents.messages.create(
-            agent_id=settings.api_keys.neuro_agent_id,
+            agent_id=config_manager.settings.api_keys.neuro_agent_id,
             messages=[MessageCreate(role="user", content=injected_chat_text)]
         )
 
@@ -135,5 +135,5 @@ async def get_neuro_response(chat_messages: list[dict]) -> str:
         return ai_full_response_text
 
     except Exception as e:
-        print(f"错误: 调用 Letta Agent ({settings.api_keys.neuro_agent_id}) 失败: {e}")
+        print(f"错误: 调用 Letta Agent ({config_manager.settings.api_keys.neuro_agent_id}) 失败: {e}")
         return "Someone tell Vedal there is a problem with my AI."

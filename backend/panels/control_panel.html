@@ -76,6 +76,7 @@
                 <h2>应用设置 (settings.yaml)</h2>
                 <form action="/panel/settings" method="post">
                     {% for category, items in settings.items() %}
+                        {% if category != 'api_keys' and category != 'server' %}
                         <h3>{{ category.replace('_', ' ').title() }}</h3>
                         <div class="form-grid">
                         {% for key, value in items.items() %}
@@ -93,6 +94,7 @@
                             </div>
                         {% endfor %}
                         </div>
+                        {% endif %}
                     {% endfor %}
                     <div class="actions">
                         <button type="submit">保存并热重载设置</button>

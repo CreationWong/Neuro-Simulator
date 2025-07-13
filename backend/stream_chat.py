@@ -1,10 +1,10 @@
 # backend/stream_chat.py
 from collections import deque
-from config import settings # <-- 核心变化
+from config import config_manager
 
 # 使用 settings 对象来初始化 deque 的 maxlen
-audience_chat_buffer: deque[dict] = deque(maxlen=settings.performance.audience_chat_buffer_max_size)
-neuro_input_queue: deque[dict] = deque(maxlen=settings.performance.neuro_input_queue_max_size)
+audience_chat_buffer: deque[dict] = deque(maxlen=config_manager.settings.performance.audience_chat_buffer_max_size)
+neuro_input_queue: deque[dict] = deque(maxlen=config_manager.settings.performance.neuro_input_queue_max_size)
 
 def clear_all_queues():
     audience_chat_buffer.clear()

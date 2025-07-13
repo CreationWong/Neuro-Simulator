@@ -4,6 +4,8 @@ import yaml
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import logging
+import asyncio
+from collections.abc import Mapping
 
 # 配置日志记录器
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -73,6 +75,7 @@ class ServerSettings(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8000
     client_origins: List[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"])
+    panel_password: Optional[str] = None
 
 class AppSettings(BaseModel):
     api_keys: ApiKeysSettings = Field(default_factory=ApiKeysSettings)
@@ -87,65 +90,142 @@ class AppSettings(BaseModel):
 
 CONFIG_FILE_PATH = "settings.yaml"
 
-def _load_config_from_yaml() -> dict:
-    if not os.path.exists(CONFIG_FILE_PATH):
-        logging.warning(f"{CONFIG_FILE_PATH} not found. Using default settings. You can create it from settings.yaml.example.")
-        return {}
-    try:
-        with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f) or {}
-    except Exception as e:
-        logging.error(f"Error loading or parsing {CONFIG_FILE_PATH}: {e}")
-        return {}
+def _deep_update(source: dict, overrides: dict) -> dict:
+    """
+    Recursively update a dictionary.
+    """
+    for key, value in overrides.items():
+        if isinstance(value, Mapping) and value:
+            returned = _deep_update(source.get(key, {}), value)
+            source[key] = returned
+        else:
+            source[key] = overrides[key]
+    return source
 
-def _load_config_from_env(settings_model: AppSettings):
-    api_keys = settings_model.api_keys
-    api_keys.letta_token = os.getenv("LETTA_API_TOKEN", api_keys.letta_token)
-    api_keys.letta_base_url = os.getenv("LETTA_BASE_URL", api_keys.letta_base_url)
-    api_keys.neuro_agent_id = os.getenv("AGENT_ID", api_keys.neuro_agent_id)
-    api_keys.gemini_api_key = os.getenv("GEMINI_API_KEY", api_keys.gemini_api_key)
-    api_keys.openai_api_key = os.getenv("OPENAI_API_KEY", api_keys.openai_api_key)
-    api_keys.openai_api_base_url = os.getenv("OPENAI_API_BASE_URL", api_keys.openai_api_base_url)
-    api_keys.azure_speech_key = os.getenv("AZURE_SPEECH_KEY", api_keys.azure_speech_key)
-    api_keys.azure_speech_region = os.getenv("AZURE_SPEECH_REGION", api_keys.azure_speech_region)
+class ConfigManager:
+    _instance = None
 
-def load_settings() -> AppSettings:
-    yaml_config = _load_config_from_yaml()
-    # Pydantic v2: 创建一个模型实例，并用字典更新它
-    base_settings = AppSettings.model_validate(yaml_config)
-    
-    _load_config_from_env(base_settings)
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ConfigManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
-    if not base_settings.api_keys.letta_token or not base_settings.api_keys.neuro_agent_id:
-        raise ValueError("Critical config missing: LETTA_API_TOKEN or AGENT_ID must be set in settings.yaml or environment variables.")
-        
-    logging.info("Configuration loaded successfully.")
-    return base_settings
+    def __init__(self):
+        if self._initialized:
+            return
+        self.settings: AppSettings = self._load_settings()
+        self._update_callbacks = []
+        self._initialized = True
 
-def save_settings(settings_to_save: AppSettings):
-    try:
-        config_dict = settings_to_save.model_dump(mode='json')
-        with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
-            yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False, indent=2)
-        logging.info(f"Configuration saved to {CONFIG_FILE_PATH}")
-    except Exception as e:
-        logging.error(f"Failed to save configuration to {CONFIG_FILE_PATH}: {e}")
+    def _load_config_from_yaml(self) -> dict:
+        if not os.path.exists(CONFIG_FILE_PATH):
+            logging.warning(f"{CONFIG_FILE_PATH} not found. Using default settings. You can create it from settings.yaml.example.")
+            return {}
+        try:
+            with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            logging.error(f"Error loading or parsing {CONFIG_FILE_PATH}: {e}")
+            return {}
+
+    def _load_config_from_env(self, settings_model: AppSettings):
+        api_keys = settings_model.api_keys
+        api_keys.letta_token = os.getenv("LETTA_API_TOKEN", api_keys.letta_token)
+        api_keys.letta_base_url = os.getenv("LETTA_BASE_URL", api_keys.letta_base_url)
+        api_keys.neuro_agent_id = os.getenv("AGENT_ID", api_keys.neuro_agent_id)
+        api_keys.gemini_api_key = os.getenv("GEMINI_API_KEY", api_keys.gemini_api_key)
+        api_keys.openai_api_key = os.getenv("OPENAI_API_KEY", api_keys.openai_api_key)
+        api_keys.openai_api_base_url = os.getenv("OPENAI_API_BASE_URL", api_keys.openai_api_base_url)
+        api_keys.azure_speech_key = os.getenv("AZURE_SPEECH_KEY", api_keys.azure_speech_key)
+        api_keys.azure_speech_region = os.getenv("AZURE_SPEECH_REGION", api_keys.azure_speech_region)
+
+    def _load_settings(self) -> AppSettings:
+        yaml_config = self._load_config_from_yaml()
+        base_settings = AppSettings.model_validate(yaml_config)
+        self._load_config_from_env(base_settings)
+
+        if not base_settings.api_keys.letta_token or not base_settings.api_keys.neuro_agent_id:
+            raise ValueError("Critical config missing: LETTA_API_TOKEN or AGENT_ID must be set in settings.yaml or environment variables.")
+
+        logging.info("Configuration loaded successfully.")
+        return base_settings
+
+    def save_settings(self):
+        """Saves the current configuration to settings.yaml, preserving the api_keys section."""
+        try:
+            # 1. Get the current settings from memory, EXCLUDING api_keys
+            #    to avoid saving keys loaded from environment variables.
+            config_to_save = self.settings.model_dump(mode='json', exclude={'api_keys'})
+
+            # 2. Read the existing config on disk to get the api_keys that should be preserved.
+            existing_config = self._load_config_from_yaml()
+            if 'api_keys' in existing_config:
+                # 3. Add the preserved api_keys block back to the data to be saved.
+                config_to_save['api_keys'] = existing_config['api_keys']
+
+            # 4. Rebuild the dictionary to maintain the original order from the Pydantic model.
+            final_config = {}
+            for field_name in AppSettings.model_fields:
+                if field_name in config_to_save:
+                    final_config[field_name] = config_to_save[field_name]
+
+            # 5. Write the final, correctly ordered configuration to the file.
+            with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
+                yaml.dump(final_config, f, allow_unicode=True, sort_keys=False, indent=2)
+            logging.info(f"Configuration saved to {CONFIG_FILE_PATH}")
+        except Exception as e:
+            logging.error(f"Failed to save configuration to {CONFIG_FILE_PATH}: {e}")
+
+    def register_update_callback(self, callback):
+        """Registers a callback function to be called on settings update."""
+        self._update_callbacks.append(callback)
+
+    async def update_settings(self, new_settings_data: dict):
+        """
+        Updates the settings by merging new data, re-validating the entire
+        model to ensure sub-models are correctly instantiated, and then
+        notifying callbacks.
+        """
+        # Prevent API keys from being updated from the panel
+        new_settings_data.pop('api_keys', None)
+
+        try:
+            # 1. Dump the current settings model to a dictionary.
+            current_settings_dict = self.settings.model_dump()
+
+            # 2. Recursively update the dictionary with the new data.
+            updated_settings_dict = _deep_update(current_settings_dict, new_settings_data)
+
+            # 3. Re-validate the entire dictionary back into a Pydantic model.
+            #    This is the crucial step that reconstructs the sub-models.
+            self.settings = AppSettings.model_validate(updated_settings_dict)
+            
+            # 4. Save the updated configuration to the YAML file.
+            self.save_settings()
+            
+            # 5. Call registered callbacks with the new, valid settings model.
+            for callback in self._update_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(self.settings)
+                    else:
+                        callback(self.settings)
+                except Exception as e:
+                    logging.error(f"Error executing settings update callback: {e}", exc_info=True)
+
+            logging.info("Runtime configuration updated and callbacks executed.")
+        except Exception as e:
+            logging.error(f"Failed to update settings: {e}", exc_info=True)
+
 
 # --- 3. 创建全局可访问的配置实例 ---
-settings = load_settings()
+config_manager = ConfigManager()
 
-# --- 4. 运行时更新配置的函数 ---
+# --- 4. 运行时更新配置的函数 (legacy wrapper for compatibility) ---
 async def update_and_broadcast_settings(new_settings_data: dict):
-    global settings
-    # 使用 model_copy 和 update 来创建新的、更新后的配置实例
-    updated_settings = settings.model_copy(update=new_settings_data, deep=True)
-    settings = updated_settings
-    
-    save_settings(settings)
-    
-    # 广播需要同步的更改
+    await config_manager.update_settings(new_settings_data)
+    # Broadcast stream_metadata changes specifically for now
     if 'stream_metadata' in new_settings_data:
         from stream_manager import live_stream_manager
         await live_stream_manager.broadcast_stream_metadata()
-    
-    logging.info("Runtime configuration updated.")

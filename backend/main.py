@@ -8,24 +8,26 @@ import re
 import time
 import os
 import sys
+from typing import Optional
 
 from fastapi import (
-    FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Form
+    FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Form, Depends, status
 )
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from starlette.websockets import WebSocketState
 from starlette.status import HTTP_303_SEE_OTHER
+from fastapi.security import APIKeyCookie
 
 # --- 核心模块导入 ---
-from config import settings, update_and_broadcast_settings, AppSettings
+from config import config_manager, AppSettings
 from process_manager import process_manager
 from log_handler import configure_logging, log_queue
 
 # --- 功能模块导入 ---
-from chatbot import audience_llm_client, get_dynamic_audience_prompt
+from chatbot import ChatbotManager, get_dynamic_audience_prompt
 from letta import get_neuro_response, reset_neuro_agent_memory
 from audio_synthesis import synthesize_audio_segment
 from stream_chat import (
@@ -40,12 +42,15 @@ import shared_state
 app = FastAPI(title="Neuro-Sama Simulator Backend")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.server.client_origins,
+    allow_origins=config_manager.settings.server.client_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 templates = Jinja2Templates(directory="panels")
+
+# --- 全局管理器实例 ---
+chatbot_manager: ChatbotManager | None = None
 
 # --- 核心修复点 ---
 # 将 Python 内置的函数和类型添加到 Jinja2 的全局环境中，以便模板可以使用它们
@@ -56,6 +61,27 @@ templates.env.globals['int'] = int
 templates.env.globals['float'] = float
 templates.env.globals['bool'] = bool
 
+# --- 安全和认证 ---
+COOKIE_NAME = "panel_session"
+cookie_scheme = APIKeyCookie(name=COOKIE_NAME, auto_error=False)
+
+async def get_panel_access(request: Request, session_token: Optional[str] = Depends(cookie_scheme)):
+    password = config_manager.settings.server.panel_password
+    if not password:
+        # No password set, allow access
+        yield
+        return
+
+    if session_token and session_token == password:
+        # Valid token, allow access
+        yield
+        return
+    
+    # Redirect to login page
+    raise HTTPException(
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        headers={"Location": "/login"}
+    )
 
 # -------------------------------------------------------------
 # --- 后台任务函数定义 ---
@@ -77,11 +103,14 @@ async def broadcast_events_task():
 
 async def fetch_and_process_audience_chats():
     """单个聊天生成任务的执行体。"""
+    if not chatbot_manager or not chatbot_manager.client:
+        print("错误: Chatbot manager 未初始化，跳过聊天生成。")
+        return
     try:
         dynamic_prompt = await get_dynamic_audience_prompt()
-        raw_chat_text = await audience_llm_client.generate_chat_messages(
+        raw_chat_text = await chatbot_manager.client.generate_chat_messages(
             prompt=dynamic_prompt, 
-            max_tokens=settings.audience_simulation.max_output_tokens
+            max_tokens=config_manager.settings.audience_simulation.max_output_tokens
         )
         
         parsed_chats = []
@@ -90,14 +119,14 @@ async def fetch_and_process_audience_chats():
             if ':' in line:
                 username_raw, text = line.split(':', 1)
                 username = username_raw.strip()
-                if username in settings.audience_simulation.username_blocklist:
-                    username = random.choice(settings.audience_simulation.username_pool)
+                if username in config_manager.settings.audience_simulation.username_blocklist:
+                    username = random.choice(config_manager.settings.audience_simulation.username_pool)
                 if username and text.strip(): 
                     parsed_chats.append({"username": username, "text": text.strip()})
             elif line: 
-                parsed_chats.append({"username": random.choice(settings.audience_simulation.username_pool), "text": line})
+                parsed_chats.append({"username": random.choice(config_manager.settings.audience_simulation.username_pool), "text": line})
         
-        chats_to_broadcast = parsed_chats[:settings.audience_simulation.chats_per_batch]
+        chats_to_broadcast = parsed_chats[:config_manager.settings.audience_simulation.chats_per_batch]
         
         for chat in chats_to_broadcast: 
             add_to_audience_buffer(chat)
@@ -115,7 +144,7 @@ async def generate_audience_chat_task():
     while True:
         try:
             asyncio.create_task(fetch_and_process_audience_chats())
-            await asyncio.sleep(settings.audience_simulation.chat_generation_interval_sec)
+            await asyncio.sleep(config_manager.settings.audience_simulation.chat_generation_interval_sec)
         except asyncio.CancelledError:
             print("观众聊天调度器任务被取消。")
             break
@@ -130,14 +159,14 @@ async def neuro_response_cycle():
         try:
             if is_first_response:
                 print("首次响应: 注入开场白。")
-                add_to_neuro_input_queue({"username": "System", "text": settings.neuro_behavior.initial_greeting})
+                add_to_neuro_input_queue({"username": "System", "text": config_manager.settings.neuro_behavior.initial_greeting})
                 is_first_response = False
             elif is_neuro_input_queue_empty():
                 await asyncio.sleep(1)
                 continue
             
             current_queue_snapshot = get_all_neuro_input_chats()
-            sample_size = min(settings.neuro_behavior.input_chat_sample_size, len(current_queue_snapshot))
+            sample_size = min(config_manager.settings.neuro_behavior.input_chat_sample_size, len(current_queue_snapshot))
             selected_chats = random.sample(current_queue_snapshot, sample_size)
             ai_full_response_text = await get_neuro_response(selected_chats)
             
@@ -176,7 +205,7 @@ async def neuro_response_cycle():
             await connection_manager.broadcast({"type": "neuro_speech_segment", "is_end": True})
             live_stream_manager.set_neuro_speaking_status(False)
             
-            await asyncio.sleep(settings.neuro_behavior.post_speech_cooldown_sec)
+            await asyncio.sleep(config_manager.settings.neuro_behavior.post_speech_cooldown_sec)
         except asyncio.CancelledError:
             print("Neuro 响应周期任务被取消。")
             live_stream_manager.set_neuro_speaking_status(False)
@@ -195,7 +224,19 @@ async def neuro_response_cycle():
 @app.on_event("startup")
 async def startup_event():
     """应用启动时执行。"""
+    global chatbot_manager
     configure_logging()
+    
+    # 实例化管理器
+    chatbot_manager = ChatbotManager()
+
+    # 定义并注册回调
+    async def metadata_callback(updated_settings: AppSettings):
+        await live_stream_manager.broadcast_stream_metadata()
+    
+    config_manager.register_update_callback(metadata_callback)
+    config_manager.register_update_callback(chatbot_manager.handle_config_update)
+    
     print("FastAPI 应用已启动。请通过 /panel 控制直播进程。")
 
 @app.on_event("shutdown")
@@ -207,20 +248,41 @@ async def shutdown_event():
 
 
 # -------------------------------------------------------------
-# --- 高级控制面板端点 ---
+# --- 认证和高级控制面板端点 ---
 # -------------------------------------------------------------
 
-@app.get("/panel", tags=["Control Panel"])
+@app.get("/login", tags=["Authentication"], response_class=HTMLResponse)
+async def get_login_form(request: Request):
+    """显示登录页面。"""
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login", tags=["Authentication"])
+async def login_for_panel_access(request: Request, password: str = Form(...)):
+    """处理登录请求并设置 cookie。"""
+    if password == config_manager.settings.server.panel_password:
+        response = RedirectResponse(url="/panel", status_code=status.HTTP_303_SEE_OTHER)
+        response.set_cookie(key=COOKIE_NAME, value=password, httponly=True, samesite="strict")
+        return response
+    # Return to login form with an error message
+    return templates.TemplateResponse("login.html", {"request": request, "error": "密码错误"})
+
+@app.post("/logout", tags=["Authentication"])
+async def logout(response: RedirectResponse = RedirectResponse(url="/login")):
+    """处理登出请求并删除 cookie。"""
+    response.delete_cookie(COOKIE_NAME)
+    return response
+
+@app.get("/panel", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
 async def get_advanced_panel(request: Request, message: str | None = None):
     """显示高级控制面板页面。"""
     return templates.TemplateResponse("control_panel.html", {
         "request": request,
-        "settings": settings.model_dump(),
+        "settings": config_manager.settings.model_dump(),
         "is_running": process_manager.is_running,
         "message": message,
     })
 
-@app.post("/panel/settings", tags=["Control Panel"])
+@app.post("/panel/settings", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
 async def update_settings_from_panel(request: Request):
     """从面板热重载设置。"""
     form_data = await request.form()
@@ -233,7 +295,7 @@ async def update_settings_from_panel(request: Request):
         
         try:
             # 尝试从原始配置模型中获取类型
-            original_type = type(settings.model_dump(by_alias=True)[parts[0]][parts[-1]])
+            original_type = type(config_manager.settings.model_dump(by_alias=True)[parts[0]][parts[-1]])
             if original_type is list:
                 d[parts[-1]] = [item.strip() for item in value.split(',') if item.strip()]
             elif original_type is bool:
@@ -244,27 +306,27 @@ async def update_settings_from_panel(request: Request):
             # 如果转换失败或找不到原始类型，则作为字符串处理
             d[parts[-1]] = value
 
-    await update_and_broadcast_settings(new_settings_data)
+    await config_manager.update_settings(new_settings_data)
     return RedirectResponse(url="/panel?message=设置已保存并热重载！", status_code=HTTP_303_SEE_OTHER)
 
-@app.post("/panel/start", tags=["Control Panel"])
+@app.post("/panel/start", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
 async def start_processes_from_panel():
     process_manager.start_live_processes()
     return RedirectResponse(url="/panel?message=直播已启动", status_code=HTTP_303_SEE_OTHER)
 
-@app.post("/panel/stop", tags=["Control Panel"])
+@app.post("/panel/stop", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
 async def stop_processes_from_panel():
     process_manager.stop_live_processes()
     return RedirectResponse(url="/panel?message=直播已停止", status_code=HTTP_303_SEE_OTHER)
 
-@app.post("/panel/restart", tags=["Control Panel"])
+@app.post("/panel/restart", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
 async def restart_processes_from_panel():
     process_manager.stop_live_processes()
     await asyncio.sleep(1)
     process_manager.start_live_processes()
     return RedirectResponse(url="/panel?message=直播已重启", status_code=HTTP_303_SEE_OTHER)
 
-@app.post("/panel/restart-server", tags=["Control Panel"])
+@app.post("/panel/restart-server", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
 async def restart_server_hard():
     print("控制面板请求硬重启服务器... 服务器正在关闭。")
     async def shutdown():
@@ -285,10 +347,10 @@ async def websocket_stream_endpoint(websocket: WebSocket):
         initial_event = live_stream_manager.get_initial_state_for_client()
         await connection_manager.send_personal_message(initial_event, websocket)
         
-        metadata_event = {"type": "update_stream_metadata", **settings.stream_metadata.model_dump()}
+        metadata_event = {"type": "update_stream_metadata", **config_manager.settings.stream_metadata.model_dump()}
         await connection_manager.send_personal_message(metadata_event, websocket)
         
-        initial_chats = get_recent_audience_chats(settings.performance.initial_chat_backlog_limit)
+        initial_chats = get_recent_audience_chats(config_manager.settings.performance.initial_chat_backlog_limit)
         for chat in initial_chats:
             await connection_manager.send_personal_message({"type": "chat_message", **chat, "is_user_message": False}, websocket)
             await asyncio.sleep(0.01)
@@ -348,12 +410,12 @@ async def synthesize_error_speech_endpoint(request: ErrorSpeechRequest):
 
 @app.get("/api/settings", response_model=AppSettings, tags=["API"], deprecated=True)
 async def get_current_settings():
-    return settings
+    return config_manager.settings
 
 @app.patch("/api/settings", response_model=AppSettings, tags=["API"], deprecated=True)
 async def update_partial_settings(new_settings: dict):
-    await update_and_broadcast_settings(new_settings)
-    return settings
+    await config_manager.update_settings(new_settings)
+    return config_manager.settings
 
 @app.get("/", tags=["Root"])
 async def root(): 
@@ -367,7 +429,7 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "main:app",
-        host=settings.server.host,
-        port=settings.server.port,
+        host=config_manager.settings.server.host,
+        port=config_manager.settings.server.port,
         reload=True
     )
