@@ -1,50 +1,29 @@
 # Neuro Simulator
 
-Neuro Simulator 是一个虚拟主播模拟器，结合了前端、后端和 Electron 桌面应用。它能够模拟虚拟主播 Neurosama 的直播场景，包括视频播放、聊天互动和语音合成等功能。
+*关注Vedal喵，关注Vedal谢谢喵*
 
-## 技术栈
+Neuro Simulator 通过调用Letta（一个为LLM添加自主记忆功能的项目），并调用其他LLM自动生成虚拟聊天，尝试模拟 Neuro-sama 和她的直播。
 
-**前端:**
+主要内容：
+- 服务端
+  - 调用配置好的Letta Agent
+  - 根据Letta输出，调用Gemini或OpenAI API动态生成Chat并传入Letta
+  - 调用微软Azure TTS合成语音
+  - 允许多个客户端连接，向所有客户端广播内容
+  - 在控制面板中更改和热重载部分配置、开关和重置直播状态
+- 客户端
+  - 模拟Twitch的直播界面，渲染Neuro-Sama的直播画面
+  - 动态从服务端获取内容
+  - 可设置的用户头像名称与服务端URL
 
-*   [TypeScript](https://www.typescriptlang.org/)
-*   [Vite](https://vitejs.dev/) - 前端构建工具
-*   [Electron](https://www.electronjs.org/) - 跨平台桌面应用框架
-
-**后端:**
-
-*   [Python](https://www.python.org/)
-*   [FastAPI](https://fastapi.tiangolo.com/) - 高性能 Web 框架
-*   [Uvicorn](https://www.uvicorn.org/) - ASGI 服务器
-*   [Google Generative AI](https://ai.google/discover/generativeai/) - 用于聊天机器人功能
-*   [Azure Cognitive Services](https://azure.microsoft.com/en-us/products/cognitive-services) - 用于语音合成
-
-## 项目结构
-
-```
-neuro-simulator/
-├── backend/            # Python FastAPI 后端服务
-│   ├── main.py         # FastAPI 应用入口
-│   ├── requirements.txt # Python 依赖
-│   └── ...
-├── electron/           # Electron 主进程和预加载脚本
-│   ├── main.ts
-│   └── preload.ts
-├── src/                # 前端源代码 (TypeScript)
-│   ├── main.ts         # 前端应用入口
-│   └── ...
-├── public/             # 静态资源
-├── run_dev.bat         # Windows 开发环境一键启动脚本
-├── package.json        # Node.js 依赖和项目脚本
-└── ...
-```
 
 ## 安装与运行
 
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/your-username/neuro-simulator.git
-cd neuro-simulator
+git clone https://github.com/your-username/Neuro-Simulator.git
+cd Neuro-Simulator
 ```
 
 ### 2. 后端设置
@@ -68,7 +47,8 @@ pip install -r requirements.txt
 
 c. **配置环境变量**
 
-在 `backend` 目录下创建一个 `.env` 文件，参照 `settings.yaml.example` 来配置必要的 API 密钥和设置，例如 Google AI 和 Azure 的凭据。
+在 `backend` 目录下复制一份 `settings.yaml.example` 到 `settings.yaml` ，配置必要的 API 密钥和设置。
+注意：API Key等敏感设置只能在 `settings.yaml` 中修改。
 
 d. **启动后端服务**
 
@@ -94,20 +74,7 @@ npm run dev
 ```
 
 这将启动 Vite 开发服务器和 Electron 应用。
-
-### 4. (可选) Windows 一键启动
-
-在 Windows 上，你可以直接运行根目录下的 `run_dev.bat` 脚本来同时启动前后端开发环境。
-
-## 配置
-
-应用的大部分配置都在 `backend/settings.yaml` 文件中（通过 `.env` 文件加载）。请确保在启动前根据 `settings.yaml.example` 文件创建并正确填写配置。
-
-关键配置项包括：
-
-*   Google AI API 密钥
-*   Azure Speech Service 密钥和区域
-*   Letta Client (如果使用)
+点击客户端界面右上角的头像可以修改一些客户端的设置。
 
 ---
-*这个 README 是自动生成的。* 
+*这个 README 是AI自动生成的，等项目真正完善后再认真修改一下。* 
