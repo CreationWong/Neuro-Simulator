@@ -7,7 +7,7 @@ set "ROOT_DIR=%~dp0"
 if "!ROOT_DIR:~-1!"=="\" set "ROOT_DIR=!ROOT_DIR:~0,-1!"
 
 :: 启动前端服务
-start "前端服务" cmd /k "cd /d "!ROOT_DIR!\" && echo 前端目录: !ROOT_DIR! && npm run dev"
+start "前端服务" cmd /k "cd /d "!ROOT_DIR!\frontend_twitch" && echo 前端目录: !ROOT_DIR!\frontend_twitch && npm run tauri dev"
 
 :: 启动后端服务
 start "后端服务" cmd /k "cd /d "!ROOT_DIR!\backend" && echo 后端目录: !ROOT_DIR!\backend && .\venv\Scripts\uvicorn.exe main:app"

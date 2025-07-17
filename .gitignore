@@ -48,7 +48,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/  # Note: This is generic, also matches frontend dist. Fine for this project.
+dist/
 downloads/
 eggs/
 .eggs/
@@ -68,12 +68,11 @@ MANIFEST
 # --- Node.js / Frontend Specific -------------------------------------------
 # ---------------------------------------------------------------------------
 # Dependency directories
-/node_modules/
+node_modules/
 /jspm_packages/
 
 # Build output
-/dist/
-/dist-electron/
+# /dist/ # 保留，因为这是Vite前端的构建输出目录
 /release/
 /out/
 /.vitepress/dist/
@@ -95,17 +94,22 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Other
-# Output of 'npm pack'
 *.tgz
-# Yarn Integrity file
 .yarn-integrity
-# yarn v2+
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# ---------------------------------------------------------------------------
+# --- Rust / Tauri Specific -------------------------------------------------
+# ---------------------------------------------------------------------------
+# Tauri build artifacts. 
+# 注意: Cargo.lock 文件不应被忽略，以确保可复现的构建。
+/frontend_twitch/src-tauri/target/
+/frontend_twitch/src-tauri/gen/
 
 # ---------------------------------------------------------------------------
 # --- Project Specific & Sensitive Info -------------------------------------
@@ -119,5 +123,5 @@ settings.yaml
 # Personal scripts and temporary files (adjust as needed)
 /sum.sh
 /project_code_archive.md
-# 如果你有其他不想提交的脚本，比如 run_dev.bat，也可以加上
-# /run_dev.bat
+# 取消下面这行的注释来忽略你的开发脚本
+#/run_dev.bat
