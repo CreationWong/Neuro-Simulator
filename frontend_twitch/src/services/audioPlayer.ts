@@ -1,6 +1,6 @@
 // src/services/audioPlayer.ts
 
-import { showNeuroCaption, hideNeuroCaption } from '../ui/neuroCaption';
+import { showNeuroCaption, hideNeuroCaption, startCaptionTimeout } from '../ui/neuroCaption';
 
 interface AudioSegment {
     text: string;
@@ -14,6 +14,7 @@ export class AudioPlayer {
     private currentPlayingAudio: HTMLAudioElement | null = null;
     private allSegmentsReceived: boolean = false;
     private errorSound: HTMLAudioElement; 
+    private lastSegmentEnd: boolean = true;
 
     constructor() {
         this.errorSound = new Audio('/error.mp3'); 
@@ -32,6 +33,11 @@ export class AudioPlayer {
      * 新增：添加音频片段时传入 duration
      */
     public addAudioSegment(text: string, audioBase64: string, duration: number): void { // <-- 增加 duration 参数
+        // 新段落开始时，先隐藏字幕
+        if (this.lastSegmentEnd) {
+            hideNeuroCaption();
+        }
+        this.lastSegmentEnd = false;
         const audio = new Audio('data:audio/mp3;base64,' + audioBase64);
         this.audioQueue.push({ text, audio, duration }); // <-- 存储 duration
         console.log(`Audio segment added to queue. Queue size: ${this.audioQueue.length}`);
@@ -62,17 +68,14 @@ export class AudioPlayer {
                 this.playNextAudioSegment();
             }, { once: true });
         } else if (this.audioQueue.length === 0 && this.allSegmentsReceived) {
-            console.log("Neuro's full audio response played.");
-            hideNeuroCaption(); // 所有片段播放完毕才隐藏字幕
+            console.log("Neuro's full audio response played. Starting caption timeout.");
+            startCaptionTimeout();
         }
     }
     
     public setAllSegmentsReceived(): void {
         this.allSegmentsReceived = true;
-        // 如果所有片段都已接收且队列已空且当前没有在播放，立即隐藏字幕
-        if (this.audioQueue.length === 0 && !this.isPlayingAudio) {
-            hideNeuroCaption();
-        }
+        this.lastSegmentEnd = true;
     }
 
     public stopAllAudio(): void {

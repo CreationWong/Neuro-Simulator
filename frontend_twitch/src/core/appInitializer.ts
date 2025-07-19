@@ -185,9 +185,6 @@ export class AppInitializer {
                 if (this.currentPhase === 'live') {
                     this.userInput.setInputDisabled((message as any).speaking);
                 }
-                if (!(message as any).speaking) {
-                    hideNeuroCaption();
-                }
                 break;
             case 'neuro_speech_segment':
                 const segment = message as NeuroSpeechSegmentMessage;

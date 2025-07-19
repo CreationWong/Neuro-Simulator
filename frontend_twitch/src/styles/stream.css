@@ -73,7 +73,7 @@
   padding: 10px 20px;
   border-radius: 10px;
   text-align: center;
-  font-size: clamp(0px, 2.5vw, 40px);
+  font-size: clamp(1px, 2.5vw, 40px);
   font-weight: normal;
   opacity: 1;
   pointer-events: none;
