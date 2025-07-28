@@ -1,9 +1,5 @@
 // src/main.ts
 
-// 为 TypeScript 在浏览器环境中识别 Node.js 的计时器函数进行声明
-declare var setTimeout: typeof import('timers').setTimeout;
-declare var clearTimeout: typeof import('timers').clearTimeout;
-
 // 导入 Inter 字体
 import '@fontsource/inter';
 
