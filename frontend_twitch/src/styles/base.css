@@ -18,6 +18,7 @@
   --twitch-tag-bg: #EFEFF1;
   --twitch-tag-text-color: #6A6A6D;
   --twitch-live-red: #EB0400;
+  --twitch-viewer-red: #971311;
   --sidebar-width: 340px;
   --header-height: 50px;
   --neuro-shadow-color: #32003C;
@@ -57,8 +58,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 5px 12px 7px; /* 向上微调1px */
+  border-radius: 100px;
   font-size: 0.9em;
   font-weight: 600;
   cursor: pointer;
@@ -73,13 +74,13 @@ body {
   height: 1.2em;
   fill: currentColor;
 }
-.twitch-button:hover {
+.twitch-button:hover:not(:disabled) {
   background-color: var(--twitch-button-hover-bg);
 }
 .twitch-button.subscribe-button {
   background-color: var(--twitch-primary-button-bg);
   color: var(--twitch-primary-button-text-color);
 }
-.twitch-button.subscribe-button:hover {
+.twitch-button.subscribe-button:hover:not(:disabled) {
   background-color: var(--twitch-primary-button-hover-bg);
 }

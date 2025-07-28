@@ -29,30 +29,45 @@ export class ChatDisplay {
         }
 
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message';
-        
-        // 根据用户名和 is_user_message 添加不同的 CSS 类，以便样式区分
+        messageDiv.className = 'chat-line__message'; // 使用 Twitch 风格的类名
+
+        // 容器，用于消息高亮等
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'chat-line__message-container';
+
+        // 根据消息来源添加特定类
         if (message.username === MY_USERNAME && message.is_user_message) {
             messageDiv.classList.add('user-sent-message'); 
         } else if (message.username === "System") {
             messageDiv.classList.add('system-message');
-        }
-        else {
+        } else {
             messageDiv.classList.add('audience-ai-message');
         }
 
+        // 用户名容器
+        const usernameContainer = document.createElement('span');
+        usernameContainer.className = 'chat-line__username';
+        usernameContainer.style.color = (message.username === MY_USERNAME) ? '#9147FF' : this.getRandomChatColor(); 
+
         const usernameSpan = document.createElement('span');
-        usernameSpan.className = 'username';
-        usernameSpan.textContent = message.username + ': ';
-        // 你的用户名固定紫色，其他随机
-        usernameSpan.style.color = (message.username === MY_USERNAME) ? '#9147FF' : this.getRandomChatColor(); 
+        usernameSpan.className = 'chat-author__display-name';
+        usernameSpan.textContent = message.username;
+        usernameContainer.appendChild(usernameSpan);
+
+        // 冒号和消息文本
+        const colonSpan = document.createElement('span');
+        colonSpan.textContent = ': ';
+        colonSpan.style.marginRight = '0.3rem';
 
         const textSpan = document.createElement('span');
+        textSpan.className = 'text-fragment';
         textSpan.textContent = message.text;
-        textSpan.style.color = 'var(--twitch-text-color)'; // 使用 CSS 变量定义文本颜色
 
-        messageDiv.appendChild(usernameSpan);
-        messageDiv.appendChild(textSpan);
+        messageContainer.appendChild(usernameContainer);
+        messageContainer.appendChild(colonSpan);
+        messageContainer.appendChild(textSpan);
+        
+        messageDiv.appendChild(messageContainer);
 
         chatMessagesContainer.appendChild(messageDiv);
         this.scrollToBottom(); // 滚动到最新消息
