@@ -1,0 +1,40 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.png"
+    ]
+  },
+  "productName": "Neuro Simulator",
+  "mainBinaryName": "Neuro Simulator",
+  "version": "0.1.0",
+  "identifier": "com.tauri.neuro.simulator",
+  "plugins": {},
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 720,
+        "resizable": true,
+        "title": "Neuro Simulator Live",
+        "width": 1280,
+        "minWidth": 800,
+        "minHeight": 600,
+        "useHttpsScheme": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

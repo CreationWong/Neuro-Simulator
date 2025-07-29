@@ -310,47 +310,50 @@ async def update_settings_from_panel(request: Request):
     return RedirectResponse(url="/panel?message=设置已保存并热重载！", status_code=HTTP_303_SEE_OTHER)
 
 # -------------------------------------------------------------
-# --- API 控制端点 (供 CLI 和 Web 面板使用) ---
+# --- 直播控制 API 端点 ---
 # -------------------------------------------------------------
 
-@app.post("/api/control/start", tags=["API Control"])
-async def api_start_processes():
-    """API端点：启动直播进程"""
+@app.post("/api/stream/start", tags=["Stream Control"])
+async def api_start_stream():
+    """启动直播"""
     if not process_manager.is_running:
         process_manager.start_live_processes()
         return {"status": "success", "message": "直播已启动"}
     else:
         return {"status": "info", "message": "直播已在运行"}
 
-@app.post("/api/control/stop", tags=["API Control"])
-async def api_stop_processes():
-    """API端点：停止直播进程"""
+@app.post("/api/stream/stop", tags=["Stream Control"])
+async def api_stop_stream():
+    """停止直播"""
     if process_manager.is_running:
         process_manager.stop_live_processes()
         return {"status": "success", "message": "直播已停止"}
     else:
         return {"status": "info", "message": "直播未在运行"}
 
-@app.post("/api/control/restart", tags=["API Control"])
-async def api_restart_processes():
-    """API端点：重启直播进程"""
+@app.post("/api/stream/restart", tags=["Stream Control"])
+async def api_restart_stream():
+    """重启直播"""
     process_manager.stop_live_processes()
     await asyncio.sleep(1)
     process_manager.start_live_processes()
     return {"status": "success", "message": "直播已重启"}
 
-@app.get("/api/control/status", tags=["API Control"])
-async def api_get_status():
-    """API端点：获取当前运行状态"""
+@app.get("/api/stream/status", tags=["Stream Control"])
+async def api_get_stream_status():
+    """获取直播状态"""
     return {
         "is_running": process_manager.is_running,
         "backend_status": "running" if process_manager.is_running else "stopped"
     }
 
-@app.get("/api/logs", tags=["API Control"])
+# -------------------------------------------------------------
+# --- 日志 API 端点 ---
+# -------------------------------------------------------------
+
+@app.get("/api/logs", tags=["Logs"])
 async def api_get_logs(lines: int = 50):
-    """API端点：获取最近的日志行"""
-    # Convert deque to list and get last N lines
+    """获取最近的日志行"""
     logs_list = list(log_queue)
     return {"logs": logs_list[-lines:] if len(logs_list) > lines else logs_list}
 
@@ -426,8 +429,9 @@ class ErrorSpeechRequest(BaseModel):
     voice_name: str | None = None
     pitch: float | None = None
 
-@app.post("/synthesize_error_speech", tags=["Utilities"])
-async def synthesize_error_speech_endpoint(request: ErrorSpeechRequest):
+@app.post("/api/tts/synthesize", tags=["TTS"])
+async def synthesize_speech_endpoint(request: ErrorSpeechRequest):
+    """TTS语音合成端点"""
     try:
         audio_base64, _ = await synthesize_audio_segment(
             text=request.text, voice_name=request.voice_name, pitch=request.pitch
@@ -436,18 +440,56 @@ async def synthesize_error_speech_endpoint(request: ErrorSpeechRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/settings", response_model=AppSettings, tags=["API"], deprecated=True)
-async def get_current_settings():
+# -------------------------------------------------------------
+# --- 配置管理 API 端点 ---
+# -------------------------------------------------------------
+
+@app.get("/api/configs", tags=["Config Management"])
+async def get_configs():
+    """获取当前配置"""
     return config_manager.settings
 
-@app.patch("/api/settings", response_model=AppSettings, tags=["API"], deprecated=True)
-async def update_partial_settings(new_settings: dict):
+@app.patch("/api/configs", tags=["Config Management"])
+async def update_configs(new_settings: dict):
+    """更新配置"""
     await config_manager.update_settings(new_settings)
     return config_manager.settings
 
+@app.post("/api/configs/reload", tags=["Config Management"])
+async def reload_configs():
+    """重载配置文件"""
+    try:
+        await config_manager.update_settings({}) # 传入空字典，强制重载并触发回调
+        return {"status": "success", "message": "配置已重载"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"重载配置失败: {str(e)}")
+
+@app.get("/api/system/health", tags=["System"])
+async def health_check():
+    """健康检查端点，用于监控系统状态"""
+    return {
+        "status": "healthy",
+        "backend_running": True,
+        "process_manager_running": process_manager.is_running,
+        "timestamp": time.time()
+    }
+
 @app.get("/", tags=["Root"])
 async def root(): 
-    return {"message": "AI 主播后端正在运行！访问 /docs 查看API文档，或访问 /panel 查看控制面板。"}
+    return {
+        "message": "Neuro-Sama Simulator Backend",
+        "version": "2.0",
+        "api_docs": "/docs",
+        "control_panel": "/panel",
+        "api_structure": {
+            "stream": "/api/stream",
+            "configs": "/api/configs", 
+            "logs": "/api/logs",
+            "tts": "/api/tts",
+            "system": "/api/system",
+            "websocket": "/ws/stream"
+        }
+    }
 
 # -------------------------------------------------------------
 # --- Uvicorn 启动 (通过 neuro-panel 控制) ---

@@ -1,0 +1,86 @@
+/* src/styles/base.css */
+
+/* --- 全局CSS变量 --- */
+:root {
+  --twitch-purple: #9147FF;
+  --twitch-dark-bg: #F2F2F2;
+  --twitch-chat-bg: #FFFFFF;
+  --twitch-text-color: #18181B;
+  --twitch-secondary-text-color: #6A6A6D;
+  --twitch-border-color: #D3D3D3;
+  --twitch-hover-bg: #EFEFF1;
+  --twitch-button-bg: #EFEFF1;
+  --twitch-button-text-color: #0E0E10;
+  --twitch-button-hover-bg: #DFDFE1;
+  --twitch-primary-button-bg: var(--twitch-purple);
+  --twitch-primary-button-text-color: #FFFFFF;
+  --twitch-primary-button-hover-bg: #772CE8;
+  --twitch-tag-bg: #EFEFF1;
+  --twitch-tag-text-color: #6A6A6D;
+  --twitch-live-red: #EB0400;
+  --twitch-viewer-red: #971311;
+  --sidebar-width: 340px;
+  --header-height: 50px;
+  --neuro-shadow-color: #32003C;
+  --neuro-avatar-display-width-percent: 50%;
+  --fast-transition: background-color 0.2s, color 0.2s;
+}
+
+/* --- 全局字体定义 --- */
+@font-face {
+  font-family: 'First Coffee';
+  src: url('/fonts/first-coffee.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* --- 全局HTML和Body基础样式 --- */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+body {
+  font-family: 'Inter', Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--twitch-dark-bg);
+  color: var(--twitch-text-color);
+}
+
+/* --- 通用工具类 --- */
+.hidden {
+  display: none !important;
+}
+
+.twitch-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 7px; /* 向上微调1px */
+  border-radius: 100px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: var(--fast-transition);
+  outline: none;
+  background-color: var(--twitch-button-bg);
+  color: var(--twitch-button-text-color);
+}
+.twitch-button svg {
+  width: 1.2em;
+  height: 1.2em;
+  fill: currentColor;
+}
+.twitch-button:hover:not(:disabled) {
+  background-color: var(--twitch-button-hover-bg);
+}
+.twitch-button.subscribe-button {
+  background-color: var(--twitch-primary-button-bg);
+  color: var(--twitch-primary-button-text-color);
+}
+.twitch-button.subscribe-button:hover:not(:disabled) {
+  background-color: var(--twitch-primary-button-hover-bg);
+}
