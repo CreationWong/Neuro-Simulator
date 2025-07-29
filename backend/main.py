@@ -309,22 +309,50 @@ async def update_settings_from_panel(request: Request):
     await config_manager.update_settings(new_settings_data)
     return RedirectResponse(url="/panel?message=设置已保存并热重载！", status_code=HTTP_303_SEE_OTHER)
 
-@app.post("/panel/start", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
-async def start_processes_from_panel():
-    process_manager.start_live_processes()
-    return RedirectResponse(url="/panel?message=直播已启动", status_code=HTTP_303_SEE_OTHER)
+# -------------------------------------------------------------
+# --- API 控制端点 (供 CLI 和 Web 面板使用) ---
+# -------------------------------------------------------------
 
-@app.post("/panel/stop", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
-async def stop_processes_from_panel():
-    process_manager.stop_live_processes()
-    return RedirectResponse(url="/panel?message=直播已停止", status_code=HTTP_303_SEE_OTHER)
+@app.post("/api/control/start", tags=["API Control"])
+async def api_start_processes():
+    """API端点：启动直播进程"""
+    if not process_manager.is_running:
+        process_manager.start_live_processes()
+        return {"status": "success", "message": "直播已启动"}
+    else:
+        return {"status": "info", "message": "直播已在运行"}
 
-@app.post("/panel/restart", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
-async def restart_processes_from_panel():
+@app.post("/api/control/stop", tags=["API Control"])
+async def api_stop_processes():
+    """API端点：停止直播进程"""
+    if process_manager.is_running:
+        process_manager.stop_live_processes()
+        return {"status": "success", "message": "直播已停止"}
+    else:
+        return {"status": "info", "message": "直播未在运行"}
+
+@app.post("/api/control/restart", tags=["API Control"])
+async def api_restart_processes():
+    """API端点：重启直播进程"""
     process_manager.stop_live_processes()
     await asyncio.sleep(1)
     process_manager.start_live_processes()
-    return RedirectResponse(url="/panel?message=直播已重启", status_code=HTTP_303_SEE_OTHER)
+    return {"status": "success", "message": "直播已重启"}
+
+@app.get("/api/control/status", tags=["API Control"])
+async def api_get_status():
+    """API端点：获取当前运行状态"""
+    return {
+        "is_running": process_manager.is_running,
+        "backend_status": "running" if process_manager.is_running else "stopped"
+    }
+
+@app.get("/api/logs", tags=["API Control"])
+async def api_get_logs(lines: int = 50):
+    """API端点：获取最近的日志行"""
+    # Convert deque to list and get last N lines
+    logs_list = list(log_queue)
+    return {"logs": logs_list[-lines:] if len(logs_list) > lines else logs_list}
 
 @app.post("/panel/restart-server", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
 async def restart_server_hard():
@@ -422,14 +450,15 @@ async def root():
     return {"message": "AI 主播后端正在运行！访问 /docs 查看API文档，或访问 /panel 查看控制面板。"}
 
 # -------------------------------------------------------------
-# --- Uvicorn 启动 ---
+# --- Uvicorn 启动 (通过 neuro-panel 控制) ---
 # -------------------------------------------------------------
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host=config_manager.settings.server.host,
-        port=config_manager.settings.server.port,
-        reload=True
-    )
+# 禁用直接启动，必须通过 neuro-panel 控制
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(
+#         "main:app",
+#         host=config_manager.settings.server.host,
+#         port=config_manager.settings.server.port,
+#         reload=True
+#     )

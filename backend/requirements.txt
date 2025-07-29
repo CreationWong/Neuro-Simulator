@@ -10,3 +10,4 @@ pydantic
 jinja2
 python-multipart
 mutagen
+InquirerPy

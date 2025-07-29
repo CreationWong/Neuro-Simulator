@@ -129,33 +129,20 @@ class ConfigManager:
             logging.error(f"Error loading or parsing {CONFIG_FILE_PATH}: {e}")
             return {}
 
-    def _load_config_from_env(self, settings_model: AppSettings):
-        api_keys = settings_model.api_keys
-        api_keys.letta_token = os.getenv("LETTA_API_TOKEN", api_keys.letta_token)
-        api_keys.letta_base_url = os.getenv("LETTA_BASE_URL", api_keys.letta_base_url)
-        api_keys.neuro_agent_id = os.getenv("AGENT_ID", api_keys.neuro_agent_id)
-        api_keys.gemini_api_key = os.getenv("GEMINI_API_KEY", api_keys.gemini_api_key)
-        api_keys.openai_api_key = os.getenv("OPENAI_API_KEY", api_keys.openai_api_key)
-        api_keys.openai_api_base_url = os.getenv("OPENAI_API_BASE_URL", api_keys.openai_api_base_url)
-        api_keys.azure_speech_key = os.getenv("AZURE_SPEECH_KEY", api_keys.azure_speech_key)
-        api_keys.azure_speech_region = os.getenv("AZURE_SPEECH_REGION", api_keys.azure_speech_region)
-
     def _load_settings(self) -> AppSettings:
         yaml_config = self._load_config_from_yaml()
         base_settings = AppSettings.model_validate(yaml_config)
-        self._load_config_from_env(base_settings)
 
         if not base_settings.api_keys.letta_token or not base_settings.api_keys.neuro_agent_id:
-            raise ValueError("Critical config missing: LETTA_API_TOKEN or AGENT_ID must be set in settings.yaml or environment variables.")
+            raise ValueError("Critical config missing: LETTA_API_TOKEN or AGENT_ID must be set in settings.yaml.")
 
         logging.info("Configuration loaded successfully.")
         return base_settings
 
     def save_settings(self):
-        """Saves the current configuration to settings.yaml, preserving the api_keys section."""
+        """Saves the current configuration to settings.yaml."""
         try:
-            # 1. Get the current settings from memory, EXCLUDING api_keys
-            #    to avoid saving keys loaded from environment variables.
+            # 1. Get the current settings from memory
             config_to_save = self.settings.model_dump(mode='json', exclude={'api_keys'})
 
             # 2. Read the existing config on disk to get the api_keys that should be preserved.
