@@ -6,6 +6,9 @@ let authToken = '';
 let isConnected = false;
 let logWebSocket = null;
 let currentConfig = {}; // 存储当前配置
+let toastContainer = null; // 横幅提示容器
+let confirmDialog = null; // 确认对话框元素
+let confirmResolver = null; // 确认对话框的Promise resolver
 
 // DOM 元素
 const connectionForm = document.getElementById('connectionForm');
@@ -141,7 +144,7 @@ async function connectToBackend(autoConnect = false) {
     console.log('密码:', password); // 调试信息
     
     if (!url && !autoConnect) {
-        alert('请输入后端地址');
+        showToast('请输入后端地址', 'warning');
         return;
     }
     
@@ -174,7 +177,7 @@ async function connectToBackend(autoConnect = false) {
         if (response.status === 'healthy') {
             updateConnectionStatus(true, '已连接');
             if (!autoConnect) {
-                alert('连接成功！');
+                showToast('连接成功！', 'success');
             }
             // 更新直播状态
             updateStreamStatus();
@@ -189,7 +192,7 @@ async function connectToBackend(autoConnect = false) {
         console.error('连接失败:', error);
         updateConnectionStatus(false, '连接失败');
         if (!autoConnect) {
-            alert(`连接失败: ${error.message}`);
+            showToast(`连接失败: ${error.message}`, 'error');
         }
     }
 }
@@ -199,7 +202,7 @@ function disconnectFromBackend() {
     backendUrl = '';
     authToken = '';
     updateConnectionStatus(false, '已断开连接');
-    alert('已断开连接');
+    showToast('已断开连接', 'info');
     // 切换回连接页面
     switchTab('connection');
 }
@@ -219,42 +222,49 @@ async function updateStreamStatus() {
 
 // 开始直播
 async function startStream() {
+    const confirmed = await showConfirmDialog('确定要开始直播吗？');
+    if (!confirmed) {
+        return;
+    }
+    
     try {
         const response = await apiRequest('/api/stream/start', { method: 'POST' });
-        alert(response.message);
+        showToast(response.message, 'success');
         updateStreamStatus();
     } catch (error) {
-        alert(`操作失败: ${error.message}`);
+        showToast(`操作失败: ${error.message}`, 'error');
     }
 }
 
 // 停止直播
 async function stopStream() {
-    if (!confirm('确定要停止直播吗？')) {
+    const confirmed = await showConfirmDialog('确定要停止直播吗？');
+    if (!confirmed) {
         return;
     }
     
     try {
         const response = await apiRequest('/api/stream/stop', { method: 'POST' });
-        alert(response.message);
+        showToast(response.message, 'success');
         updateStreamStatus();
     } catch (error) {
-        alert(`操作失败: ${error.message}`);
+        showToast(`操作失败: ${error.message}`, 'error');
     }
 }
 
 // 重启直播
 async function restartStream() {
-    if (!confirm('确定要重启直播吗？这将停止并重新启动直播进程。')) {
+    const confirmed = await showConfirmDialog('确定要重启直播吗？这将停止并重新启动直播进程。');
+    if (!confirmed) {
         return;
     }
     
     try {
         const response = await apiRequest('/api/stream/restart', { method: 'POST' });
-        alert(response.message);
+        showToast(response.message, 'success');
         updateStreamStatus();
     } catch (error) {
-        alert(`操作失败: ${error.message}`);
+        showToast(`操作失败: ${error.message}`, 'error');
     }
 }
 
@@ -351,7 +361,9 @@ async function getConfig() {
         checkForMissingConfigItems(config);
     } catch (error) {
         console.error('获取配置失败:', error);
-        alert(`获取配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`);
+        showToast(`获取配置失败: ${error.message}
+
+请检查后端日志以获取更多信息。`, 'error');
     }
 }
 
@@ -427,12 +439,12 @@ async function saveConfig(e) {
             method: 'PATCH',
             body: JSON.stringify(config)
         });
-        alert('配置保存成功');
+        showToast('配置保存成功', 'success');
         // 更新当前配置
         currentConfig = {...currentConfig, ...config};
     } catch (error) {
         console.error('保存配置失败:', error);
-        alert(`保存配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`);
+        showToast(`保存配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`, 'error');
     }
 }
 
@@ -530,9 +542,143 @@ function initEventListeners() {
             if (tab.dataset.tab === 'config' && isConnected) {
                 getConfig().catch(error => {
                     console.error('获取配置失败:', error);
-                    alert(`获取配置失败: ${error.message}`);
+                    showToast(`获取配置失败: ${error.message}`, 'error');
                 });
             }
+        });
+    });
+}
+
+// 显示横幅提示
+function showToast(message, type = 'info', duration = 5000) {
+    // 如果容器不存在，创建它
+    if (!toastContainer) {
+        toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+    }
+    
+    // 创建横幅元素
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    // 添加图标
+    const icon = document.createElement('span');
+    icon.className = 'icon';
+    switch (type) {
+        case 'success':
+            icon.textContent = '✓';
+            break;
+        case 'error':
+            icon.textContent = '✗';
+            break;
+        case 'warning':
+            icon.textContent = '!';
+            break;
+        default:
+            icon.textContent = 'ℹ';
+    }
+    
+    // 添加消息文本
+    const messageEl = document.createElement('span');
+    messageEl.className = 'message';
+    messageEl.textContent = message;
+    
+    // 添加关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-btn';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = () => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    };
+    
+    // 组装元素
+    toast.appendChild(icon);
+    toast.appendChild(messageEl);
+    toast.appendChild(closeBtn);
+    
+    // 添加到容器
+    toastContainer.appendChild(toast);
+    
+    // 触发显示动画
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // 自动隐藏
+    if (duration > 0) {
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, duration);
+    }
+}
+
+// 显示确认对话框
+function showConfirmDialog(message) {
+    // 如果对话框元素不存在，创建它
+    if (!confirmDialog) {
+        confirmDialog = document.getElementById('confirmDialog');
+        if (!confirmDialog) {
+            confirmDialog = document.createElement('div');
+            confirmDialog.id = 'confirmDialog';
+            confirmDialog.className = 'confirm-dialog';
+            
+            confirmDialog.innerHTML = `
+                <div class="confirm-content">
+                    <div class="confirm-message"></div>
+                    <div class="confirm-buttons">
+                        <button class="btn secondary confirm-cancel">取消</button>
+                        <button class="btn primary confirm-ok">确定</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(confirmDialog);
+        }
+    }
+    
+    // 设置消息
+    confirmDialog.querySelector('.confirm-message').textContent = message;
+    
+    // 显示对话框
+    confirmDialog.classList.add('show');
+    
+    // 返回Promise
+    return new Promise((resolve) => {
+        // 绑定事件（每次调用时重新绑定以确保事件处理程序是最新的）
+        const okButton = confirmDialog.querySelector('.confirm-ok');
+        const cancelButton = confirmDialog.querySelector('.confirm-cancel');
+        
+        // 清除之前的事件监听器
+        const newOkButton = okButton.cloneNode(true);
+        okButton.parentNode.replaceChild(newOkButton, okButton);
+        
+        const newCancelButton = cancelButton.cloneNode(true);
+        cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+        
+        // 添加新的事件监听器
+        newOkButton.addEventListener('click', () => {
+            resolve(true);
+            confirmDialog.classList.remove('show');
+        });
+        
+        newCancelButton.addEventListener('click', () => {
+            resolve(false);
+            confirmDialog.classList.remove('show');
         });
     });
 }

@@ -22,6 +22,19 @@
   --sidebar-width: 200px;
   --header-height: 60px;
   --fast-transition: background-color 0.2s, color 0.2s;
+  /* Toast横幅变量 */
+  --toast-success-bg: #d4edda;
+  --toast-success-border: #c3e6cb;
+  --toast-success-color: #155724;
+  --toast-error-bg: #f8d7da;
+  --toast-error-border: #f5c6cb;
+  --toast-error-color: #721c24;
+  --toast-info-bg: #d1ecf1;
+  --toast-info-border: #bee5eb;
+  --toast-info-color: #0c5460;
+  --toast-warning-bg: #fff3cd;
+  --toast-warning-border: #ffeeba;
+  --toast-warning-color: #856404;
 }
 
 /* --- 全局基础样式 --- */
@@ -407,6 +420,141 @@ footer {
   background-color: var(--twitch-chat-bg);
 }
 
+/* --- 横幅提示样式 --- */
+.toast-container {
+  position: fixed;
+  z-index: 1000;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  pointer-events: none;
+  width: 100%;
+  align-items: center;
+}
+
+.toast {
+  min-width: 300px;
+  max-width: 500px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transform: translateY(-100%);
+  transition: all 0.3s ease-in-out;
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.success {
+  background-color: var(--toast-success-bg);
+  border: 1px solid var(--toast-success-border);
+  color: var(--toast-success-color);
+}
+
+.toast.error {
+  background-color: var(--toast-error-bg);
+  border: 1px solid var(--toast-error-border);
+  color: var(--toast-error-color);
+}
+
+.toast.info {
+  background-color: var(--toast-info-bg);
+  border: 1px solid var(--toast-info-border);
+  color: var(--toast-info-color);
+}
+
+.toast.warning {
+  background-color: var(--toast-warning-bg);
+  border: 1px solid var(--toast-warning-border);
+  color: var(--toast-warning-color);
+}
+
+.toast .close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0.7;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast .close-btn:hover {
+  opacity: 1;
+}
+
+.toast .icon {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.toast .message {
+  flex: 1;
+  font-size: 14px;
+}
+
+/* --- 确认对话框样式 --- */
+.confirm-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.confirm-dialog.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.confirm-content {
+  background-color: var(--twitch-chat-bg);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-message {
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+  color: var(--twitch-text-color);
+}
+
+.confirm-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 /* --- 响应式设计 --- */
 @media (max-width: 768px) {
   .container {
@@ -460,5 +608,11 @@ footer {
   .logs-controls {
     flex-direction: column;
     align-items: stretch;
+  }
+  
+  /* 移动端横幅提示 */
+  .toast {
+    min-width: 90vw;
+    max-width: 90vw;
   }
 }
