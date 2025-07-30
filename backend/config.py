@@ -133,8 +133,16 @@ class ConfigManager:
         yaml_config = self._load_config_from_yaml()
         base_settings = AppSettings.model_validate(yaml_config)
 
-        if not base_settings.api_keys.letta_token or not base_settings.api_keys.neuro_agent_id:
-            raise ValueError("Critical config missing: LETTA_API_TOKEN or AGENT_ID must be set in settings.yaml.")
+        # 检查关键配置项
+        missing_keys = []
+        if not base_settings.api_keys.letta_token:
+            missing_keys.append("api_keys.letta_token")
+        if not base_settings.api_keys.neuro_agent_id:
+            missing_keys.append("api_keys.neuro_agent_id")
+            
+        if missing_keys:
+            raise ValueError(f"Critical config missing in settings.yaml: {', '.join(missing_keys)}. "
+                           f"Please check your settings.yaml file against settings.yaml.example.")
 
         logging.info("Configuration loaded successfully.")
         return base_settings

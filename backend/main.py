@@ -359,16 +359,106 @@ async def synthesize_speech_endpoint(request: ErrorSpeechRequest):
 # --- 配置管理 API 端点 ---
 # -------------------------------------------------------------
 
+def filter_config_for_frontend(settings):
+    """过滤配置，只返回前端需要的配置项"""
+    # 创建一个新的字典，只包含前端需要的配置项
+    filtered_settings = {}
+    
+    # Stream metadata (除了streamer_nickname)
+    if hasattr(settings, 'stream_metadata'):
+        filtered_settings['stream_metadata'] = {
+            'stream_title': settings.stream_metadata.stream_title,
+            'stream_category': settings.stream_metadata.stream_category,
+            'stream_tags': settings.stream_metadata.stream_tags
+        }
+    
+    # Neuro behavior settings
+    if hasattr(settings, 'neuro_behavior'):
+        filtered_settings['neuro_behavior'] = {
+            'input_chat_sample_size': settings.neuro_behavior.input_chat_sample_size,
+            'post_speech_cooldown_sec': settings.neuro_behavior.post_speech_cooldown_sec,
+            'initial_greeting': settings.neuro_behavior.initial_greeting
+        }
+    
+    # Audience simulation settings
+    if hasattr(settings, 'audience_simulation'):
+        filtered_settings['audience_simulation'] = {
+            'llm_provider': settings.audience_simulation.llm_provider,
+            'gemini_model': settings.audience_simulation.gemini_model,
+            'openai_model': settings.audience_simulation.openai_model,
+            'llm_temperature': settings.audience_simulation.llm_temperature,
+            'chat_generation_interval_sec': settings.audience_simulation.chat_generation_interval_sec,
+            'chats_per_batch': settings.audience_simulation.chats_per_batch,
+            'max_output_tokens': settings.audience_simulation.max_output_tokens,
+            'username_blocklist': settings.audience_simulation.username_blocklist,
+            'username_pool': settings.audience_simulation.username_pool
+        }
+    
+    # Performance settings
+    if hasattr(settings, 'performance'):
+        filtered_settings['performance'] = {
+            'neuro_input_queue_max_size': settings.performance.neuro_input_queue_max_size,
+            'audience_chat_buffer_max_size': settings.performance.audience_chat_buffer_max_size,
+            'initial_chat_backlog_limit': settings.performance.initial_chat_backlog_limit
+        }
+    
+    return filtered_settings
+
 @app.get("/api/configs", tags=["Config Management"], dependencies=[Depends(get_api_token)])
 async def get_configs():
-    """获取当前配置"""
-    return config_manager.settings
+    """获取当前配置（已过滤，不包含敏感信息）"""
+    return filter_config_for_frontend(config_manager.settings)
 
 @app.patch("/api/configs", tags=["Config Management"], dependencies=[Depends(get_api_token)])
 async def update_configs(new_settings: dict):
-    """更新配置"""
-    await config_manager.update_settings(new_settings)
-    return config_manager.settings
+    """更新配置（已过滤，不包含敏感信息）"""
+    try:
+        # 过滤掉不应该被修改的配置项
+        filtered_settings = {}
+        
+        # 定义允许修改的配置路径
+        allowed_paths = {
+            'stream_metadata.stream_title',
+            'stream_metadata.stream_category',
+            'stream_metadata.stream_tags',
+            'neuro_behavior.input_chat_sample_size',
+            'neuro_behavior.post_speech_cooldown_sec',
+            'neuro_behavior.initial_greeting',
+            'audience_simulation.llm_provider',
+            'audience_simulation.gemini_model',
+            'audience_simulation.openai_model',
+            'audience_simulation.llm_temperature',
+            'audience_simulation.chat_generation_interval_sec',
+            'audience_simulation.chats_per_batch',
+            'audience_simulation.max_output_tokens',
+            'audience_simulation.username_blocklist',
+            'audience_simulation.username_pool',
+            'performance.neuro_input_queue_max_size',
+            'performance.audience_chat_buffer_max_size',
+            'performance.initial_chat_backlog_limit'
+        }
+        
+        # 递归函数来检查和过滤配置项
+        def filter_nested_dict(obj, prefix=''):
+            filtered = {}
+            for key, value in obj.items():
+                full_path = f"{prefix}.{key}" if prefix else key
+                if full_path in allowed_paths:
+                    filtered[key] = value
+                elif isinstance(value, dict):
+                    nested_filtered = filter_nested_dict(value, full_path)
+                    if nested_filtered:  # 只有当过滤后还有内容时才添加
+                        filtered[key] = nested_filtered
+            return filtered
+        
+        # 应用过滤
+        filtered_settings = filter_nested_dict(new_settings)
+        
+        # 更新配置
+        await config_manager.update_settings(filtered_settings)
+        return filter_config_for_frontend(config_manager.settings)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新配置失败: {str(e)}")
 
 @app.post("/api/configs/reload", tags=["Config Management"], dependencies=[Depends(get_api_token)])
 async def reload_configs():

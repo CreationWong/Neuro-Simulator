@@ -5,13 +5,11 @@ let backendUrl = '';
 let authToken = '';
 let isConnected = false;
 let logWebSocket = null;
+let currentConfig = {}; // 存储当前配置
 
 // DOM 元素
 const connectionForm = document.getElementById('connectionForm');
 const disconnectBtn = document.getElementById('disconnectBtn');
-const streamControlSection = document.getElementById('streamControlSection');
-const configSection = document.getElementById('configSection');
-const logsSection = document.getElementById('logsSection');
 const connectionStatus = document.getElementById('connectionStatus');
 const statusDot = connectionStatus.querySelector('.status-dot');
 const statusText = connectionStatus.querySelector('.status-text');
@@ -23,15 +21,17 @@ const stopStreamBtn = document.getElementById('stopStreamBtn');
 const restartStreamBtn = document.getElementById('restartStreamBtn');
 
 // 配置管理相关元素
-const getConfigBtn = document.getElementById('getConfigBtn');
-const reloadConfigBtn = document.getElementById('reloadConfigBtn');
-const saveConfigBtn = document.getElementById('saveConfigBtn');
-const configEditor = document.getElementById('configEditor');
+const configForm = document.getElementById('configForm');
+const resetConfigBtn = document.getElementById('resetConfigBtn');
 
 // 日志显示相关元素
 const logsOutput = document.getElementById('logsOutput');
 const logLines = document.getElementById('logLines');
 const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+
+// 标签页相关元素
+const navTabs = document.querySelectorAll('.nav-tab');
+const tabContents = document.querySelectorAll('.tab-content');
 
 // 更新连接状态显示
 function updateConnectionStatus(connected, message = '') {
@@ -40,16 +40,20 @@ function updateConnectionStatus(connected, message = '') {
         statusDot.className = 'status-dot connected';
         statusText.textContent = message || '已连接';
         disconnectBtn.disabled = false;
-        streamControlSection.style.display = 'block';
-        configSection.style.display = 'block';
-        logsSection.style.display = 'block';
+        
+        // 显示控制、配置和日志标签页
+        document.querySelector('[data-tab="control"]').style.display = 'block';
+        document.querySelector('[data-tab="config"]').style.display = 'block';
+        document.querySelector('[data-tab="logs"]').style.display = 'block';
     } else {
         statusDot.className = 'status-dot disconnected';
         statusText.textContent = message || '未连接';
         disconnectBtn.disabled = true;
-        streamControlSection.style.display = 'none';
-        configSection.style.display = 'none';
-        logsSection.style.display = 'none';
+        
+        // 隐藏控制、配置和日志标签页
+        document.querySelector('[data-tab="control"]').style.display = 'none';
+        document.querySelector('[data-tab="config"]').style.display = 'none';
+        document.querySelector('[data-tab="logs"]').style.display = 'none';
         
         // 关闭日志WebSocket连接
         if (logWebSocket) {
@@ -57,6 +61,27 @@ function updateConnectionStatus(connected, message = '') {
             logWebSocket = null;
         }
     }
+}
+
+// 切换标签页
+function switchTab(tabName) {
+    // 更新标签页激活状态
+    navTabs.forEach(tab => {
+        if (tab.dataset.tab === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // 显示对应的内容区域
+    tabContents.forEach(content => {
+        if (content.id === `${tabName}-tab`) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
 }
 
 // 发送API请求的通用函数
@@ -107,7 +132,7 @@ async function apiRequest(endpoint, options = {}, skipConnectionCheck = false) {
 }
 
 // 连接到后端
-async function connectToBackend() {
+async function connectToBackend(autoConnect = false) {
     console.log('开始连接到后端'); // 调试信息
     const url = document.getElementById('backendUrl').value.trim();
     const password = document.getElementById('password').value;
@@ -115,8 +140,13 @@ async function connectToBackend() {
     console.log('后端URL:', url); // 调试信息
     console.log('密码:', password); // 调试信息
     
-    if (!url) {
+    if (!url && !autoConnect) {
         alert('请输入后端地址');
+        return;
+    }
+    
+    if (!url && autoConnect) {
+        // 自动连接时如果没有URL则不执行连接
         return;
     }
     
@@ -125,9 +155,13 @@ async function connectToBackend() {
         statusDot.className = 'status-dot connecting';
         statusText.textContent = '连接中...';
         
-        // 保存连接信息
+        // 保存连接信息到localStorage
         backendUrl = url;
         authToken = password || ''; // 保存密码，即使是空字符串
+        localStorage.setItem('backendUrl', backendUrl);
+        if (authToken) {
+            localStorage.setItem('authToken', authToken);
+        }
         
         console.log('保存的后端URL:', backendUrl); // 调试信息
         console.log('保存的认证Token:', authToken); // 调试信息
@@ -139,18 +173,24 @@ async function connectToBackend() {
         
         if (response.status === 'healthy') {
             updateConnectionStatus(true, '已连接');
-            alert('连接成功！');
+            if (!autoConnect) {
+                alert('连接成功！');
+            }
             // 更新直播状态
             updateStreamStatus();
             // 连接日志WebSocket
             connectLogWebSocket();
+            // 默认切换到控制页面
+            switchTab('control');
         } else {
             throw new Error('后端服务不健康');
         }
     } catch (error) {
         console.error('连接失败:', error);
         updateConnectionStatus(false, '连接失败');
-        alert(`连接失败: ${error.message}`);
+        if (!autoConnect) {
+            alert(`连接失败: ${error.message}`);
+        }
     }
 }
 
@@ -160,6 +200,8 @@ function disconnectFromBackend() {
     authToken = '';
     updateConnectionStatus(false, '已断开连接');
     alert('已断开连接');
+    // 切换回连接页面
+    switchTab('connection');
 }
 
 // 更新直播状态
@@ -216,138 +258,182 @@ async function restartStream() {
     }
 }
 
+// 将配置对象转换为表单值
+function configToForm(config) {
+    // 遍历表单中的每个输入元素
+    const formElements = configForm.querySelectorAll('input, select, textarea');
+    
+    formElements.forEach(element => {
+        const name = element.name;
+        if (!name) return;
+        
+        // 解析嵌套属性路径 (例如: stream_metadata.stream_title)
+        const keys = name.split('.');
+        let value = config;
+        
+        // 通过路径获取配置值
+        for (const key of keys) {
+            if (value && typeof value === 'object' && key in value) {
+                value = value[key];
+            } else {
+                value = undefined;
+                break;
+            }
+        }
+        
+        // 根据元素类型设置值
+        if (value !== undefined) {
+            if (element.type === 'checkbox') {
+                element.checked = value;
+            } else if (Array.isArray(value)) {
+                // 对于数组类型，将其转换为逗号分隔的字符串
+                element.value = value.join(', ');
+            } else {
+                element.value = value;
+            }
+        }
+    });
+}
+
+// 将表单值转换为配置对象
+function formToConfig() {
+    const config = {};
+    
+    // 遍历表单中的每个输入元素
+    const formElements = configForm.querySelectorAll('input, select, textarea');
+    
+    formElements.forEach(element => {
+        const name = element.name;
+        if (!name) return;
+        
+        // 解析嵌套属性路径 (例如: stream_metadata.stream_title)
+        const keys = name.split('.');
+        let obj = config;
+        
+        // 创建嵌套对象结构
+        for (let i = 0; i < keys.length - 1; i++) {
+            const key = keys[i];
+            if (!(key in obj)) {
+                obj[key] = {};
+            }
+            obj = obj[key];
+        }
+        
+        // 设置最终值
+        const lastKey = keys[keys.length - 1];
+        if (element.type === 'checkbox') {
+            obj[lastKey] = element.checked;
+        } else if (element.type === 'number') {
+            const numValue = parseFloat(element.value);
+            obj[lastKey] = isNaN(numValue) ? element.value : numValue;
+        } else if (element.type === 'text' && 
+                  (element.name.endsWith('.stream_tags') || 
+                   element.name.endsWith('.username_blocklist') ||
+                   element.name.endsWith('.username_pool'))) {
+            // 处理数组类型字段
+            obj[lastKey] = element.value.split(',').map(item => item.trim()).filter(item => item);
+        } else {
+            obj[lastKey] = element.value;
+        }
+    });
+    
+    return config;
+}
+
 // 获取配置
 async function getConfig() {
     try {
         const config = await apiRequest('/api/configs');
-        // 格式化配置为YAML格式显示
-        configEditor.value = formatConfigAsYaml(config);
+        currentConfig = config; // 保存当前配置
+        configToForm(config); // 填充表单
+        
+        // 检查是否有未显示的配置项
+        checkForMissingConfigItems(config);
     } catch (error) {
-        alert(`获取配置失败: ${error.message}`);
+        console.error('获取配置失败:', error);
+        alert(`获取配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`);
     }
 }
 
-// 重载配置
-async function reloadConfig() {
-    try {
-        const response = await apiRequest('/api/configs/reload', { method: 'POST' });
-        alert(response.message);
-        // 重新获取配置显示
-        await getConfig();
-    } catch (error) {
-        alert(`重载配置失败: ${error.message}`);
+// 检查是否有未在面板中显示的配置项
+function checkForMissingConfigItems(config) {
+    // 定义应该在面板中显示的配置项路径
+    const expectedPaths = [
+        'stream_metadata.stream_title',
+        'stream_metadata.stream_category',
+        'stream_metadata.stream_tags',
+        'neuro_behavior.input_chat_sample_size',
+        'neuro_behavior.post_speech_cooldown_sec',
+        'neuro_behavior.initial_greeting',
+        'audience_simulation.llm_provider',
+        'audience_simulation.gemini_model',
+        'audience_simulation.openai_model',
+        'audience_simulation.llm_temperature',
+        'audience_simulation.chat_generation_interval_sec',
+        'audience_simulation.chats_per_batch',
+        'audience_simulation.max_output_tokens',
+        'audience_simulation.username_blocklist',
+        'audience_simulation.username_pool',
+        'performance.neuro_input_queue_max_size',
+        'performance.audience_chat_buffer_max_size',
+        'performance.initial_chat_backlog_limit'
+    ];
+    
+    // 收集实际配置中的所有路径
+    const actualPaths = [];
+    
+    function collectPaths(obj, prefix = '') {
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                const fullPath = prefix ? `${prefix}.${key}` : key;
+                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                    collectPaths(obj[key], fullPath);
+                } else {
+                    actualPaths.push(fullPath);
+                }
+            }
+        }
     }
+    
+    collectPaths(config);
+    
+    // 检查是否有未显示的配置项
+    const missingPaths = actualPaths.filter(path => 
+        !expectedPaths.includes(path) && 
+        !path.startsWith('api_keys') && 
+        !path.startsWith('tts') && 
+        !path.startsWith('server') &&
+        path !== 'stream_metadata.streamer_nickname'
+    );
+    
+    if (missingPaths.length > 0) {
+        console.warn('发现未在面板中显示的配置项:', missingPaths);
+        // 可以在这里添加更多用户提示逻辑
+    }
+}
+
+// 重置配置表单
+function resetConfigForm() {
+    configToForm(currentConfig); // 使用保存的配置重置表单
 }
 
 // 保存配置
-async function saveConfig() {
+async function saveConfig(e) {
+    e.preventDefault(); // 阻止表单默认提交行为
+    
     try {
-        const configText = configEditor.value;
-        // 尝试解析YAML格式的配置
-        const config = parseYamlConfig(configText);
+        const config = formToConfig(); // 从表单获取配置
         await apiRequest('/api/configs', {
             method: 'PATCH',
             body: JSON.stringify(config)
         });
         alert('配置保存成功');
+        // 更新当前配置
+        currentConfig = {...currentConfig, ...config};
     } catch (error) {
-        alert(`保存配置失败: ${error.message}`);
+        console.error('保存配置失败:', error);
+        alert(`保存配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`);
     }
-}
-
-// 简单的YAML格式化函数（只是美化显示，不是真正的YAML解析器）
-function formatConfigAsYaml(obj, indent = 0) {
-    const spaces = '  '.repeat(indent);
-    let result = '';
-    
-    for (const [key, value] of Object.entries(obj)) {
-        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-            result += `${spaces}${key}:\n${formatConfigAsYaml(value, indent + 1)}`;
-        } else if (Array.isArray(value)) {
-            result += `${spaces}${key}:\n`;
-            value.forEach(item => {
-                if (typeof item === 'object' && item !== null) {
-                    result += `${spaces}  -\n${formatConfigAsYaml(item, indent + 2)}`;
-                } else {
-                    result += `${spaces}  - ${item}\n`;
-                }
-            });
-        } else {
-            result += `${spaces}${key}: ${value}\n`;
-        }
-    }
-    
-    return result;
-}
-
-// 简单的YAML解析函数（仅处理基本结构）
-function parseYamlConfig(yamlText) {
-    const lines = yamlText.split('\n');
-    const result = {};
-    const stack = [result];
-    const indents = [0];
-    
-    for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (!trimmedLine || trimmedLine.startsWith('#')) continue;
-        
-        const currentIndent = line.search(/\S/);
-        const match = trimmedLine.match(/^([^:]+):\s*(.*)$/);
-        
-        if (match) {
-            const key = match[1].trim();
-            const value = match[2].trim();
-            
-            // 调整栈和缩进级别
-            while (indents.length > 1 && currentIndent <= indents[indents.length - 1]) {
-                stack.pop();
-                indents.pop();
-            }
-            
-            if (value) {
-                // 简单值
-                const parent = stack[stack.length - 1];
-                if (/^\d+$/.test(value)) {
-                    parent[key] = parseInt(value);
-                } else if (/^true|false$/i.test(value)) {
-                    parent[key] = value.toLowerCase() === 'true';
-                } else {
-                    parent[key] = value;
-                }
-            } else {
-                // 对象或数组
-                const parent = stack[stack.length - 1];
-                if (trimmedLine.endsWith(':')) {
-                    // 对象
-                    const newObj = {};
-                    parent[key] = newObj;
-                    stack.push(newObj);
-                    indents.push(currentIndent);
-                } else if (trimmedLine.endsWith(':-')) {
-                    // 数组
-                    const newArr = [];
-                    parent[key] = newArr;
-                    stack.push(newArr);
-                    indents.push(currentIndent);
-                }
-            }
-        } else if (trimmedLine.startsWith('- ')) {
-            // 数组项
-            const value = trimmedLine.substring(2).trim();
-            const parent = stack[stack.length - 1];
-            if (parent && Array.isArray(parent)) {
-                if (/^\d+$/.test(value)) {
-                    parent.push(parseInt(value));
-                } else if (/^true|false$/i.test(value)) {
-                    parent.push(value.toLowerCase() === 'true');
-                } else {
-                    parent.push(value);
-                }
-            }
-        }
-    }
-    
-    return result;
 }
 
 // 获取日志
@@ -427,31 +513,53 @@ function initEventListeners() {
     stopStreamBtn.addEventListener('click', stopStream);
     restartStreamBtn.addEventListener('click', restartStream);
     
-    // 配置管理按钮
-    getConfigBtn.addEventListener('click', getConfig);
-    reloadConfigBtn.addEventListener('click', reloadConfig);
-    saveConfigBtn.addEventListener('click', saveConfig);
+    // 配置管理表单
+    configForm.addEventListener('submit', saveConfig);
+    resetConfigBtn.addEventListener('click', resetConfigForm);
     
     // 日志相关按钮
     refreshLogsBtn.addEventListener('click', refreshLogs);
     logLines.addEventListener('change', refreshLogs);
     
-    // 页面加载时尝试从localStorage恢复连接信息
-    window.addEventListener('load', () => {
-        const savedUrl = localStorage.getItem('backendUrl');
-        const savedPassword = localStorage.getItem('authToken');
-        if (savedUrl) {
-            document.getElementById('backendUrl').value = savedUrl;
-        }
-        if (savedPassword) {
-            document.getElementById('password').value = savedPassword;
-        }
+    // 标签页切换
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            switchTab(tab.dataset.tab);
+            
+            // 当切换到配置标签页时，自动加载配置
+            if (tab.dataset.tab === 'config' && isConnected) {
+                getConfig().catch(error => {
+                    console.error('获取配置失败:', error);
+                    alert(`获取配置失败: ${error.message}`);
+                });
+            }
+        });
     });
 }
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
+    
+    // 从localStorage恢复连接信息
+    const savedUrl = localStorage.getItem('backendUrl');
+    const savedPassword = localStorage.getItem('authToken');
+    
+    if (savedUrl) {
+        document.getElementById('backendUrl').value = savedUrl;
+    }
+    
+    if (savedPassword) {
+        document.getElementById('password').value = savedPassword;
+    }
+    
+    // 如果有保存的URL，尝试自动连接
+    if (savedUrl) {
+        // 使用setTimeout确保DOM完全加载后再连接
+        setTimeout(() => {
+            connectToBackend(true);
+        }, 100);
+    }
     
     // 定期更新直播状态
     setInterval(() => {

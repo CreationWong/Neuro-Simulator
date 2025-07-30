@@ -3,15 +3,15 @@
 /* --- 全局CSS变量 --- */
 :root {
   --twitch-purple: #9147FF;
-  --twitch-dark-bg: #0E0E10;
-  --twitch-chat-bg: #1F1F23;
-  --twitch-text-color: #EFEFF1;
-  --twitch-secondary-text-color: #ADADB8;
-  --twitch-border-color: #3A3A3D;
-  --twitch-hover-bg: #26262C;
-  --twitch-button-bg: #26262C;
-  --twitch-button-text-color: #EFEFF1;
-  --twitch-button-hover-bg: #3A3A3D;
+  --twitch-dark-bg: #F2F2F2;
+  --twitch-chat-bg: #FFFFFF;
+  --twitch-text-color: #18181B;
+  --twitch-secondary-text-color: #6A6A6D;
+  --twitch-border-color: #D3D3D3;
+  --twitch-hover-bg: #EFEFF1;
+  --twitch-button-bg: #EFEFF1;
+  --twitch-button-text-color: #0E0E10;
+  --twitch-button-hover-bg: #DFDFE1;
   --twitch-primary-button-bg: var(--twitch-purple);
   --twitch-primary-button-text-color: #FFFFFF;
   --twitch-primary-button-hover-bg: #772CE8;
@@ -19,6 +19,8 @@
   --twitch-danger-button-hover-bg: #E03A3A;
   --twitch-warning-button-bg: #FFB800;
   --twitch-warning-button-hover-bg: #E0A000;
+  --sidebar-width: 200px;
+  --header-height: 60px;
   --fast-transition: background-color 0.2s, color 0.2s;
 }
 
@@ -34,30 +36,31 @@ html, body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--twitch-dark-bg);
   color: var(--twitch-text-color);
+  overflow: hidden;
 }
 
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
+  max-width: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 /* --- 头部样式 --- */
 header {
+  height: var(--header-height);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 15px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--twitch-border-color);
+  flex-shrink: 0;
+  background-color: var(--twitch-chat-bg);
 }
 
 header h1 {
   margin: 0;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   color: var(--twitch-text-color);
 }
 
@@ -86,14 +89,72 @@ header h1 {
   background-color: #FFC107;
 }
 
+/* --- 主布局样式 --- */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* --- 侧边栏样式 --- */
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--twitch-chat-bg);
+  border-right: 1px solid var(--twitch-border-color);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-tabs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-tab {
+  padding: 15px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--twitch-border-color);
+  transition: var(--fast-transition);
+  font-weight: 500;
+}
+
+.nav-tab:hover {
+  background-color: var(--twitch-hover-bg);
+}
+
+.nav-tab.active {
+  background-color: var(--twitch-purple);
+  color: var(--twitch-primary-button-text-color);
+}
+
+/* --- 内容区域样式 --- */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background-color: var(--twitch-dark-bg);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
 /* --- 卡片样式 --- */
 .card {
   background-color: var(--twitch-chat-bg);
   border-radius: 8px;
   padding: 20px;
-  margin-bottom: 20px;
   border: 1px solid var(--twitch-border-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .card h2 {
@@ -115,7 +176,7 @@ header h1 {
   color: var(--twitch-text-color);
 }
 
-.form-group input {
+.form-control {
   width: 100%;
   padding: 10px;
   border-radius: 4px;
@@ -125,7 +186,7 @@ header h1 {
   font-size: 1rem;
 }
 
-.form-group input:focus {
+.form-control:focus {
   outline: none;
   border-color: var(--twitch-purple);
   box-shadow: 0 0 0 2px rgba(145, 71, 255, 0.2);
@@ -135,6 +196,52 @@ header h1 {
   display: flex;
   gap: 10px;
   margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.config-section {
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--twitch-border-color);
+}
+
+.config-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--twitch-text-color);
+  font-size: 1.2rem;
+}
+
+.config-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.config-info {
+  background-color: var(--twitch-hover-bg);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+}
+
+.config-info p {
+  margin: 0;
+}
+
+.config-warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 15px;
+  font-size: 0.9rem;
+}
+
+.config-warning p {
+  margin: 0;
 }
 
 /* --- 按钮样式 --- */
@@ -188,7 +295,7 @@ header h1 {
 
 .btn.warning {
   background-color: var(--twitch-warning-button-bg);
-  color: var(--twitch-dark-bg);
+  color: var(--twitch-text-color);
 }
 
 .btn.warning:hover:not(:disabled) {
@@ -292,11 +399,12 @@ header h1 {
 
 /* --- 页脚样式 --- */
 footer {
-  margin-top: auto;
-  padding-top: 20px;
+  padding: 15px 20px;
   text-align: center;
   color: var(--twitch-secondary-text-color);
   border-top: 1px solid var(--twitch-border-color);
+  flex-shrink: 0;
+  background-color: var(--twitch-chat-bg);
 }
 
 /* --- 响应式设计 --- */
@@ -309,6 +417,33 @@ footer {
     flex-direction: column;
     gap: 15px;
     text-align: center;
+    height: auto;
+    padding: 15px;
+  }
+  
+  .main-layout {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--twitch-border-color);
+  }
+  
+  .nav-tabs {
+    display: flex;
+  }
+  
+  .nav-tab {
+    flex: 1;
+    text-align: center;
+    border-bottom: none;
+    border-right: 1px solid var(--twitch-border-color);
+  }
+  
+  .content-area {
+    padding: 10px;
   }
   
   .form-actions,

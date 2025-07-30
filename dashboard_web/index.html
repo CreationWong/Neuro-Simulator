@@ -17,69 +17,197 @@
             </div>
         </header>
 
-        <main>
-            <!-- 连接设置区域 -->
-            <section class="card connection-section">
-                <h2>连接设置</h2>
-                <form id="connectionForm">
-                    <div class="form-group">
-                        <label for="backendUrl">后端地址:</label>
-                        <input type="url" id="backendUrl" placeholder="http://localhost:8000" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">访问密码 (可选):</label>
-                        <input type="password" id="password" placeholder="留空表示无密码">
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn primary">连接</button>
-                        <button type="button" id="disconnectBtn" class="btn secondary" disabled>断开连接</button>
-                    </div>
-                </form>
-            </section>
+        <main class="main-layout">
+            <!-- 侧边导航栏 -->
+            <nav class="sidebar" id="sidebar">
+                <ul class="nav-tabs">
+                    <li class="nav-tab active" data-tab="connection">
+                        <span>连接</span>
+                    </li>
+                    <li class="nav-tab" data-tab="control">
+                        <span>控制</span>
+                    </li>
+                    <li class="nav-tab" data-tab="config">
+                        <span>配置</span>
+                    </li>
+                    <li class="nav-tab" data-tab="logs">
+                        <span>日志</span>
+                    </li>
+                </ul>
+            </nav>
 
-            <!-- 直播控制区域 -->
-            <section class="card stream-control-section" id="streamControlSection" style="display: none;">
-                <h2>直播控制</h2>
-                <div class="stream-status">
-                    <p>当前状态: <span id="streamStatus">未知</span></p>
-                </div>
-                <div class="control-buttons">
-                    <button id="startStreamBtn" class="btn primary">开始直播</button>
-                    <button id="stopStreamBtn" class="btn danger">停止直播</button>
-                    <button id="restartStreamBtn" class="btn warning">重启直播</button>
-                </div>
-            </section>
-
-            <!-- 配置管理区域 -->
-            <section class="card config-section" id="configSection" style="display: none;">
-                <h2>配置管理</h2>
-                <div class="config-actions">
-                    <button id="getConfigBtn" class="btn">获取配置</button>
-                    <button id="reloadConfigBtn" class="btn">重载配置</button>
-                </div>
-                <div class="config-editor">
-                    <textarea id="configEditor" rows="15" placeholder="配置内容将显示在这里"></textarea>
-                    <button id="saveConfigBtn" class="btn primary">保存配置</button>
-                </div>
-            </section>
-
-            <!-- 日志显示区域 -->
-            <section class="card logs-section" id="logsSection" style="display: none;">
-                <h2>日志显示</h2>
-                <div class="logs-container">
-                    <div id="logsOutput" class="logs-output"></div>
-                    <div class="logs-controls">
-                        <label for="logLines">显示行数:</label>
-                        <select id="logLines">
-                            <option value="50">50</option>
-                            <option value="100" selected>100</option>
-                            <option value="200">200</option>
-                            <option value="500">500</option>
-                        </select>
-                        <button id="refreshLogsBtn" class="btn">刷新日志</button>
+            <!-- 内容区域 -->
+            <div class="content-area">
+                <!-- 连接设置区域 -->
+                <section class="tab-content active" id="connection-tab">
+                    <div class="card">
+                        <h2>连接设置</h2>
+                        <form id="connectionForm">
+                            <div class="form-group">
+                                <label for="backendUrl">后端地址:</label>
+                                <input type="url" id="backendUrl" placeholder="http://localhost:8000" required class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="password">访问密码 (可选):</label>
+                                <input type="password" id="password" placeholder="留空表示无密码" class="form-control">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn primary">连接</button>
+                                <button type="button" id="disconnectBtn" class="btn secondary" disabled>断开连接</button>
+                            </div>
+                        </form>
                     </div>
-                </div>
-            </section>
+                </section>
+
+                <!-- 直播控制区域 -->
+                <section class="tab-content" id="control-tab">
+                    <div class="card">
+                        <h2>直播控制</h2>
+                        <div class="stream-status">
+                            <p>当前状态: <span id="streamStatus">未知</span></p>
+                        </div>
+                        <div class="control-buttons">
+                            <button id="startStreamBtn" class="btn primary">开始直播</button>
+                            <button id="stopStreamBtn" class="btn danger">停止直播</button>
+                            <button id="restartStreamBtn" class="btn warning">重启直播</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 配置管理区域 -->
+                <section class="tab-content" id="config-tab">
+                    <div class="card">
+                        <h2>配置管理</h2>
+                        <div class="config-info">
+                            <p>注意：API密钥、主播昵称、TTS设置和服务器设置不会在此面板中显示或修改。</p>
+                        </div>
+                        <form id="configForm">
+                            <!-- Stream Metadata Section (除了streamer_nickname) -->
+                            <div class="config-section">
+                                <h3>直播元数据</h3>
+                                <div class="form-group">
+                                    <label for="stream_title">直播标题:</label>
+                                    <input type="text" id="stream_title" name="stream_metadata.stream_title" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="stream_category">直播分类:</label>
+                                    <input type="text" id="stream_category" name="stream_metadata.stream_category" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="stream_tags">直播标签 (逗号分隔):</label>
+                                    <input type="text" id="stream_tags" name="stream_metadata.stream_tags" class="form-control">
+                                </div>
+                            </div>
+
+                            <!-- Neuro Behavior Section -->
+                            <div class="config-section">
+                                <h3>Neuro行为设置</h3>
+                                <div class="form-group">
+                                    <label for="input_chat_sample_size">输入聊天样本数量:</label>
+                                    <input type="number" id="input_chat_sample_size" name="neuro_behavior.input_chat_sample_size" class="form-control" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="post_speech_cooldown_sec">说话后冷却时间 (秒):</label>
+                                    <input type="number" id="post_speech_cooldown_sec" name="neuro_behavior.post_speech_cooldown_sec" class="form-control" step="0.1" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="initial_greeting">初始问候语:</label>
+                                    <textarea id="initial_greeting" name="neuro_behavior.initial_greeting" class="form-control" rows="3"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Audience Simulation Section -->
+                            <div class="config-section">
+                                <h3>观众模拟设置</h3>
+                                <div class="form-group">
+                                    <label for="llm_provider">LLM提供商:</label>
+                                    <select id="llm_provider" name="audience_simulation.llm_provider" class="form-control">
+                                        <option value="gemini">Gemini</option>
+                                        <option value="openai">OpenAI</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="gemini_model">Gemini模型:</label>
+                                    <input type="text" id="gemini_model" name="audience_simulation.gemini_model" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="openai_model">OpenAI模型:</label>
+                                    <input type="text" id="openai_model" name="audience_simulation.openai_model" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="llm_temperature">LLM温度:</label>
+                                    <input type="number" id="llm_temperature" name="audience_simulation.llm_temperature" class="form-control" step="0.1" min="0" max="2">
+                                </div>
+                                <div class="form-group">
+                                    <label for="chat_generation_interval_sec">聊天生成间隔 (秒):</label>
+                                    <input type="number" id="chat_generation_interval_sec" name="audience_simulation.chat_generation_interval_sec" class="form-control" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="chats_per_batch">每批聊天数量:</label>
+                                    <input type="number" id="chats_per_batch" name="audience_simulation.chats_per_batch" class="form-control" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="max_output_tokens">最大输出Token数:</label>
+                                    <input type="number" id="max_output_tokens" name="audience_simulation.max_output_tokens" class="form-control" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="username_blocklist">用户名黑名单 (逗号分隔):</label>
+                                    <input type="text" id="username_blocklist" name="audience_simulation.username_blocklist" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="username_pool">用户名池 (逗号分隔):</label>
+                                    <input type="text" id="username_pool" name="audience_simulation.username_pool" class="form-control">
+                                </div>
+                            </div>
+
+                            <!-- Performance Section -->
+                            <div class="config-section">
+                                <h3>性能设置</h3>
+                                <div class="form-group">
+                                    <label for="neuro_input_queue_max_size">Neuro输入队列最大大小:</label>
+                                    <input type="number" id="neuro_input_queue_max_size" name="performance.neuro_input_queue_max_size" class="form-control" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="audience_chat_buffer_max_size">观众聊天缓冲区最大大小:</label>
+                                    <input type="number" id="audience_chat_buffer_max_size" name="performance.audience_chat_buffer_max_size" class="form-control" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="initial_chat_backlog_limit">初始聊天积压限制:</label>
+                                    <input type="number" id="initial_chat_backlog_limit" name="performance.initial_chat_backlog_limit" class="form-control" min="1">
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" id="resetConfigBtn" class="btn secondary">重置</button>
+                                <button type="submit" id="saveConfigBtn" class="btn primary">保存配置</button>
+                            </div>
+                        </form>
+                        <div class="config-warning">
+                            <p>警告：如果配置文件被修改或添加了新条目，此面板可能不会显示所有设置。请检查后端日志以获取更多信息。</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 日志显示区域 -->
+                <section class="tab-content" id="logs-tab">
+                    <div class="card">
+                        <h2>日志显示</h2>
+                        <div class="logs-container">
+                            <div id="logsOutput" class="logs-output"></div>
+                            <div class="logs-controls">
+                                <label for="logLines">显示行数:</label>
+                                <select id="logLines">
+                                    <option value="50">50</option>
+                                    <option value="100" selected>100</option>
+                                    <option value="200">200</option>
+                                    <option value="500">500</option>
+                                </select>
+                                <button id="refreshLogsBtn" class="btn">刷新日志</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </main>
 
         <footer>
