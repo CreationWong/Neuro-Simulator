@@ -42,45 +42,32 @@ import shared_state
 app = FastAPI(title="Neuro-Sama Simulator Backend")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config_manager.settings.server.client_origins,
+    allow_origins=config_manager.settings.server.client_origins + ["http://localhost:8080", "https://dashboard.live.jiahui.cafe"],  # 添加dashboard_web的地址
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-API-Token"],  # 暴露API Token头
 )
-templates = Jinja2Templates(directory="panels")
-
-# --- 全局管理器实例 ---
-chatbot_manager: ChatbotManager | None = None
-
-# --- 核心修复点 ---
-# 将 Python 内置的函数和类型添加到 Jinja2 的全局环境中，以便模板可以使用它们
-templates.env.globals['isinstance'] = isinstance
-templates.env.globals['list'] = list
-templates.env.globals['str'] = str
-templates.env.globals['int'] = int
-templates.env.globals['float'] = float
-templates.env.globals['bool'] = bool
 
 # --- 安全和认证 ---
-COOKIE_NAME = "panel_session"
-cookie_scheme = APIKeyCookie(name=COOKIE_NAME, auto_error=False)
+API_TOKEN_HEADER = "X-API-Token"
 
-async def get_panel_access(request: Request, session_token: Optional[str] = Depends(cookie_scheme)):
+async def get_api_token(request: Request):
+    """检查API token是否有效"""
     password = config_manager.settings.server.panel_password
     if not password:
         # No password set, allow access
-        yield
-        return
+        return True
 
-    if session_token and session_token == password:
-        # Valid token, allow access
-        yield
-        return
+    # 检查header中的token
+    header_token = request.headers.get(API_TOKEN_HEADER)
+    if header_token and header_token == password:
+        return True
     
-    # Redirect to login page
     raise HTTPException(
-        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
-        headers={"Location": "/login"}
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid API token",
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 # -------------------------------------------------------------
@@ -237,7 +224,7 @@ async def startup_event():
     config_manager.register_update_callback(metadata_callback)
     config_manager.register_update_callback(chatbot_manager.handle_config_update)
     
-    print("FastAPI 应用已启动。请通过 /panel 控制直播进程。")
+    print("FastAPI 应用已启动。请通过外部控制面板控制直播进程。")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -248,72 +235,10 @@ async def shutdown_event():
 
 
 # -------------------------------------------------------------
-# --- 认证和高级控制面板端点 ---
-# -------------------------------------------------------------
-
-@app.get("/login", tags=["Authentication"], response_class=HTMLResponse)
-async def get_login_form(request: Request):
-    """显示登录页面。"""
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.post("/login", tags=["Authentication"])
-async def login_for_panel_access(request: Request, password: str = Form(...)):
-    """处理登录请求并设置 cookie。"""
-    if password == config_manager.settings.server.panel_password:
-        response = RedirectResponse(url="/panel", status_code=status.HTTP_303_SEE_OTHER)
-        response.set_cookie(key=COOKIE_NAME, value=password, httponly=True, samesite="strict")
-        return response
-    # Return to login form with an error message
-    return templates.TemplateResponse("login.html", {"request": request, "error": "密码错误"})
-
-@app.post("/logout", tags=["Authentication"])
-async def logout(response: RedirectResponse = RedirectResponse(url="/login")):
-    """处理登出请求并删除 cookie。"""
-    response.delete_cookie(COOKIE_NAME)
-    return response
-
-@app.get("/panel", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
-async def get_advanced_panel(request: Request, message: str | None = None):
-    """显示高级控制面板页面。"""
-    return templates.TemplateResponse("control_panel.html", {
-        "request": request,
-        "settings": config_manager.settings.model_dump(),
-        "is_running": process_manager.is_running,
-        "message": message,
-    })
-
-@app.post("/panel/settings", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
-async def update_settings_from_panel(request: Request):
-    """从面板热重载设置。"""
-    form_data = await request.form()
-    new_settings_data = {}
-    for key, value in form_data.items():
-        parts = key.split('.')
-        d = new_settings_data
-        for part in parts[:-1]:
-            d = d.setdefault(part, {})
-        
-        try:
-            # 尝试从原始配置模型中获取类型
-            original_type = type(config_manager.settings.model_dump(by_alias=True)[parts[0]][parts[-1]])
-            if original_type is list:
-                d[parts[-1]] = [item.strip() for item in value.split(',') if item.strip()]
-            elif original_type is bool:
-                 d[parts[-1]] = value.lower() in ['true', '1', 'yes', 'on']
-            else:
-                 d[parts[-1]] = original_type(value)
-        except (ValueError, TypeError, KeyError):
-            # 如果转换失败或找不到原始类型，则作为字符串处理
-            d[parts[-1]] = value
-
-    await config_manager.update_settings(new_settings_data)
-    return RedirectResponse(url="/panel?message=设置已保存并热重载！", status_code=HTTP_303_SEE_OTHER)
-
-# -------------------------------------------------------------
 # --- 直播控制 API 端点 ---
 # -------------------------------------------------------------
 
-@app.post("/api/stream/start", tags=["Stream Control"])
+@app.post("/api/stream/start", tags=["Stream Control"], dependencies=[Depends(get_api_token)])
 async def api_start_stream():
     """启动直播"""
     if not process_manager.is_running:
@@ -322,7 +247,7 @@ async def api_start_stream():
     else:
         return {"status": "info", "message": "直播已在运行"}
 
-@app.post("/api/stream/stop", tags=["Stream Control"])
+@app.post("/api/stream/stop", tags=["Stream Control"], dependencies=[Depends(get_api_token)])
 async def api_stop_stream():
     """停止直播"""
     if process_manager.is_running:
@@ -331,7 +256,7 @@ async def api_stop_stream():
     else:
         return {"status": "info", "message": "直播未在运行"}
 
-@app.post("/api/stream/restart", tags=["Stream Control"])
+@app.post("/api/stream/restart", tags=["Stream Control"], dependencies=[Depends(get_api_token)])
 async def api_restart_stream():
     """重启直播"""
     process_manager.stop_live_processes()
@@ -339,7 +264,7 @@ async def api_restart_stream():
     process_manager.start_live_processes()
     return {"status": "success", "message": "直播已重启"}
 
-@app.get("/api/stream/status", tags=["Stream Control"])
+@app.get("/api/stream/status", tags=["Stream Control"], dependencies=[Depends(get_api_token)])
 async def api_get_stream_status():
     """获取直播状态"""
     return {
@@ -351,21 +276,11 @@ async def api_get_stream_status():
 # --- 日志 API 端点 ---
 # -------------------------------------------------------------
 
-@app.get("/api/logs", tags=["Logs"])
+@app.get("/api/logs", tags=["Logs"], dependencies=[Depends(get_api_token)])
 async def api_get_logs(lines: int = 50):
     """获取最近的日志行"""
     logs_list = list(log_queue)
     return {"logs": logs_list[-lines:] if len(logs_list) > lines else logs_list}
-
-@app.post("/panel/restart-server", tags=["Control Panel"], dependencies=[Depends(get_panel_access)])
-async def restart_server_hard():
-    print("控制面板请求硬重启服务器... 服务器正在关闭。")
-    async def shutdown():
-        await asyncio.sleep(1)
-        sys.exit(0)
-    asyncio.create_task(shutdown())
-    return {"message": "服务器正在关闭..."}
-
 
 # -------------------------------------------------------------
 # --- WebSocket 端点 ---
@@ -429,7 +344,7 @@ class ErrorSpeechRequest(BaseModel):
     voice_name: str | None = None
     pitch: float | None = None
 
-@app.post("/api/tts/synthesize", tags=["TTS"])
+@app.post("/api/tts/synthesize", tags=["TTS"], dependencies=[Depends(get_api_token)])
 async def synthesize_speech_endpoint(request: ErrorSpeechRequest):
     """TTS语音合成端点"""
     try:
@@ -444,18 +359,18 @@ async def synthesize_speech_endpoint(request: ErrorSpeechRequest):
 # --- 配置管理 API 端点 ---
 # -------------------------------------------------------------
 
-@app.get("/api/configs", tags=["Config Management"])
+@app.get("/api/configs", tags=["Config Management"], dependencies=[Depends(get_api_token)])
 async def get_configs():
     """获取当前配置"""
     return config_manager.settings
 
-@app.patch("/api/configs", tags=["Config Management"])
+@app.patch("/api/configs", tags=["Config Management"], dependencies=[Depends(get_api_token)])
 async def update_configs(new_settings: dict):
     """更新配置"""
     await config_manager.update_settings(new_settings)
     return config_manager.settings
 
-@app.post("/api/configs/reload", tags=["Config Management"])
+@app.post("/api/configs/reload", tags=["Config Management"], dependencies=[Depends(get_api_token)])
 async def reload_configs():
     """重载配置文件"""
     try:
@@ -480,7 +395,6 @@ async def root():
         "message": "Neuro-Sama Simulator Backend",
         "version": "2.0",
         "api_docs": "/docs",
-        "control_panel": "/panel",
         "api_structure": {
             "stream": "/api/stream",
             "configs": "/api/configs", 
@@ -492,15 +406,15 @@ async def root():
     }
 
 # -------------------------------------------------------------
-# --- Uvicorn 启动 (通过 neuro-panel 控制) ---
+# --- Uvicorn 启动 ---
 # -------------------------------------------------------------
 
-# 禁用直接启动，必须通过 neuro-panel 控制
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run(
-#         "main:app",
-#         host=config_manager.settings.server.host,
-#         port=config_manager.settings.server.port,
-#         reload=True
-#     )
+if __name__ == "__main__":
+    import uvicorn
+    # 从配置文件中读取host和port设置
+    uvicorn.run(
+        "main:app",
+        host=config_manager.settings.server.host,
+        port=config_manager.settings.server.port,
+        reload=False  # 生产环境中建议关闭reload
+    )

@@ -1,0 +1,329 @@
+/* dashboard_web/css/style.css */
+
+/* --- 全局CSS变量 --- */
+:root {
+  --twitch-purple: #9147FF;
+  --twitch-dark-bg: #0E0E10;
+  --twitch-chat-bg: #1F1F23;
+  --twitch-text-color: #EFEFF1;
+  --twitch-secondary-text-color: #ADADB8;
+  --twitch-border-color: #3A3A3D;
+  --twitch-hover-bg: #26262C;
+  --twitch-button-bg: #26262C;
+  --twitch-button-text-color: #EFEFF1;
+  --twitch-button-hover-bg: #3A3A3D;
+  --twitch-primary-button-bg: var(--twitch-purple);
+  --twitch-primary-button-text-color: #FFFFFF;
+  --twitch-primary-button-hover-bg: #772CE8;
+  --twitch-danger-button-bg: #FF4A4A;
+  --twitch-danger-button-hover-bg: #E03A3A;
+  --twitch-warning-button-bg: #FFB800;
+  --twitch-warning-button-hover-bg: #E0A000;
+  --fast-transition: background-color 0.2s, color 0.2s;
+}
+
+/* --- 全局基础样式 --- */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--twitch-dark-bg);
+  color: var(--twitch-text-color);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- 头部样式 --- */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--twitch-border-color);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--twitch-text-color);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.status-dot.connected {
+  background-color: #4CAF50;
+}
+
+.status-dot.disconnected {
+  background-color: #F44336;
+}
+
+.status-dot.connecting {
+  background-color: #FFC107;
+}
+
+/* --- 卡片样式 --- */
+.card {
+  background-color: var(--twitch-chat-bg);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--twitch-border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--twitch-text-color);
+  font-size: 1.4rem;
+}
+
+/* --- 表单样式 --- */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: var(--twitch-text-color);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--twitch-border-color);
+  background-color: var(--twitch-button-bg);
+  color: var(--twitch-text-color);
+  font-size: 1rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--twitch-purple);
+  box-shadow: 0 0 0 2px rgba(145, 71, 255, 0.2);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* --- 按钮样式 --- */
+.btn {
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--fast-transition);
+  background-color: var(--twitch-button-bg);
+  color: var(--twitch-button-text-color);
+}
+
+.btn:hover:not(:disabled) {
+  background-color: var(--twitch-button-hover-bg);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background-color: var(--twitch-primary-button-bg);
+  color: var(--twitch-primary-button-text-color);
+}
+
+.btn.primary:hover:not(:disabled) {
+  background-color: var(--twitch-primary-button-hover-bg);
+}
+
+.btn.secondary {
+  background-color: var(--twitch-button-bg);
+  color: var(--twitch-button-text-color);
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background-color: var(--twitch-button-hover-bg);
+}
+
+.btn.danger {
+  background-color: var(--twitch-danger-button-bg);
+  color: var(--twitch-primary-button-text-color);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background-color: var(--twitch-danger-button-hover-bg);
+}
+
+.btn.warning {
+  background-color: var(--twitch-warning-button-bg);
+  color: var(--twitch-dark-bg);
+}
+
+.btn.warning:hover:not(:disabled) {
+  background-color: var(--twitch-warning-button-hover-bg);
+}
+
+/* --- 直播控制样式 --- */
+.stream-status {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: var(--twitch-button-bg);
+  border-radius: 4px;
+}
+
+.stream-status p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.control-buttons .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* --- 配置管理样式 --- */
+.config-actions {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.config-actions .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.config-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#configEditor {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--twitch-border-color);
+  background-color: var(--twitch-button-bg);
+  color: var(--twitch-text-color);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 300px;
+}
+
+/* --- 日志显示样式 --- */
+.logs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.logs-output {
+  background-color: var(--twitch-button-bg);
+  border-radius: 4px;
+  padding: 15px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  min-height: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--twitch-border-color);
+}
+
+.logs-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.logs-controls label {
+  font-weight: 600;
+}
+
+.logs-controls select {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--twitch-border-color);
+  background-color: var(--twitch-button-bg);
+  color: var(--twitch-text-color);
+}
+
+/* --- 页脚样式 --- */
+footer {
+  margin-top: auto;
+  padding-top: 20px;
+  text-align: center;
+  color: var(--twitch-secondary-text-color);
+  border-top: 1px solid var(--twitch-border-color);
+}
+
+/* --- 响应式设计 --- */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .form-actions,
+  .control-buttons,
+  .config-actions {
+    flex-direction: column;
+  }
+  
+  .control-buttons .btn,
+  .config-actions .btn {
+    width: 100%;
+  }
+  
+  .logs-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

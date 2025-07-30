@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro-Sama 模拟器控制面板</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Neuro-Sama 模拟器控制面板</h1>
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot disconnected"></span>
+                <span class="status-text">未连接</span>
+            </div>
+        </header>
+
+        <main>
+            <!-- 连接设置区域 -->
+            <section class="card connection-section">
+                <h2>连接设置</h2>
+                <form id="connectionForm">
+                    <div class="form-group">
+                        <label for="backendUrl">后端地址:</label>
+                        <input type="url" id="backendUrl" placeholder="http://localhost:8000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">访问密码 (可选):</label>
+                        <input type="password" id="password" placeholder="留空表示无密码">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">连接</button>
+                        <button type="button" id="disconnectBtn" class="btn secondary" disabled>断开连接</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 直播控制区域 -->
+            <section class="card stream-control-section" id="streamControlSection" style="display: none;">
+                <h2>直播控制</h2>
+                <div class="stream-status">
+                    <p>当前状态: <span id="streamStatus">未知</span></p>
+                </div>
+                <div class="control-buttons">
+                    <button id="startStreamBtn" class="btn primary">开始直播</button>
+                    <button id="stopStreamBtn" class="btn danger">停止直播</button>
+                    <button id="restartStreamBtn" class="btn warning">重启直播</button>
+                </div>
+            </section>
+
+            <!-- 配置管理区域 -->
+            <section class="card config-section" id="configSection" style="display: none;">
+                <h2>配置管理</h2>
+                <div class="config-actions">
+                    <button id="getConfigBtn" class="btn">获取配置</button>
+                    <button id="reloadConfigBtn" class="btn">重载配置</button>
+                </div>
+                <div class="config-editor">
+                    <textarea id="configEditor" rows="15" placeholder="配置内容将显示在这里"></textarea>
+                    <button id="saveConfigBtn" class="btn primary">保存配置</button>
+                </div>
+            </section>
+
+            <!-- 日志显示区域 -->
+            <section class="card logs-section" id="logsSection" style="display: none;">
+                <h2>日志显示</h2>
+                <div class="logs-container">
+                    <div id="logsOutput" class="logs-output"></div>
+                    <div class="logs-controls">
+                        <label for="logLines">显示行数:</label>
+                        <select id="logLines">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                        <button id="refreshLogsBtn" class="btn">刷新日志</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Neuro-Sama 模拟器控制面板 &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

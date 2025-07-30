@@ -79,6 +79,7 @@ performance:
 server:
   host: "127.0.0.1"
   port: 8000
+  panel_password: "your-secret-api-token-here"  # 设置API token用于外部面板认证
   client_origins:
     - "http://localhost:5173"
     - "http://127.0.0.1:5173"
