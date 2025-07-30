@@ -15,6 +15,7 @@ import { StreamInfoDisplay } from '../ui/streamInfoDisplay';
 import { WakeLockManager } from '../utils/wakeLockManager';
 import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, UserInputMessage, StreamMetadataMessage } from '../types/common';
 import { SettingsModal, AppSettings } from '../ui/settingsModal';
+import { MuteButton } from '../ui/muteButton';
 
 export class AppInitializer {
     private wsClient: WebSocketClient;
@@ -32,6 +33,7 @@ export class AppInitializer {
     
     private settingsModal: SettingsModal;
     private currentSettings: AppSettings;
+    private muteButton: MuteButton;
 
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
@@ -39,6 +41,7 @@ export class AppInitializer {
     constructor() {
         this.layoutManager = new LayoutManager();
         this.streamTimer = new StreamTimer();
+        this.muteButton = new MuteButton();
         
         this.currentSettings = SettingsModal.getSettings();
         this.settingsModal = new SettingsModal((newSettings) => this.handleSettingsUpdate(newSettings));
@@ -70,6 +73,7 @@ export class AppInitializer {
         this.wakeLockManager = new WakeLockManager();
         
         this.setupSettingsModalTrigger();
+        this.setupMuteButton();
     }
 
     public start(): void {
@@ -96,6 +100,21 @@ export class AppInitializer {
                 this.settingsModal.open();
             });
         }
+    }
+
+    private setupMuteButton(): void {
+        // 创建静音按钮并添加到页面
+        const muteButtonElement = this.muteButton.create();
+        const viewport = document.querySelector('.stream-display-viewport');
+        if (viewport) {
+            viewport.appendChild(muteButtonElement);
+            this.muteButton.show(); // 初始显示按钮
+        }
+
+        // 添加全局点击监听器，隐藏按钮
+        document.addEventListener('click', () => {
+            this.muteButton.hide();
+        }, { once: true });
     }
 
     private handleSettingsUpdate(newSettings: AppSettings): void {
@@ -143,9 +162,11 @@ export class AppInitializer {
         hideNeuroCaption();
         this.streamTimer.stop();
         this.streamTimer.reset();
-        this.userInput.setInputDisabled(true);
+        // 根据需求，输入框和发送按钮应始终保持可用
+        // this.userInput.setInputDisabled(true);
         this.liveIndicator.hide();
         this.wakeLockManager.releaseWakeLock();
+        this.muteButton.show(); // 离线时重新显示按钮
     }
 
     private handleWebSocketMessage(message: WebSocketMessage): void {
@@ -168,23 +189,27 @@ export class AppInitializer {
             case 'play_welcome_video':
                 this.currentPhase = 'initializing';
                 this.videoPlayer.showAndPlayVideo(message.progress);
-                this.userInput.setInputDisabled(true);
+                // 根据需求，输入框和发送按钮应始终保持可用
+                // this.userInput.setInputDisabled(true);
                 break;
             case 'start_avatar_intro':
                 this.currentPhase = 'avatar_intro';
                 this.neuroAvatar.startIntroAnimation(() => { this.videoPlayer.hideVideo(); });
-                this.userInput.setInputDisabled(true);
+                // 根据需求，输入框和发送按钮应始终保持可用
+                // this.userInput.setInputDisabled(true);
                 break;
             case 'enter_live_phase':
                 this.currentPhase = 'live';
                 this.videoPlayer.hideVideo();
                 this.neuroAvatar.setStage('step2', true); 
-                this.userInput.setInputDisabled((message as any).is_speaking ?? false);
+                // 根据需求，输入框和发送按钮应始终保持可用
+                // this.userInput.setInputDisabled((message as any).is_speaking ?? false);
                 break;
             case 'neuro_is_speaking':
-                if (this.currentPhase === 'live') {
+                // 根据需求，输入框和发送按钮应始终保持可用
+                /* if (this.currentPhase === 'live') {
                     this.userInput.setInputDisabled((message as any).speaking);
-                }
+                } */
                 break;
             case 'neuro_speech_segment':
                 const segment = message as NeuroSpeechSegmentMessage;
@@ -220,13 +245,15 @@ export class AppInitializer {
         };
         this.wsClient.send(message); 
         
-        const localChatMessage: ChatMessage = {
-            type: "chat_message",
-            username: this.currentSettings.username,
-            text: messageText,
-            is_user_message: true
-        };
-        this.chatDisplay.appendChatMessage(localChatMessage);
+        // 不再立即将消息添加到聊天窗口，而是等待服务端的确认
+        // 这样可以避免消息重复显示，并能反映消息是否成功发送到服务端
+        // const localChatMessage: ChatMessage = {
+        //     type: "chat_message",
+        //     username: this.currentSettings.username,
+        //     text: messageText,
+        //     is_user_message: true
+        // };
+        // this.chatDisplay.appendChatMessage(localChatMessage);
     }
 
     private showStreamContent(): void {

@@ -70,6 +70,9 @@ export interface NeuroAvatarStageUpdateMessage {
     stage: string; // "hidden", "step1", "step2"
 }
 
+// 静音按钮元素类型
+export type MuteButtonElement = HTMLButtonElement;
+
 // 定义直播阶段常量，与后端保持一致
 export const StreamPhase = {
     OFFLINE: "offline",
