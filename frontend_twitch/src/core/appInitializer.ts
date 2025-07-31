@@ -107,6 +107,14 @@ export class AppInitializer {
         const muteButtonElement = this.muteButton.create();
         if (muteButtonElement) {
             this.muteButton.show(); // 始终显示按钮
+            
+            // 添加全局点击监听器来解除静音
+            const handleGlobalClick = () => {
+                this.muteButton.unmute();
+                document.removeEventListener('click', handleGlobalClick);
+            };
+            
+            document.addEventListener('click', handleGlobalClick);
         }
     }
 
@@ -167,7 +175,14 @@ export class AppInitializer {
         // this.userInput.setInputDisabled(true);
         this.liveIndicator.hide();
         this.wakeLockManager.releaseWakeLock();
-        this.muteButton.show(); // 离线时重新显示按钮
+        
+        // 离线时重新显示按钮并添加全局点击监听器
+        this.muteButton.show();
+        const handleGlobalClick = () => {
+            this.muteButton.unmute();
+            document.removeEventListener('click', handleGlobalClick);
+        };
+        document.addEventListener('click', handleGlobalClick);
     }
 
     private handleWebSocketMessage(message: WebSocketMessage): void {

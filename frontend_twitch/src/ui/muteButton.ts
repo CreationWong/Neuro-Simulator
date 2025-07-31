@@ -10,10 +10,10 @@ export class MuteButton {
         this.button = document.getElementById('mute-button') as MuteButtonElement;
         
         if (this.button) {
-            // 添加点击事件监听器
+            // 添加点击事件监听器到按钮本身
             this.button.addEventListener('click', (e) => {
                 e.stopPropagation(); // 阻止事件冒泡
-                this.toggleMute();
+                this.unmute(); // 点击按钮时解除静音
             });
         } else {
             console.error("Mute button element not found in DOM!");
@@ -34,33 +34,10 @@ export class MuteButton {
         }
     }
 
-    public toggleMute(): void {
-        this.isMuted = !this.isMuted;
-        this.updateButtonIcon();
+    public unmute(): void {
+        this.isMuted = false;
+        this.hide(); // 解除静音后隐藏按钮
         this.updateMediaElements();
-    }
-
-    private updateButtonIcon(): void {
-        if (this.button) {
-            if (this.isMuted) {
-                // 静音图标
-                this.button.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4.75H8a2 2 0 0 0-2 2v10.5a2 2 0 0 0 2 2h3"></path>
-                        <path d="M14 18.5V6.5l4 4v4l-4 4z"></path>
-                        <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="2"></line>
-                    </svg>
-                `;
-            } else {
-                // 取消静音图标
-                this.button.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 15v4c0 1.1.9 2 2 2h4l5 5v-5h4c1.1 0 2-.9 2-2v-4"></path>
-                        <path d="M17 13h-5.3a4.5 4.5 0 0 1-4.5-4.5c0-1.2.5-2.3 1.3-3.1L3 15"></path>
-                    </svg>
-                `;
-            }
-        }
     }
 
     private updateMediaElements(): void {
