@@ -8,6 +8,9 @@ Neuro Simulator 是一个基于AI的虚拟主播模拟器，通过调用 Letta�
 
 ## 特性
 
+### 预览
+<img src="start.gif" width="500" /> 
+
 ### 服务端
 
 - **多 LLM 支持**：支持 Gemini 和 OpenAI API，动态生成聊天内容
