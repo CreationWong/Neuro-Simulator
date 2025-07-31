@@ -36,14 +36,14 @@
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
 }
-#live2d-display, #startup-video-overlay {
+#background-display, #startup-video-overlay {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
 }
-#live2d-display {
+#background-display {
   z-index: 0;
   pointer-events: none;
   background: url('/background.webp') center/cover no-repeat;
@@ -168,4 +168,58 @@ body.chat-collapsed #show-chat-button {
   width: 20px;
   height: 20px;
   fill: currentColor;
+}
+
+/* Twitch 风格聊天覆盖层样式 */
+#twitch-chat-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25%;
+  height: 50%;
+  background-color: transparent;
+  color: white;
+  padding: 10px;
+  overflow-y: auto;
+  z-index: 30;
+  font-size: 0.9rem;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+}
+
+#twitch-chat-overlay::-webkit-scrollbar {
+  display: none; /* Webkit */
+}
+
+#twitch-chat-overlay .chat-line__message {
+  padding: 2px 0;
+  margin: 0;
+  text-shadow: 
+  -1px -1px 0 #00000080,  
+  1px -1px 0 #00000080,
+  -1px 1px 0 #00000080,
+  1px 1px 0 #00000080,
+     2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
+}
+
+#twitch-chat-overlay .chat-line__username {
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+
+#twitch-chat-overlay .text-fragment {
+  font-size: 0.9rem;
+  font-weight: 700; /* 使消息文本也加粗 */
+  color: white; /* 确保消息文本为白色 */
+}
+
+#twitch-chat-overlay .chat-line__message-container > span:not(.chat-line__username) {
+  font-weight: 700;
+  color: white;
+  text-shadow: 
+    -1px -1px 0 #00000080,  
+     1px -1px 0 #00000080,
+     -1px 1px 0 #00000080,
+     1px 1px 0 #00000080,
+     2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
 }

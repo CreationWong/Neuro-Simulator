@@ -4,6 +4,7 @@ import { ChatMessage } from '../types/common'; // 导入聊天消息的类型
 
 // 获取 HTML 元素
 const chatMessagesContainer = document.getElementById('chat-messages') as HTMLDivElement;
+const twitchChatOverlay = document.getElementById('twitch-chat-overlay') as HTMLDivElement;
 
 // 定义您的用户名，这应该与后端配置的 MY_USERNAME 一致，或者从某个配置中读取
 const MY_USERNAME = "Files_Transfer"; 
@@ -58,6 +59,7 @@ export class ChatDisplay {
         const colonSpan = document.createElement('span');
         colonSpan.textContent = ': ';
         colonSpan.style.marginRight = '0.3rem';
+        colonSpan.className = 'text-fragment'; // 添加与文本相同的类名
 
         const textSpan = document.createElement('span');
         textSpan.className = 'text-fragment';
@@ -69,7 +71,16 @@ export class ChatDisplay {
         
         messageDiv.appendChild(messageContainer);
 
+        // 添加到主聊天区域
         chatMessagesContainer.appendChild(messageDiv);
+        
+        // 同时添加到 Twitch 风格覆盖层（如果存在）
+        if (twitchChatOverlay) {
+            const overlayMessageDiv = messageDiv.cloneNode(true) as HTMLDivElement;
+            twitchChatOverlay.appendChild(overlayMessageDiv);
+            this.scrollToBottomOverlay(); // 滚动覆盖层到最新消息
+        }
+        
         this.scrollToBottom(); // 滚动到最新消息
     }
 
@@ -81,6 +92,11 @@ export class ChatDisplay {
             chatMessagesContainer.innerHTML = '';
             console.log("Chat display cleared.");
         }
+        
+        // 同时清空 Twitch 风格覆盖层（如果存在）
+        if (twitchChatOverlay) {
+            twitchChatOverlay.innerHTML = '';
+        }
     }
 
     /**
@@ -89,6 +105,15 @@ export class ChatDisplay {
     private scrollToBottom(): void {
         if (chatMessagesContainer) {
             chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+    }
+    
+    /**
+     * 滚动 Twitch 风格覆盖层到最底部。
+     */
+    private scrollToBottomOverlay(): void {
+        if (twitchChatOverlay) {
+            twitchChatOverlay.scrollTop = twitchChatOverlay.scrollHeight;
         }
     }
 

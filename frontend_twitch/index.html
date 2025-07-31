@@ -72,13 +72,17 @@
       <div id="stream-and-info-container">
         <div id="stream-display-viewport">
           <div id="stream-display-area">
-            <div id="live2d-display" data-darkreader-ignore></div>
+            <div id="background-display" data-darkreader-ignore></div>
             <div id="neuro-static-avatar-container">
               <img id="neuro-static-avatar" src="/neurosama.png" alt="Neuro-Sama Static Avatar" />
             </div>
             <div id="neuro-caption"></div>
             <div id="startup-video-overlay">
               <video id="startup-video" src="/neuro_start.mp4" playsinline muted></video>
+            </div>
+            <!-- Twitch 风格聊天覆盖层 -->
+            <div id="twitch-chat-overlay" class="messages-display">
+              <!-- 这里将显示聊天消息 -->
             </div>
           </div>
           <button id="show-chat-button" class="video-overlay-chat-button" aria-label="展开聊天">
