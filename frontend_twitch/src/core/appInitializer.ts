@@ -103,18 +103,19 @@ export class AppInitializer {
     }
 
     private setupMuteButton(): void {
-        // 创建静音按钮并添加到页面
+        // 获取HTML中已存在的按钮元素
         const muteButtonElement = this.muteButton.create();
-        const viewport = document.querySelector('.stream-display-viewport');
-        if (viewport) {
-            viewport.appendChild(muteButtonElement);
-            this.muteButton.show(); // 初始显示按钮
+        if (muteButtonElement) {
+            this.muteButton.show(); // 始终显示按钮
         }
+    }
 
-        // 添加全局点击监听器，隐藏按钮
-        document.addEventListener('click', () => {
-            this.muteButton.hide();
-        }, { once: true });
+    public getMuteButton(): MuteButton {
+        return this.muteButton;
+    }
+
+    public getAudioPlayer(): AudioPlayer {
+        return this.audioPlayer;
     }
 
     private handleSettingsUpdate(newSettings: AppSettings): void {

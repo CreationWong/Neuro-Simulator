@@ -1,6 +1,7 @@
 // src/services/audioPlayer.ts
 
 import { showNeuroCaption, hideNeuroCaption, startCaptionTimeout } from '../ui/neuroCaption';
+import { singletonManager } from '../core/singletonManager';
 
 interface AudioSegment {
     text: string;
@@ -39,6 +40,17 @@ export class AudioPlayer {
         }
         this.lastSegmentEnd = false;
         const audio = new Audio('data:audio/mp3;base64,' + audioBase64);
+        
+        // 检查静音状态
+        try {
+            const app = singletonManager.getAppInitializer();
+            const muteButton = app.getMuteButton();
+            audio.muted = muteButton.getIsMuted();
+        } catch (e) {
+            console.warn("Could not get mute state, defaulting to muted:", e);
+            audio.muted = true;
+        }
+        
         this.audioQueue.push({ text, audio, duration }); // <-- 存储 duration
         console.log(`Audio segment added to queue. Queue size: ${this.audioQueue.length}`);
         if (!this.isPlayingAudio) {
@@ -89,5 +101,29 @@ export class AudioPlayer {
         this.allSegmentsReceived = false;
         hideNeuroCaption(); // 强制隐藏字幕
         console.log("Neuro audio playback stopped, queue cleared.");
+    }
+    
+    public updateMuteState(): void {
+        // 更新当前播放音频的静音状态
+        if (this.currentPlayingAudio) {
+            try {
+                const app = singletonManager.getAppInitializer();
+                const muteButton = app.getMuteButton();
+                this.currentPlayingAudio.muted = muteButton.getIsMuted();
+            } catch (e) {
+                console.warn("Could not update current audio mute state:", e);
+            }
+        }
+        
+        // 更新队列中音频的静音状态
+        for (const segment of this.audioQueue) {
+            try {
+                const app = singletonManager.getAppInitializer();
+                const muteButton = app.getMuteButton();
+                segment.audio.muted = muteButton.getIsMuted();
+            } catch (e) {
+                console.warn("Could not update queued audio mute state:", e);
+            }
+        }
     }
 }

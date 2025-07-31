@@ -1,5 +1,7 @@
 // src/stream/videoPlayer.ts
 
+import { singletonManager } from '../core/singletonManager';
+
 const startupVideoOverlay = document.getElementById('startup-video-overlay') as HTMLDivElement;
 const startupVideo = document.getElementById('startup-video') as HTMLVideoElement;
 
@@ -30,6 +32,11 @@ export class VideoPlayer {
         startupVideoOverlay.style.zIndex = '10'; 
         
         startupVideo.currentTime = initialProgress; 
+        
+        // 检查静音状态
+        const app = singletonManager.getAppInitializer();
+        const muteButton = app.getMuteButton();
+        startupVideo.muted = muteButton.getIsMuted();
         
         startupVideo.play().then(() => {
             console.log(`Startup video started from ${initialProgress.toFixed(2)}s.`);
