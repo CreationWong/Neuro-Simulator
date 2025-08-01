@@ -14,7 +14,7 @@
 ## 目录结构
 
 ```
-backend/
+server/
 ├── main.py              # 应用入口和核心逻辑
 ├── config.py            # 配置管理模块
 ├── letta.py             # Letta Agent 集成

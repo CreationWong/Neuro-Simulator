@@ -34,8 +34,8 @@ Neuro Simulator 是一个基于AI的虚拟主播模拟器，通过调用 Letta�
 
 ```
 Neuro-Simulator/
-├── backend/           # 服务端
-├── frontend_twitch/   # 客户端
+├── server/           # 服务端
+├── client/   # 客户端
 ├── dashboard_web/     # Web控制面板
 └── README.md          # 项目说明文档
 ```
@@ -54,7 +54,7 @@ cd Neuro-Simulator
 a. **创建并激活虚拟环境**
 
 ```bash
-cd backend
+cd server
 python -m venv venv
 # Windows
 venv\Scripts\activate
@@ -70,7 +70,7 @@ pip install -r requirements.txt
 
 c. **调整配置内容**
 
-在 `backend` 目录下复制一份 `settings.yaml.example` 到 `settings.yaml`，配置必要的 API 密钥和设置：
+在 `server` 目录下复制一份 `settings.yaml.example` 到 `settings.yaml`，配置必要的 API 密钥和设置：
 
 ```bash
 cp settings.yaml.example settings.yaml

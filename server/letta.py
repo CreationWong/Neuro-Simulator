@@ -34,10 +34,6 @@ try:
                     llm_model_info = str(agent_data.llm_config)
             print(f"  -> Agent 名称: {agent_data.name}")
             print(f"  -> LLM 模型: {llm_model_info}")
-            if hasattr(agent_data, 'system_prompt') and agent_data.system_prompt:
-                print(f"  -> System Prompt: {agent_data.system_prompt[:100]}...")
-            else:
-                print("  -> 警告: Neuro Agent 没有配置 system_prompt。请在 Letta UI 或通过 API 设置。")
 
         except Exception as e:
             error_msg = f"错误: 无法获取 Neuro Letta Agent (ID: {config_manager.settings.api_keys.neuro_agent_id})。请确保 ID 正确，且服务可访问。详情: {e}"
