@@ -13,7 +13,6 @@ Neuro Simulator 是一个基于AI的虚拟主播模拟器，通过调用 Letta�
 
 ### 服务端
 
-- **多 LLM 支持**：支持 Gemini 和 OpenAI API，动态生成聊天内容
 - **多客户端支持**：支持多个客户端连接，实时广播内容
 - **配置热重载**：通过 Web 控制面板修改和热重载配置
 - **外部控制**：完全使用外部API端点操控服务端运行
@@ -41,6 +40,16 @@ Neuro-Simulator/
 ```
 
 ## 安装与运行
+
+### 0. 准备外部服务
+
+为了运行本项目，你至少需要拥有这些外部服务的API资源：
+- Letta Cloud或自托管的Letta Server，以及在其中配置完毕的Agent，作为本项目的核心
+  - 官方文档：https://docs.letta.com/
+- Gemini或兼容OpenAI API的LLM服务商，这一项除了被本项目的Chatbot调用外，也可在Letta中使用，具体参考Letta文档
+  - 推荐使用SiliconFlow，规模9B以下模型不限量免费调用：https://cloud.siliconflow.cn/i/lnHouO6z
+- Azure语音服务API，作为本项目TTS的唯一来源
+  - 注册免费层F0即可，每月额度0.5M字符：https://azure.microsoft.com/products/ai-services/ai-speech/
 
 ### 1. 克隆仓库
 
