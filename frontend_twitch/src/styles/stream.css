@@ -181,7 +181,7 @@ body.chat-collapsed #show-chat-button {
   color: white;
   padding: 10px;
   overflow-y: auto;
-  z-index: 30;
+  z-index: 5;
   font-size: 0.9rem;
   /* 隐藏滚动条 */
   scrollbar-width: none; /* Firefox */
