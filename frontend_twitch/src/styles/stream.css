@@ -35,6 +35,9 @@
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
+  /* 设置为容器查询的容器 */
+  container-type: size;
+  container-name: streamArea;
 }
 #background-display, #startup-video-overlay {
   position: absolute;
@@ -74,7 +77,6 @@
   padding: 10px 20px;
   border-radius: 10px;
   text-align: center;
-  font-size: clamp(1px, 2.5vw, 40px);
   font-weight: normal;
   opacity: 1;
   pointer-events: none;
@@ -83,7 +85,10 @@
   transition: none;
   text-shadow: 0 0 4px var(--neuro-shadow-color), 0 0 4px var(--neuro-shadow-color), 0 0 4px var(--neuro-shadow-color);
   font-family: 'First Coffee', cursive;
+  /* 基于容器尺寸的字体大小 */
+  font-size: 3cqi;
 }
+
 #neuro-caption:not(.show) {
   opacity: 0;
 }
@@ -182,13 +187,10 @@ body.chat-collapsed #show-chat-button {
   padding: 10px;
   overflow-y: auto;
   z-index: 5;
-  font-size: 0.9rem;
+  /* 基于容器尺寸的字体大小 */
+  font-size: 1.25cqi;
   /* 隐藏滚动条 */
   scrollbar-width: none; /* Firefox */
-}
-
-#twitch-chat-overlay::-webkit-scrollbar {
-  display: none; /* Webkit */
 }
 
 #twitch-chat-overlay .chat-line__message {
@@ -199,18 +201,28 @@ body.chat-collapsed #show-chat-button {
   1px -1px 0 #00000080,
   -1px 1px 0 #00000080,
   1px 1px 0 #00000080,
-     2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
+  2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
+  /* 基于容器尺寸的字体大小 */
+  font-size: 1.25cqi;
 }
 
 #twitch-chat-overlay .chat-line__username {
   font-weight: 700;
   margin-right: 0.25rem;
+  /* 基于容器尺寸的字体大小 */
+  font-size: 1.25cqi;
 }
 
 #twitch-chat-overlay .text-fragment {
-  font-size: 0.9rem;
   font-weight: 700; /* 使消息文本也加粗 */
   color: white; /* 确保消息文本为白色 */
+  /* 基于容器尺寸的字体大小 */
+  font-size: 1.25cqi;
+}
+
+#twitch-chat-overlay .chat-author__display-name {
+  /* 基于容器尺寸的字体大小 */
+  font-size: 1.25cqi;
 }
 
 #twitch-chat-overlay .chat-line__message-container > span:not(.chat-line__username) {
@@ -222,4 +234,6 @@ body.chat-collapsed #show-chat-button {
      -1px 1px 0 #00000080,
      1px 1px 0 #00000080,
      2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
+  /* 基于容器尺寸的字体大小 */
+  font-size: 1.25cqi;
 }

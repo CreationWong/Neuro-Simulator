@@ -7,7 +7,7 @@ const chatMessagesContainer = document.getElementById('chat-messages') as HTMLDi
 const twitchChatOverlay = document.getElementById('twitch-chat-overlay') as HTMLDivElement;
 
 // 定义您的用户名，这应该与后端配置的 MY_USERNAME 一致，或者从某个配置中读取
-const MY_USERNAME = "Files_Transfer"; 
+const MY_USERNAME = "One_of_Swarm"; 
 
 export class ChatDisplay {
 

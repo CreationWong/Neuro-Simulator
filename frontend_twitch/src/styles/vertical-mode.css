@@ -1,0 +1,64 @@
+/* src/styles/vertical-mode.css */
+
+/* Vertical mode layout changes */
+.vertical-mode body {
+  flex-direction: column;
+}
+
+.vertical-mode #main-content-wrapper {
+  flex-direction: column;
+}
+
+.vertical-mode #stream-and-info-container {
+  width: 100%;
+}
+
+.vertical-mode #chat-sidebar {
+  width: 100%;
+  height: 40vh;
+  min-height: 200px;
+  min-width: unset;
+  border-left: none;
+  border-top: 1px solid var(--twitch-border-color);
+}
+
+.vertical-mode #chat-sidebar.collapsed {
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Hide specified elements in vertical mode */
+.vertical-mode .nav-links-main,
+.vertical-mode button[aria-label="Prime 优惠"],
+.vertical-mode button[aria-label="打开通知"],
+.vertical-mode button[aria-label="悄悄话"],
+.vertical-mode button[aria-label="购买呼币"],
+.vertical-mode button[aria-label="免费体验无广告观赏"],
+.vertical-mode button#show-chat-button,
+.vertical-mode button[aria-label="通知"],
+.vertical-mode button.twitch-button[aria-label="购买呼币"],
+.vertical-mode button.twitch-button[aria-label="赠送一次订阅"],
+.vertical-mode .stream-details-right,
+.vertical-mode .chat-sidebar-header {
+  display: none !important;
+}
+
+/* Hide scrollbars in vertical mode */
+.vertical-mode * {
+  scrollbar-width: none !important;
+}
+
+.vertical-mode *::-webkit-scrollbar {
+  display: none !important;
+}
+
+.vertical-mode *::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+.vertical-mode *::-webkit-scrollbar-track {
+  display: none !important;
+}

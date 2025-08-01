@@ -28,7 +28,7 @@
         "resizable": true,
         "title": "sub Neuro Sama plz",
         "width": 1280,
-        "minWidth": 800,
+        "minWidth": 400,
         "minHeight": 600,
         "useHttpsScheme": true
       }

@@ -79,6 +79,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 #streamer-nickname {
@@ -86,6 +87,9 @@
   font-size: 1.2em;
   color: var(--twitch-text-color);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .verified-badge svg {
@@ -159,6 +163,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .stream-category {
@@ -176,9 +181,15 @@
 
 .stream-tags {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.stream-tags::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .stream-tag {
@@ -194,6 +205,7 @@
   transition: background-color 0.2s;
   height: 20px;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .stream-tag:hover { 
