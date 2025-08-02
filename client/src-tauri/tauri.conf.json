@@ -9,6 +9,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "android": {
+      "minSdkVersion": 24
+    },
     "icon": [
       "icons/icon.ico",
       "icons/icon.png"

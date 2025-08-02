@@ -65,7 +65,7 @@ share/python-wheels/
 MANIFEST
 
 # ---------------------------------------------------------------------------
-# --- Node.js / Frontend Specific -------------------------------------------
+# --- Node.js / Client Specific -------------------------------------------
 # ---------------------------------------------------------------------------
 # Dependency directories
 node_modules/
@@ -108,8 +108,8 @@ lerna-debug.log*
 # ---------------------------------------------------------------------------
 # Tauri build artifacts. 
 # 注意: Cargo.lock 文件不应被忽略，以确保可复现的构建。
-/frontend_twitch/src-tauri/target/
-/frontend_twitch/src-tauri/gen/
+target/
+gen/
 
 # ---------------------------------------------------------------------------
 # --- Project Specific & Sensitive Info -------------------------------------

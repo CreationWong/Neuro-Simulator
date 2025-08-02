@@ -39,17 +39,6 @@
     "core:window:allow-set-cursor-position",
     "core:window:allow-set-ignore-cursor-events",
     "core:window:allow-start-dragging",
-    "core:webview:allow-print",
-    "shell:allow-open",
-    {
-      "identifier": "http:default",
-      "allow": [
-        {
-          "url": "http://127.0.0.1:8000/*"
-        }
-      ]
-    },
-    "shell:default",
-    "http:default"
+    "core:webview:allow-print"
   ]
 }
