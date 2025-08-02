@@ -188,9 +188,11 @@ body.chat-collapsed #show-chat-button {
   overflow-y: auto;
   z-index: 5;
   /* 基于容器尺寸的字体大小 */
-  font-size: 1.25cqi;
+  font-size: 1.5cqi;
   /* 隐藏滚动条 */
   scrollbar-width: none; /* Firefox */
+  /* 使用Comic Sans字体，如果不可用则回退到其他字体 */
+  font-family: 'Comic Sans MS', 'Comic Sans', cursive, sans-serif;
 }
 
 #twitch-chat-overlay .chat-line__message {
@@ -203,26 +205,26 @@ body.chat-collapsed #show-chat-button {
   1px 1px 0 #00000080,
   2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
   /* 基于容器尺寸的字体大小 */
-  font-size: 1.25cqi;
+  font-size: 1.5cqi;
 }
 
 #twitch-chat-overlay .chat-line__username {
   font-weight: 700;
   margin-right: 0.25rem;
   /* 基于容器尺寸的字体大小 */
-  font-size: 1.25cqi;
+  font-size: 1.5cqi;
 }
 
 #twitch-chat-overlay .text-fragment {
   font-weight: 700; /* 使消息文本也加粗 */
   color: white; /* 确保消息文本为白色 */
   /* 基于容器尺寸的字体大小 */
-  font-size: 1.25cqi;
+  font-size: 1.5cqi;
 }
 
 #twitch-chat-overlay .chat-author__display-name {
   /* 基于容器尺寸的字体大小 */
-  font-size: 1.25cqi;
+  font-size: 1.5cqi;
 }
 
 #twitch-chat-overlay .chat-line__message-container > span:not(.chat-line__username) {
@@ -235,5 +237,5 @@ body.chat-collapsed #show-chat-button {
      1px 1px 0 #00000080,
      2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
   /* 基于容器尺寸的字体大小 */
-  font-size: 1.25cqi;
+  font-size: 1.5cqi;
 }
