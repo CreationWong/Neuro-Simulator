@@ -122,7 +122,7 @@ export class SettingsModal {
         // 返回默认值
         return {
             username: 'One_of_Swarm',
-            avatarDataUrl: '/user_avatar.webp', // 默认头像路径
+            avatarDataUrl: '/user_avatar.jpg', // 默认头像路径
             backendUrl: 'ws://127.0.0.1:8000',
             reconnectAttempts: -1,  
         };
