@@ -193,6 +193,19 @@ body.chat-collapsed #show-chat-button {
   scrollbar-width: none; /* Firefox */
   /* 使用Comic Sans字体，如果不可用则回退到其他字体 */
   font-family: 'Comic Sans MS', 'Comic Sans', cursive, sans-serif;
+  /* 禁用鼠标悬浮效果和用户交互 */
+  pointer-events: none;
+  user-select: none;
+  scroll-behavior: auto;
+}
+
+#twitch-chat-overlay::-webkit-scrollbar {
+  display: none;
+}
+
+#twitch-chat-overlay * {
+  pointer-events: none;
+  user-select: none;
 }
 
 #twitch-chat-overlay .chat-line__message {
@@ -238,4 +251,13 @@ body.chat-collapsed #show-chat-button {
      2px 2px 0 rgba(0, 0, 0, 0.5); /* 向右下的阴影 */
   /* 基于容器尺寸的字体大小 */
   font-size: 1.5cqi;
+}
+
+/* 禁用 stream-display-viewport 内除按钮外的所有用户交互 */
+#stream-display-viewport *:not(.mute-button):not(#show-chat-button) {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
