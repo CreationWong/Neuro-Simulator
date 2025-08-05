@@ -4,8 +4,8 @@ from google.genai import types
 from openai import AsyncOpenAI
 import random
 import asyncio
-from config import config_manager, AppSettings
-import shared_state
+from .config import config_manager, AppSettings
+import neuro_simulator.shared_state as shared_state
 
 class AudienceLLMClient:
     async def generate_chat_messages(self, prompt: str, max_tokens: int) -> str:

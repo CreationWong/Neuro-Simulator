@@ -1,6 +1,6 @@
 # backend/stream_chat.py
 from collections import deque
-from config import config_manager
+from .config import config_manager
 
 # 使用 settings 对象来初始化 deque 的 maxlen
 audience_chat_buffer: deque[dict] = deque(maxlen=config_manager.settings.performance.audience_chat_buffer_max_size)

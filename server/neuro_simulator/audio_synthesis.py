@@ -3,7 +3,7 @@ import html
 import base64
 import azure.cognitiveservices.speech as speechsdk
 import asyncio
-from config import config_manager
+from .config import config_manager
 
 async def synthesize_audio_segment(text: str, voice_name: str = None, pitch: float = None) -> tuple[str, float]:
     """

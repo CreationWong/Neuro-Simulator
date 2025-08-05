@@ -24,10 +24,10 @@ class ProcessManager:
             return
 
         print("正在启动直播核心进程...")
-        from main import generate_audience_chat_task, neuro_response_cycle, broadcast_events_task
-        from stream_manager import live_stream_manager
-        from stream_chat import clear_all_queues
-        from letta import reset_neuro_agent_memory
+        from .main import generate_audience_chat_task, neuro_response_cycle, broadcast_events_task
+        from .stream_manager import live_stream_manager
+        from .stream_chat import clear_all_queues
+        from .letta import reset_neuro_agent_memory
         
         # 清理状态和队列，开始新的直播周期
         clear_all_queues()
@@ -58,7 +58,7 @@ class ProcessManager:
         self._is_running = False
         
         # 停止后，也重置一下 stream manager 的状态
-        from stream_manager import live_stream_manager
+        from .stream_manager import live_stream_manager
         live_stream_manager.reset_stream_state()
         
         print("所有直播核心任务已停止。")

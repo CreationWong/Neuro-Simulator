@@ -22,21 +22,21 @@ from starlette.status import HTTP_303_SEE_OTHER
 from fastapi.security import APIKeyCookie
 
 # --- 核心模块导入 ---
-from config import config_manager, AppSettings
-from process_manager import process_manager
-from log_handler import configure_logging, log_queue
+from .config import config_manager, AppSettings
+from .process_manager import process_manager
+from .log_handler import configure_logging, log_queue
 
 # --- 功能模块导入 ---
-from chatbot import ChatbotManager, get_dynamic_audience_prompt
-from letta import get_neuro_response, reset_neuro_agent_memory
-from audio_synthesis import synthesize_audio_segment
-from stream_chat import (
+from .chatbot import ChatbotManager, get_dynamic_audience_prompt
+from .letta import get_neuro_response, reset_neuro_agent_memory
+from .audio_synthesis import synthesize_audio_segment
+from .stream_chat import (
     add_to_audience_buffer, add_to_neuro_input_queue, 
     get_recent_audience_chats, is_neuro_input_queue_empty, get_all_neuro_input_chats
 )
-from websocket_manager import connection_manager
-from stream_manager import live_stream_manager
-import shared_state
+from .websocket_manager import connection_manager
+from .stream_manager import live_stream_manager
+import neuro_simulator.shared_state as shared_state
 
 # --- FastAPI 应用和模板设置 ---
 app = FastAPI(title="Neuro-Sama Simulator Backend")
@@ -499,11 +499,27 @@ async def root():
 # --- Uvicorn 启动 ---
 # -------------------------------------------------------------
 
+def run_server(host: str = None, port: int = None):
+    """Run the server with optional host and port overrides"""
+    import uvicorn
+    
+    # Use provided host/port or fall back to config values
+    server_host = host or config_manager.settings.server.host
+    server_port = port or config_manager.settings.server.port
+    
+    # When running as a package, we need to specify the full module path
+    uvicorn.run(
+        "neuro_simulator.main:app",
+        host=server_host,
+        port=server_port,
+        reload=False  # 生产环境中建议关闭reload
+    )
+
 if __name__ == "__main__":
     import uvicorn
     # 从配置文件中读取host和port设置
     uvicorn.run(
-        "main:app",
+        "neuro_simulator.main:app",
         host=config_manager.settings.server.host,
         port=config_manager.settings.server.port,
         reload=False  # 生产环境中建议关闭reload

@@ -2,8 +2,8 @@
 import asyncio
 import time
 import os
-from config import config_manager
-from shared_state import live_phase_started_event
+from .config import config_manager
+import neuro_simulator.shared_state as shared_state
 from mutagen.mp4 import MP4, MP4StreamInfoError
 
 class LiveStreamManager:
@@ -51,7 +51,7 @@ class LiveStreamManager:
         self._current_phase: str = self.StreamPhase.OFFLINE
         self._stream_start_global_time: float = 0.0
         self._is_neuro_speaking: bool = False
-        self.reset_stream_state()
+        # Note: We don't call reset_stream_state here to avoid asyncio issues during initialization
         print("LiveStreamManager 初始化完成。")
 
     async def broadcast_stream_metadata(self):
@@ -70,10 +70,9 @@ class LiveStreamManager:
         self._is_neuro_speaking = False
         while not self.event_queue.empty():
             self.event_queue.get_nowait()
-        live_phase_started_event.clear()
+        shared_state.live_phase_started_event.clear()
         print("直播状态已重置为 OFFLINE。")
-        asyncio.create_task(self.event_queue.put(self.get_initial_state_for_client()))
-
+        # Don't create task during initialization, will be called properly in main.py startup
 
     async def start_new_stream_cycle(self):
         """开始一个全新的直播周期，从欢迎视频开始。"""
@@ -106,14 +105,20 @@ class LiveStreamManager:
         print(f"进入阶段: {self.StreamPhase.LIVE}. 广播 'enter_live_phase' 事件。")
         await self.event_queue.put({"type": "enter_live_phase", "elapsed_time_sec": self.get_elapsed_time()})
         
-        live_phase_started_event.set()
+        shared_state.live_phase_started_event.set()
         print("Live phase started event has been set.")
     
     def set_neuro_speaking_status(self, speaking: bool):
         """设置并广播Neuro是否正在说话。"""
         if self._is_neuro_speaking != speaking:
             self._is_neuro_speaking = speaking
-            asyncio.create_task(self.event_queue.put({"type": "neuro_is_speaking", "speaking": speaking}))
+            # Only create task if we're in an event loop
+            try:
+                asyncio.get_running_loop()
+                asyncio.create_task(self.event_queue.put({"type": "neuro_is_speaking", "speaking": speaking}))
+            except RuntimeError:
+                # No running loop, just put directly (this might block)
+                self.event_queue.put_nowait({"type": "neuro_is_speaking", "speaking": speaking})
     
     def get_elapsed_time(self) -> float:
         """获取从直播开始到现在的总时长（秒）。"""

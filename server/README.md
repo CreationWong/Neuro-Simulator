@@ -11,6 +11,7 @@
 - **多 LLM 支持**：支持 Gemini 和 OpenAI API，用于生成观众聊天内容
 - **配置管理**：支持通过 API 动态修改和热重载配置
 - **外部控制**：完全使用外部API端点操控服务端运行
+
 ## 目录结构
 
 ```
@@ -28,10 +29,36 @@ server/
 ├── log_handler.py       # 日志处理模块
 ├── requirements.txt     # Python 依赖列表
 ├── settings.yaml.example # 配置文件模板
+├── setup.py             # Python 包安装配置
+├── neuro_cli.py         # 命令行接口脚本
 └── media/               # 媒体文件目录
 ```
 
 ## 安装与配置
+
+### 方法一：使用 pip 安装（推荐）
+
+1. **安装包**
+   ```bash
+   pip install .
+   ```
+
+2. **运行服务**
+   ```bash
+   # 使用默认配置 (~/.config/neuro-simulator/)
+   neuro
+   
+   # 指定工作目录
+   neuro -D /path/to/your/config
+   
+   # 指定主机和端口
+   neuro -H 0.0.0.0 -P 8080
+   
+   # 组合使用
+   neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
+   ```
+
+### 方法二：传统方式运行
 
 1. **创建并激活虚拟环境**
    ```bash
@@ -58,12 +85,10 @@ server/
    - Gemini/OpenAI API Key
    - Azure TTS Key 和 Region
 
-## 启动服务
-
-目前只能使用 uvicorn：
-```bash
-uvicorn main:app --host 127.0.0.1 --port 8000
-```
+4. **启动服务**
+   ```bash
+   uvicorn main:app --host 127.0.0.1 --port 8000
+   ```
 
 服务默认运行在 `http://127.0.0.1:8000`。
 

@@ -222,5 +222,5 @@ async def update_and_broadcast_settings(new_settings_data: dict):
     await config_manager.update_settings(new_settings_data)
     # Broadcast stream_metadata changes specifically for now
     if 'stream_metadata' in new_settings_data:
-        from stream_manager import live_stream_manager
+        from .stream_manager import live_stream_manager
         await live_stream_manager.broadcast_stream_metadata()

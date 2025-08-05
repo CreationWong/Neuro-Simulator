@@ -1,7 +1,7 @@
 # backend/letta.py
 from letta_client import Letta, MessageCreate, TextContent, LlmConfig, AssistantMessage
 from fastapi import HTTPException, status
-from config import config_manager
+from .config import config_manager
 
 # 初始化 Letta 客户端
 letta_client: Letta | None = None
@@ -103,7 +103,7 @@ async def get_neuro_response(chat_messages: list[dict]) -> str:
     else:
         injected_chat_text = "My chat is quiet right now. As Neuro-Sama, what should I say to engage them?"
 
-    print(f"正在向 Neuro Agent 发送输入 (包含 {len(chat_messages)} 条消息)...")
+    print(f"正在向 Neuro Agent 发送输入 (包含 {len(chat_messages)} 条消息)..." )
 
     try:
         response = letta_client.agents.messages.create(
