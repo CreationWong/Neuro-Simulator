@@ -19,14 +19,14 @@ else:
 
 setup(
     name="neuro-simulator",
-    version="1.0.0",
-    author="Your Name",
-    author_email="your.email@example.com",
-    description="A simulator for Neuro-Sama's streaming behavior",
+    version="0.0.2",  # Updated version
+    author="Moha-Master",
+    author_email="hongkongreporter@outlook.com",
+    description="Neuro Simulator Server",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/neuro-simulator",
-    packages=find_packages(),
+    url="https://github.com/Moha-Master/neuro-simulator",
+    packages=find_packages(include=['neuro_simulator', 'neuro_simulator.*'], exclude=['neuro_simulator.media']),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -43,7 +43,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "neuro=neuro_cli:main",
+            "neuro=neuro_simulator.cli:main",
         ],
     },
     include_package_data=True,

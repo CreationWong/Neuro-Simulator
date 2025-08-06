@@ -20,8 +20,9 @@ class LiveStreamManager:
     
     event_queue: asyncio.Queue = asyncio.Queue()
 
-    _current_dir = os.path.dirname(os.path.abspath(__file__))
-    _WELCOME_VIDEO_PATH_BACKEND = os.path.join(_current_dir, "media", "neuro_start.mp4")
+    # Get the working directory where media files are located
+    _working_dir = os.getcwd()  # This will be set by cli.py to the --dir path
+    _WELCOME_VIDEO_PATH_BACKEND = os.path.join(_working_dir, "media", "neuro_start.mp4")
     _WELCOME_VIDEO_DURATION_SEC_DEFAULT = 10.0
     
     # --- NEW: 使用 mutagen 获取时长的静态方法 ---

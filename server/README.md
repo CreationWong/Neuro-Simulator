@@ -15,7 +15,7 @@
 ## 目录结构
 
 ```
-server/
+neuro_simulator/
 ├── main.py              # 应用入口和核心逻辑
 ├── config.py            # 配置管理模块
 ├── letta.py             # Letta Agent 集成
@@ -28,19 +28,50 @@ server/
 ├── shared_state.py      # 全局状态管理
 ├── log_handler.py       # 日志处理模块
 ├── requirements.txt     # Python 依赖列表
-├── settings.yaml.example # 配置文件模板
 ├── setup.py             # Python 包安装配置
-├── neuro_cli.py         # 命令行接口脚本
-└── media/               # 媒体文件目录
+├── cli.py               # 命令行启动脚本
+├── settings.yaml.example # 自带的备用配置模板
+└── media/               # 自带的备用媒体文件
+    └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长
+```
+
+```
+working_dir_example/     # 工作目录结构
+├── media/               # 媒体文件夹，如缺失会使用自带资源覆盖
+│   └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长
+├── settings.yaml        # 由用户手工创建的配置文件
+└── settings.yaml.example # 自动生成的配置文件模板，必须手动重命名和填写
 ```
 
 ## 安装与配置
 
-### 方法一：使用 pip 安装（推荐）
+0. **配置设置**
+   复制一份 `working_dir_example` 到你想要的位置，作为配置文件目录
+   然后进入配置文件目录，复制 `settings.yaml.example` 到 `settings.yaml`
+   编辑 `settings.yaml` 文件，填入必要的 API 密钥和配置项：
+   - Letta Token 和 Agent ID
+   - Gemini/OpenAI API Key
+   - Azure TTS Key 和 Region
+   可以执行替换media/neuro_start.mp4为其它视频文件，但记得手动替换client中的同名文件
 
-1. **安装包**
+### 方法一：使用 pip 安装
+
+1. **从云端安装PyPi包，适合直接使用**
    ```bash
-   pip install .
+   python3 -m venv venv
+   # Windows
+   venv/Scripts/pip install neuro-simulator
+   # macOS/Linux
+   venv/bin/pip install neuro-simulator
+   ```
+
+   **从本地安装PyPi包，适合二次开发**
+   ```bash
+   python3 -m venv venv
+   #Windows
+   venv/Scripts/pip install -e .
+   # macOS/Linux
+   venv/bin/pip install -e .
    ```
 
 2. **运行服务**
@@ -74,18 +105,7 @@ server/
    pip install -r requirements.txt
    ```
 
-3. **配置设置**
-   复制配置文件模板并根据需要进行修改：
-   ```bash
-   cp settings.yaml.example settings.yaml
-   ```
-   
-   编辑 `settings.yaml` 文件，填入必要的 API 密钥和配置项：
-   - Letta Token 和 Agent ID
-   - Gemini/OpenAI API Key
-   - Azure TTS Key 和 Region
-
-4. **启动服务**
+3. **启动服务**
    ```bash
    uvicorn main:app --host 127.0.0.1 --port 8000
    ```

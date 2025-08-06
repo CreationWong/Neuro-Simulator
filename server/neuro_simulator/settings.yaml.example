@@ -1,0 +1,143 @@
+# --- API密钥配置（无法通过外部控制面板修改） ---
+api_keys:
+  # Letta API Token - 用于与 Letta 服务进行身份验证
+  # 如果你自建 Letta Server 且没有设置 token，可以留空
+  letta_token: "YOUR_LETTA_TOKEN_HERE"
+  
+  # Letta Server 基础 URL - 如果你自建 Letta Server 请填写完整地址，否则留空以使用Letta Cloud
+  letta_base_url: ""
+  
+  # Neuro Agent ID - 在 Letta 中创建的 Agent 的唯一标识符
+  neuro_agent_id: "YOUR_AGENT_ID_HERE"
+  
+  # Gemini API Key - 用于调用 Google Gemini API 生成观众聊天内容
+  gemini_api_key: "YOUR_GEMINI_KEY_HERE"
+  
+  # OpenAI API Key - 用于调用兼容 OpenAI 的 API 生成观众聊天内容
+  openai_api_key: "YOUR_OPENAI_KEY_HERE"
+  
+  # OpenAI API 基础 URL - 如果使用第三方兼容 OpenAI API 服务（如 SiliconFlow）请填写对应地址
+  openai_api_base_url: "YOUR_OPENAI_BASE_URL_HERE"
+  
+  # Azure 语音服务密钥 - 用于调用微软 Azure TTS 服务合成语音
+  azure_speech_key: "YOUR_AZURE_KEY_HERE"
+  
+  # Azure 语音服务区域 - Azure 服务所在的区域，如 "eastus" 或 "westus"
+  azure_speech_region: "YOUR_AZURE_REGION_HERE"
+
+# --- 直播元数据配置 ---
+stream_metadata:
+  # 主播昵称 - 显示在直播中的主播名称（此设置无法通过外部控制面板修改）
+  streamer_nickname: "vedal987"
+  
+  # 直播标题 - 显示在直播页面的标题
+  stream_title: "neuro-sama is here for u all"
+  
+  # 直播分类 - 直播内容的分类标签
+  stream_category: "谈天说地"
+  
+  # 直播标签 - 用于描述直播内容的标签列表
+  stream_tags: ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"]
+
+# --- Neuro 行为与节奏控制 ---
+neuro_behavior:
+  # 输入聊天采样数量 - 每次生成 Neuro 回复时从观众聊天中采样的消息数量，不建议太长
+  input_chat_sample_size: 10
+  
+  # 说话后冷却时间（秒） - Neuro 每次说完话后的等待时间
+  post_speech_cooldown_sec: 1.0
+  
+  # 初始问候语 - 直播开始时给 Neuro 的系统提示语
+  initial_greeting: "The stream has just started. Greet your audience and say hello!"
+
+# --- Chatbot 配置 ---
+audience_simulation:
+  # LLM 提供商 - 选择用于生成观众聊天的 AI 服务，只能是 'gemini' 或 'openai'
+  llm_provider: "gemini"
+  
+  # Gemini 模型 - 使用 Gemini 服务时的具体模型名称
+  # 推荐使用gemma-3-27b-it，每天可免费调用14000次（15:00 GMT+8 刷新次数）
+  gemini_model: "gemma-3-27b-it"
+  
+  # OpenAI 模型 - 使用 OpenAI 服务时的具体模型名称
+  # 使用 SiliconFlow 等第三方服务时可以尝试 THUDM/GLM-4-9B-0414 等模型
+  openai_model: "THUDM/GLM-4-9B-0414"
+  
+  # LLM 温度 - 控制 AI 生成内容的随机性，值越高越随机（0-2之间）
+  llm_temperature: 0.7
+  
+  # 聊天生成间隔（秒） - 调用 Chatbot 生成新观众聊天的时间间隔
+  chat_generation_interval_sec: 2
+  
+  # 每批聊天生成数量 - 每次调用 Chatbot 时生成的聊天消息数量
+  chats_per_batch: 3
+  
+  # 最大输出 Token 数 - 单次调用 Chatbot 时允许生成的最大 token 数量
+  max_output_tokens: 300
+  
+  # Chatbot 提示模板 - 用于指导 AI 生成观众聊天内容的提示词
+  # 其中 {neuro_speech} 和 {num_chats_to_generate} 会被动态替换
+  prompt_template: |
+    You are a Twitch live stream viewer. Your goal is to generate short, realistic, and relevant chat messages.
+    The streamer, Neuro-Sama, just said the following:
+    ---
+    {neuro_speech}
+    ---
+    Based on what Neuro-Sama said, generate a variety of chat messages. Your messages should be:
+    - Directly reacting to her words.
+    - Asking follow-up questions.
+    - Using relevant Twitch emotes (like LUL, Pog, Kappa, etc.).
+    - General banter related to the topic.
+    - Short and punchy, like real chat messages.
+    Do NOT act as the streamer. Do NOT generate full conversations.
+    Generate exactly {num_chats_to_generate} distinct chat messages. Each message must be prefixed with a DIFFERENT fictional username, like 'ChatterBoy: message text', 'EmoteFan: message text'.
+  
+  # 用户名黑名单 - 当检测到这些用户名时会自动替换为 username_pool 中的用户名
+  username_blocklist: ["ChatterBoy", "EmoteFan", "Username", "User"]
+  
+  # 用户名池 - 用于替换黑名单用户名或生成新用户名（有时候Chatbot LLM可能未给出用户名）的候选列表
+  username_pool:
+    - "ChatterBox"
+    - "EmoteLord"
+    - "QuestionMark"
+    - "StreamFan"
+    - "PixelPundit"
+    - "CodeSage"
+    - "DataDiver"
+    - "ByteBard"
+
+# --- 音频合成 (TTS) 配置 ---
+tts:
+  # 语音名称 - 不要调整这个设置
+  voice_name: "en-US-AshleyNeural"
+  
+  # 语音音调 - 除非你不想听Neuro的声音
+  voice_pitch: 1.25
+
+# --- 数据流与性能配置 ---
+performance:
+  # 输入队列最大大小 - 可能被提供给 Neuro 作为输入的聊天消息最大数量
+  # 具体逻辑是在 neuro_input_queue_max_size 中抽取 input_chat_sample_size 条消息发送
+  neuro_input_queue_max_size: 200
+  
+  # 观众聊天缓冲区最大大小 - 后端存储的聊天记录总量
+  audience_chat_buffer_max_size: 1000
+  
+  # 客户端初始聊天数 - 向新客户端发送的历史聊天消息数量，主要用来应对中途加入的客户端
+  initial_chat_backlog_limit: 50
+
+# --- 服务器配置 ---
+server:
+  # 服务器主机地址 - 服务器监听的主机地址（使用 uvicorn 命令启动时此设置无效）
+  host: "127.0.0.1"
+  
+  # 服务器端口 - 服务器监听的端口号（使用 uvicorn 命令启动时此设置无效）
+  port: 8000
+  
+  # 面板密码 - 设置 API token 用于外部控制面板的身份验证，在公网持续部署时强烈建议开启
+  panel_password: "your-secret-api-token-here"
+  
+  # 客户端来源 - 允许跨域访问的客户端地址列表，非本机访问时记得添加一下
+  client_origins:
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
