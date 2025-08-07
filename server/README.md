@@ -4,11 +4,11 @@
 
 *本临时README由AI自动生成*
 
-这是 Neuro Simulator 的后端服务，基于 Python 和 FastAPI 构建，负责处理直播逻辑、AI 交互、TTS 合成等核心功能。
+这是 Neuro Simulator 的服务端，负责处理直播逻辑、AI 交互、TTS 合成等核心功能。
 
 ## 功能特性
 
-- **多 LLM 支持**：支持 Gemini 和 OpenAI API，用于生成观众聊天内容
+- **动态观众**：调用无状态LLM，动态生成观众聊天内容，支持 Gemini 和 OpenAI API
 - **配置管理**：支持通过 API 动态修改和热重载配置
 - **外部控制**：完全使用外部API端点操控服务端运行
 
@@ -32,13 +32,13 @@ neuro_simulator/
 ├── cli.py               # 命令行启动脚本
 ├── settings.yaml.example # 自带的备用配置模板
 └── media/               # 自带的备用媒体文件
-    └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长
+    └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长
 ```
 
 ```
-working_dir_example/     # 工作目录结构
+working_dir_example/     # 工作目录结构，请将这个目录重命名和复制到你想要的位置（推荐放到~/.config/neuro-simulator）
 ├── media/               # 媒体文件夹，如缺失会使用自带资源覆盖
-│   └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长
+│   └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长,请和客户端的视频保持一致
 ├── settings.yaml        # 由用户手工创建的配置文件
 └── settings.yaml.example # 自动生成的配置文件模板，必须手动重命名和填写
 ```
@@ -52,63 +52,47 @@ working_dir_example/     # 工作目录结构
    - Letta Token 和 Agent ID
    - Gemini/OpenAI API Key
    - Azure TTS Key 和 Region
-   可以执行替换media/neuro_start.mp4为其它视频文件，但记得手动替换client中的同名文件
+   可以执行替换media/neuro_start.mp4为其它视频文件，但记得手动替换client中的同名文件。
 
-### 方法一：使用 pip 安装
+### 直接安装方式（无需二次开发）
 
-1. **从云端安装PyPi包，适合直接使用**
-   ```bash
-   python3 -m venv venv
-   # Windows
-   venv/Scripts/pip install neuro-simulator
-   # macOS/Linux
-   venv/bin/pip install neuro-simulator
-   ```
+若无需二次开发，可以直接使用pip安装：
+```bash
+python3 -m venv venv
+# Windows
+venv/Scripts/pip install neuro-simulator
+# macOS/Linux
+venv/bin/pip install neuro-simulator
+```
 
-   **从本地安装PyPi包，适合二次开发**
-   ```bash
-   python3 -m venv venv
-   #Windows
-   venv/Scripts/pip install -e .
-   # macOS/Linux
-   venv/bin/pip install -e .
-   ```
+### 二次开发方式
 
-2. **运行服务**
-   ```bash
-   # 使用默认配置 (~/.config/neuro-simulator/)
-   neuro
-   
-   # 指定工作目录
-   neuro -D /path/to/your/config
-   
-   # 指定主机和端口
-   neuro -H 0.0.0.0 -P 8080
-   
-   # 组合使用
-   neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
-   ```
+若需要二次开发，请克隆项目，在server下建立venv，然后pip install -e ./：
+```bash
+git clone https://github.com/your-username/Neuro-Simulator.git
+cd Neuro-Simulator/server
+python3 -m venv venv
+# Windows
+venv/Scripts/pip install -e .
+# macOS/Linux
+venv/bin/pip install -e .
+```
 
-### 方法二：传统方式运行
+### 运行服务
 
-1. **创建并激活虚拟环境**
-   ```bash
-   python -m venv venv
-   # Windows
-   venv\Scripts\activate
-   # macOS/Linux
-   source venv/bin/activate
-   ```
+```bash
+# 使用默认配置 (位于~/.config/neuro-simulator/)
+neuro
 
-2. **安装依赖**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# 指定工作目录
+neuro -D /path/to/your/config
 
-3. **启动服务**
-   ```bash
-   uvicorn main:app --host 127.0.0.1 --port 8000
-   ```
+# 指定主机和端口
+neuro -H 0.0.0.0 -P 8080
+
+# 组合使用
+neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
+```
 
 服务默认运行在 `http://127.0.0.1:8000`。
 
@@ -143,7 +127,7 @@ working_dir_example/     # 工作目录结构
 
 1. 通过 `panel_password` 配置项可以设置控制面板访问密码
 2. 敏感配置项（如 API 密钥）不会通过 API 接口暴露
-3. 支持 CORS，但仅允许预配置的来源访问
+3. 支持 CORS，仅允许预配置的来源访问
 
 ## 故障排除
 

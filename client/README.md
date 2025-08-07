@@ -1,10 +1,10 @@
-# Neuro Simulator 前端客户端
+# Neuro Simulator 客户端
 
 *关注Vedal喵，关注Vedal谢谢喵*
 
 *本临时README由AI自动生成*
 
-这是 Neuro Simulator 的前端客户端，采用 Twitch 风格的界面设计，为用户提供沉浸式的虚拟主播观看体验。
+这是 Neuro Simulator 的客户端，采用 Twitch 风格的界面设计，为用户提供沉浸式的虚拟主播观看体验。
 
 ## 目录结构
 
@@ -34,27 +34,42 @@ frontend_twitch/
 
 ## 安装与开发
 
-1. **安装依赖**
-   ```bash
-   npm install
-   ```
+### 直接使用（无需二次开发）
 
-2. **启动开发服务器**
-   ```bash
-   npm run dev
-   ```
-   开发服务器默认运行在 `http://localhost:5173`
+若无需二次开发，可以直接从 `Releases` 下载编译好的文件（仅支持Win/Linux）。
 
-3. **构建生产版本**
-   ```bash
-   npm run build
-   ```
-   构建后的文件将输出到 `dist/` 目录
+### 二次开发
 
-4. **预览生产构建**
-   ```bash
-   npm run preview
-   ```
+若需要二次开发，请克隆项目：
+```bash
+git clone https://github.com/your-username/Neuro-Simulator.git
+cd Neuro-Simulator/client
+npm install
+```
+
+### 运行开发服务器
+
+```bash
+npm run dev
+# 或者使用Tauri开发模式
+npm run tauri dev
+```
+开发服务器默认运行在 `http://localhost:5173`
+
+### 构建生产版本
+
+```bash
+npm run build
+# 或者使用Tauri构建
+npm run tauri build
+```
+构建后的文件将输出到 `dist/` 目录
+
+### 预览生产构建
+
+```bash
+npm run preview
+```
 
 ## 代码结构说明
 
@@ -100,13 +115,13 @@ frontend_twitch/
 - 用户头像
 - 重连尝试次数
 
-设置参数使用浏览器的LocalStorage进行持久存储
+设置参数使用浏览器的 `LocalStorage` 进行持久存储
 
 ## 故障排除
 
 - 确保后端服务正在运行且可访问
 - 检查浏览器控制台获取错误信息
-- 确认 WebSocket 连接状态
+- 确认 `WebSocket` 连接状态
 - 验证配置设置是否正确 
 
-*作为看这篇💩文档的奖励，可以直接使用我部署的 https://live.jiahui.cafe 连接到你的服务端，但是不保证始终能用*
+*作为看这篇💩文档的奖励，可以直接使用我部署的 https://live.jiahui.cafe 连接到你的服务端，但是不保证始终能用，并且不能修改neuro_start.mp4*

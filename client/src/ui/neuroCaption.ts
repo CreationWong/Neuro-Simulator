@@ -30,7 +30,7 @@ export function showNeuroCaption(text: string, duration?: number): void {
         const displayWord = (index: number) => {
             if (index < words.length) {
                 const word = words[index];
-                const wordDuration = (word.length / totalChars) * duration! * 1.05;
+                const wordDuration = (word.length / totalChars) * duration! * 1.01;
                 const actualDelay = Math.max(50, wordDuration * 1000);
 
                 displayedText += (index > 0 ? ' ' : '') + word;

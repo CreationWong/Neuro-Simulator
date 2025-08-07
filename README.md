@@ -4,7 +4,7 @@
 
 *本临时README由AI自动生成*
 
-Neuro Simulator 是一个基于AI的虚拟主播模拟器，通过调用 Letta（一个为 LLM 添加自主记忆功能的项目）以及其他 LLM 服务，模拟 Neuro-sama 的直播体验。它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的观看体验。
+Neuro Simulator 是一个基于AI的虚拟主播模拟器，通过调用 Letta（一个为 LLM 添加自主记忆功能的项目）以及其他 LLM 服务，模拟一场 Neuro-sama 的单人直播。它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的观看体验。
 
 ## 特性
 
@@ -34,9 +34,9 @@ Neuro Simulator 是一个基于AI的虚拟主播模拟器，通过调用 Letta�
 ```
 Neuro-Simulator/
 ├── server/           # 服务端
-├── client/   # 客户端
-├── dashboard_web/     # Web控制面板
-└── README.md          # 项目说明文档
+├── client/           # 客户端
+├── dashboard_web/    # Web控制面板
+└── README.md         # 项目说明文档
 ```
 
 ## 安装与运行
@@ -51,82 +51,78 @@ Neuro-Simulator/
 - Azure语音服务API，作为本项目TTS的唯一来源
   - 注册免费层F0即可，每月额度0.5M字符：https://azure.microsoft.com/products/ai-services/ai-speech/
 
-### 1. 克隆仓库
+### 1. 服务端安装
 
+**若无需二次开发，可以直接使用pip安装：**
+```bash
+python3 -m venv venv
+# Windows
+venv/Scripts/pip install neuro-simulator
+# macOS/Linux
+venv/bin/pip install neuro-simulator
+```
+
+**若需要二次开发，请克隆项目：**
 ```bash
 git clone https://github.com/your-username/Neuro-Simulator.git
-cd Neuro-Simulator
-```
-
-### 2. 服务端设置
-
-a. **创建并激活虚拟环境**
-
-```bash
-cd server
-python -m venv venv
+cd Neuro-Simulator/server
+python3 -m venv venv
 # Windows
-venv\Scripts\activate
+venv/Scripts/pip install -e .
 # macOS/Linux
-source venv/bin/activate
+venv/bin/pip install -e .
 ```
 
-b. **安装 Python 依赖**
+### 2. 运行服务端
 
 ```bash
-pip install -r requirements.txt
+# 使用默认配置 (~/.config/neuro-simulator/)
+neuro
+
+# 指定工作目录
+neuro -D /path/to/your/config
+
+# 指定主机和端口
+neuro -H 0.0.0.0 -P 8080
+
+# 组合使用
+neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
 ```
 
-c. **调整配置内容**
+服务默认运行在 `http://127.0.0.1:8000`。
 
-在 `server` 目录下复制一份 `settings.yaml.example` 到 `settings.yaml`，配置必要的 API 密钥和设置：
+### 3. 客户端安装
 
+**若无需二次开发，可以直接从Releases中下载（仅支持Win/Linux）**
+
+**若需要二次开发，请克隆项目：**
 ```bash
-cp settings.yaml.example settings.yaml
-```
-
-然后编辑 `settings.yaml` 文件，填入所需的 API 密钥和配置项。
-
-注意：API Key 等敏感设置只能在 `settings.yaml` 中修改，外部控制面板中无法编辑。
-
-d. **启动服务端**
-
-目前只能使用 uvicorn：
-
-```bash
-uvicorn main:app
-```
-
-服务端将默认在 `http://127.0.0.1:8000` 上运行。
-
-### 3. 客户端设置
-
-a. **安装 Node.js 依赖**
-
-```bash
-cd frontend_twitch
+git clone https://github.com/your-username/Neuro-Simulator.git
+cd Neuro-Simulator/client
 npm install
 ```
 
-b. **启动客户端开发服务器**
+### 4. 运行客户端
 
+**开发模式：**
 ```bash
 npm run dev
+# 或者使用Tauri开发模式
+npm run tauri dev
 ```
 
 这将启动 Vite 开发服务器，默认在 `http://localhost:5173` 上运行。
 
-c. **构建生产版本**
-
+**构建生产版本：**
 ```bash
 npm run build
+# 或者使用Tauri构建
+npm run tauri build
 ```
-
-这将使用 Vite 编译一个可部署的生产版本。
 
 点击客户端界面右上角的头像可以修改客户端设置，如后端 URL、用户名和头像等。
 
-### 4. 控制面板部署
+### 5. 控制面板部署
 
 控制面板是一个纯静态 Web 应用，可以部署在任何支持静态文件托管的服务上：
 

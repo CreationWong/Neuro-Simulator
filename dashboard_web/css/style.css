@@ -1,5 +1,13 @@
 /* dashboard_web/css/style.css */
 
+/* --- 自定义字体定义 --- */
+@font-face {
+  font-family: 'First Coffee';
+  src: url('../assets/first-coffee.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+}
+
 /* --- 全局CSS变量 --- */
 :root {
   --twitch-purple: #9147FF;
@@ -75,6 +83,7 @@ header h1 {
   margin: 0;
   font-size: 1.5rem;
   color: var(--twitch-text-color);
+  font-family: 'First Coffee', sans-serif;
 }
 
 .connection-status {
@@ -418,6 +427,10 @@ footer {
   border-top: 1px solid var(--twitch-border-color);
   flex-shrink: 0;
   background-color: var(--twitch-chat-bg);
+}
+
+footer p {
+  font-family: 'First Coffee', sans-serif;
 }
 
 /* --- 横幅提示样式 --- */
