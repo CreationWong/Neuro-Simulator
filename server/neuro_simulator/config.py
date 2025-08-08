@@ -88,7 +88,7 @@ class AppSettings(BaseModel):
 
 # --- 2. 加载和管理配置的逻辑 ---
 
-CONFIG_FILE_PATH = "settings.yaml"
+CONFIG_FILE_PATH = "config.yaml"
 
 def _deep_update(source: dict, overrides: dict) -> dict:
     """
@@ -120,7 +120,7 @@ class ConfigManager:
 
     def _load_config_from_yaml(self) -> dict:
         if not os.path.exists(CONFIG_FILE_PATH):
-            logging.warning(f"{CONFIG_FILE_PATH} not found. Using default settings. You can create it from settings.yaml.example.")
+            logging.warning(f"{CONFIG_FILE_PATH} not found. Using default settings. You can create it from config.yaml.example.")
             return {}
         try:
             with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
@@ -141,14 +141,14 @@ class ConfigManager:
             missing_keys.append("api_keys.neuro_agent_id")
             
         if missing_keys:
-            raise ValueError(f"Critical config missing in settings.yaml: {', '.join(missing_keys)}. "
-                           f"Please check your settings.yaml file against settings.yaml.example.")
+            raise ValueError(f"Critical config missing in config.yaml: {', '.join(missing_keys)}. "
+                           f"Please check your config.yaml file against config.yaml.example.")
 
         logging.info("Configuration loaded successfully.")
         return base_settings
 
     def save_settings(self):
-        """Saves the current configuration to settings.yaml."""
+        """Saves the current configuration to config.yaml."""
         try:
             # 1. Get the current settings from memory
             config_to_save = self.settings.model_dump(mode='json', exclude={'api_keys'})

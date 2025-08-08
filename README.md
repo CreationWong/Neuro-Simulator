@@ -148,7 +148,7 @@ python -m http.server 8080
 
 ## 配置说明
 
-服务端通过 `settings.yaml` 文件进行配置，主要包括：
+服务端通过 `config.yaml` 文件进行配置，主要包括：
 
 - API 密钥（Letta、Gemini、OpenAI、Azure TTS）
 - 直播元数据（标题、分类、标签）
@@ -157,6 +157,6 @@ python -m http.server 8080
 - 性能设置
 - 服务器设置
 
-详细配置项请参考 `settings.yaml.example` 文件。
+详细配置项请参考 `config.yaml.example` 文件。
 
 此外，你可以在 `docs/working_dir_example/` 目录中找到一个完整的工作目录示例，包括推荐的目录结构和配置文件模板。

@@ -118,7 +118,7 @@ gen/
 .env
 .env.*
 !.env.example
-settings.yaml
+config.yaml
 
 # Personal scripts and temporary files (adjust as needed)
 /sum.sh

@@ -55,6 +55,6 @@ setup(
     },
     include_package_data=True,
     package_data={
-        "neuro_simulator": ["settings.yaml.example", "media/*"],
+        "neuro_simulator": ["config.yaml.example", "media/*"],
     },
 )

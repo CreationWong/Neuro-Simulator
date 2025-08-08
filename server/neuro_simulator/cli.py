@@ -8,7 +8,7 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description="Neuro-Simulator Server")
-    parser.add_argument("-D", "--dir", help="Working directory containing settings.yaml")
+    parser.add_argument("-D", "--dir", help="Working directory containing config.yaml")
     parser.add_argument("-H", "--host", help="Host to bind the server to")
     parser.add_argument("-P", "--port", type=int, help="Port to bind the server to")
     
@@ -28,38 +28,38 @@ def main():
     # Change to working directory
     os.chdir(work_dir)
     
-    # Handle settings.yaml.example
-    settings_example_path = work_dir / "settings.yaml.example"
-    settings_path = work_dir / "settings.yaml"
+    # Handle config.yaml.example
+    settings_example_path = work_dir / "config.yaml.example"
+    settings_path = work_dir / "config.yaml"
     
-    # Copy settings.yaml.example from package if it doesn't exist
+    # Copy config.yaml.example from package if it doesn't exist
     if not settings_example_path.exists():
         try:
             # Try pkg_resources first (for installed packages)
             try:
                 import pkg_resources
-                example_path = pkg_resources.resource_filename('neuro_simulator', 'settings.yaml.example')
+                example_path = pkg_resources.resource_filename('neuro_simulator', 'config.yaml.example')
                 if os.path.exists(example_path):
                     shutil.copy(example_path, settings_example_path)
                     print(f"Created {settings_example_path} from package example")
                 else:
                     # Fallback to relative path (for development mode)
-                    dev_example_path = Path(__file__).parent / "settings.yaml.example"
+                    dev_example_path = Path(__file__).parent / "config.yaml.example"
                     if dev_example_path.exists():
                         shutil.copy(dev_example_path, settings_example_path)
                         print(f"Created {settings_example_path} from development example")
                     else:
-                        print("Warning: settings.yaml.example not found in package or development folder")
+                        print("Warning: config.yaml.example not found in package or development folder")
             except Exception:
                 # Fallback to relative path (for development mode)
-                dev_example_path = Path(__file__).parent / "settings.yaml.example"
+                dev_example_path = Path(__file__).parent / "config.yaml.example"
                 if dev_example_path.exists():
                     shutil.copy(dev_example_path, settings_example_path)
                     print(f"Created {settings_example_path} from development example")
                 else:
-                    print("Warning: settings.yaml.example not found in package or development folder")
+                    print("Warning: config.yaml.example not found in package or development folder")
         except Exception as e:
-            print(f"Warning: Could not copy settings.yaml.example from package: {e}")
+            print(f"Warning: Could not copy config.yaml.example from package: {e}")
     
     # Handle media folder
     media_dir = work_dir / "media"
@@ -101,7 +101,7 @@ def main():
     # Now check for required files and handle errors appropriately
     errors = []
     
-    # Check for settings.yaml (required for running)
+    # Check for config.yaml (required for running)
     if not settings_path.exists():
         if settings_example_path.exists():
             errors.append(f"Error: {settings_path} not found. Please copy {settings_example_path} to {settings_path} and configure it.")

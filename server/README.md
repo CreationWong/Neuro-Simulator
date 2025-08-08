@@ -28,7 +28,7 @@ neuro_simulator/
 ├── requirements.txt     # Python 依赖列表
 ├── setup.py             # Python 包安装配置
 ├── cli.py               # 命令行启动脚本
-├── settings.yaml.example # 自带的备用配置模板
+├── config.yaml.example # 自带的备用配置模板
 └── media/               # 自带的备用媒体文件
     └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长
 ```
@@ -37,16 +37,16 @@ neuro_simulator/
 working_dir_example/     # 工作目录结构，请将这个目录重命名和复制到你想要的位置（推荐放到~/.config/neuro-simulator）
 ├── media/               # 媒体文件夹，如缺失会使用自带资源覆盖
 │   └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长,请和客户端的视频保持一致
-├── settings.yaml        # 由用户手工创建的配置文件
-└── settings.yaml.example # 自动生成的配置文件模板，必须手动重命名和填写
+├── config.yaml        # 由用户手工创建的配置文件
+└── config.yaml.example # 自动生成的配置文件模板，必须手动重命名和填写
 ```
 
 ## 安装与配置
 
 0. **在运行server前，必须有已经配置完成的Letta Agent。**
 1. 复制一份 `../docs/working_dir_example` 到你想要的位置，作为配置文件目录
-2. 然后进入配置文件目录，复制 `settings.yaml.example` 到 `settings.yaml`
-3. 编辑 `settings.yaml` 文件，填入必要的 API 密钥和配置项：
+2. 然后进入配置文件目录，复制 `config.yaml.example` 到 `config.yaml`
+3. 编辑 `config.yaml` 文件，填入必要的 API 密钥和配置项：
    - Letta Token 和 Agent ID
    - Gemini/OpenAI API Key
    - Azure TTS Key 和 Region
@@ -112,7 +112,7 @@ neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
 
 ## 配置说明
 
-配置文件 `settings.yaml` 包含以下主要配置项：
+配置文件 `config.yaml` 包含以下主要配置项：
 
 - `api_keys` - 各种服务的 API 密钥
 - `stream_metadata` - 直播元数据（标题、分类、标签等）

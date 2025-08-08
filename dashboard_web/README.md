@@ -101,7 +101,7 @@ dashboard_web/
 
 ## 配置后端 API Token
 
-在后端的 `settings.yaml` 文件中，找到 `server` 部分并设置 `panel_password` 字段：
+在后端的 `config.yaml` 文件中，找到 `server` 部分并设置 `panel_password` 字段：
 
 ```yaml
 server:
