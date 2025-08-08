@@ -26,7 +26,7 @@ requirements = [
 
 setup(
     name="neuro-simulator",
-    version="0.0.2",  # Updated version
+    version="0.0.3",  # Updated version
     author="Moha-Master",
     author_email="hongkongreporter@outlook.com",
     description="Neuro Simulator Server",
