@@ -26,7 +26,7 @@ neuro_simulator/
 ├── shared_state.py      # 全局状态管理
 ├── log_handler.py       # 日志处理模块
 ├── requirements.txt     # Python 依赖列表
-├── setup.py             # Python 包安装配置
+├── pyproject.toml       # Python 包安装配置
 ├── cli.py               # 命令行启动脚本
 ├── config.yaml.example # 自带的备用配置模板
 └── media/               # 自带的备用媒体文件

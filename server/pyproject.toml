@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuro_simulator"
+version = "0.0.3"
+description = "Neuro Simulator Server"
+readme = "README.md"
+authors = [{ name = "Moha-Master", email = "hongkongreporter@outlook.com" }]
+license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "google-genai",
+    "azure-cognitiveservices-speech",
+    "letta-client",
+    "openai",
+    "pyyaml",
+    "pydantic",
+    "jinja2",
+    "python-multipart",
+    "mutagen",
+]
+
+[project.urls]
+Homepage = "https://github.com/Moha-Master/neuro-simulator"
+Repository = "https://github.com/Moha-Master/neuro-simulator"
+Issues = "https://github.com/Moha-Master/neuro-simulator/issues"
+
+[project.scripts]
+neuro = "neuro_simulator.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+]
+
+[tool.setuptools.package-data]
+neuro_simulator = ["config.yaml.example", "media/*"]
+
+[tool.setuptools.packages.find]
+include = ["neuro_simulator*"]
