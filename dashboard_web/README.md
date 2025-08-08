@@ -1,7 +1,5 @@
 # Neuro-Simulator 控制面板
 
-*关注Vedal喵，关注Vedal谢谢喵*
-
 *本临时README由AI自动生成*
 
 这是一个独立部署的 Web 控制面板，用于管理 Neuro Simulator 服务端。通过这个面板，你可以方便地控制直播进程、管理配置和监控日志。

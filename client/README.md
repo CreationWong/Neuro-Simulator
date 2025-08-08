@@ -1,7 +1,5 @@
 # Neuro Simulator 客户端
 
-*关注Vedal喵，关注Vedal谢谢喵*
-
 *本临时README由AI自动生成*
 
 这是 Neuro Simulator 的客户端，采用 Twitch 风格的界面设计，为用户提供沉浸式的虚拟主播观看体验。

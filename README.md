@@ -4,12 +4,12 @@
 
 *本临时README由AI自动生成*
 
-Neuro Simulator 是一个基于AI的虚拟主播模拟器，通过调用 Letta（一个为 LLM 添加自主记忆功能的项目）以及其他 LLM 服务，模拟一场 Neuro-sama 的单人直播。它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的观看体验。
+Neuro Simulator 通过调用 Letta（一个为 LLM 添加自主记忆功能的项目）以及其他 LLM 服务，模拟一场 Neuro-sama 的单人直播。它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的观看体验。
 
 ## 特性
 
 ### 预览
-<img src="start.gif" width="500" /> 
+<img src="docs/medias/start.gif" width="500" /> 
 
 ### 服务端
 
@@ -36,6 +36,10 @@ Neuro-Simulator/
 ├── server/           # 服务端
 ├── client/           # 客户端
 ├── dashboard_web/    # Web控制面板
+├── docs/             # 文档和示例文件
+│   ├── letta_agents_example/  # Letta Agent 模板示例
+│   ├── medias/       # README中使用的媒体文件
+│   └── working_dir_example/   # 工作目录示例
 └── README.md         # 项目说明文档
 ```
 
@@ -46,7 +50,9 @@ Neuro-Simulator/
 为了运行本项目，你至少需要拥有这些外部服务的API资源：
 - Letta Cloud或自托管的Letta Server，以及在其中配置完毕的Agent，作为本项目的核心
   - 官方文档：https://docs.letta.com/
+  - Agent配置示例：参见./docs/letta_agents_example/
 - Gemini或兼容OpenAI API的LLM服务商，这一项除了被本项目的Chatbot调用外，也可在Letta中使用，具体参考Letta文档
+  - Letta文档中关于自定义LLM的说明：https://docs.letta.com/connecting-model-providers/
   - 推荐使用SiliconFlow，规模9B以下模型不限量免费调用：https://cloud.siliconflow.cn/i/lnHouO6z
 - Azure语音服务API，作为本项目TTS的唯一来源
   - 注册免费层F0即可，每月额度0.5M字符：https://azure.microsoft.com/products/ai-services/ai-speech/
@@ -152,3 +158,5 @@ python -m http.server 8080
 - 服务器设置
 
 详细配置项请参考 `settings.yaml.example` 文件。
+
+此外，你可以在 `docs/working_dir_example/` 目录中找到一个完整的工作目录示例，包括推荐的目录结构和配置文件模板。

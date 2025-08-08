@@ -1,7 +1,5 @@
 # Neuro-Simulator 服务端
 
-*关注Vedal喵，关注Vedal谢谢喵*
-
 *本临时README由AI自动生成*
 
 这是 Neuro Simulator 的服务端，负责处理直播逻辑、AI 交互、TTS 合成等核心功能。
@@ -14,7 +12,7 @@
 
 ## 目录结构
 
-```
+``` main
 neuro_simulator/
 ├── main.py              # 应用入口和核心逻辑
 ├── config.py            # 配置管理模块
@@ -35,7 +33,7 @@ neuro_simulator/
     └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长
 ```
 
-```
+``` workin'dir
 working_dir_example/     # 工作目录结构，请将这个目录重命名和复制到你想要的位置（推荐放到~/.config/neuro-simulator）
 ├── media/               # 媒体文件夹，如缺失会使用自带资源覆盖
 │   └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长,请和客户端的视频保持一致
@@ -45,14 +43,15 @@ working_dir_example/     # 工作目录结构，请将这个目录重命名和�
 
 ## 安装与配置
 
-0. **配置设置**
-   复制一份 `working_dir_example` 到你想要的位置，作为配置文件目录
-   然后进入配置文件目录，复制 `settings.yaml.example` 到 `settings.yaml`
-   编辑 `settings.yaml` 文件，填入必要的 API 密钥和配置项：
+0. **在运行server前，必须有已经配置完成的Letta Agent。**
+1. 复制一份 `../docs/working_dir_example` 到你想要的位置，作为配置文件目录
+2. 然后进入配置文件目录，复制 `settings.yaml.example` 到 `settings.yaml`
+3. 编辑 `settings.yaml` 文件，填入必要的 API 密钥和配置项：
    - Letta Token 和 Agent ID
    - Gemini/OpenAI API Key
    - Azure TTS Key 和 Region
-   可以执行替换media/neuro_start.mp4为其它视频文件，但记得手动替换client中的同名文件。
+
+可以执行替换media/neuro_start.mp4为其它视频文件，但记得手动替换client中的同名文件。
 
 ### 直接安装方式（无需二次开发）
 
@@ -122,6 +121,8 @@ neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
 - `tts` - TTS 语音合成设置
 - `performance` - 性能相关设置
 - `server` - 服务器设置（主机、端口、CORS 等）
+
+有关配置文件的完整示例，请参阅项目根目录下的 `docs/working_dir_example/` 文件夹。
 
 ## 安全说明
 
