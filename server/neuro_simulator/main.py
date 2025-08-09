@@ -155,7 +155,17 @@ async def neuro_response_cycle():
             current_queue_snapshot = get_all_neuro_input_chats()
             sample_size = min(config_manager.settings.neuro_behavior.input_chat_sample_size, len(current_queue_snapshot))
             selected_chats = random.sample(current_queue_snapshot, sample_size)
-            ai_full_response_text = await get_neuro_response(selected_chats)
+            
+            # 使用 asyncio.wait_for 添加超时机制，避免长时间阻塞
+            try:
+                ai_full_response_text = await asyncio.wait_for(
+                    get_neuro_response(selected_chats),
+                    timeout=10.0  # 默认10秒超时
+                )
+            except asyncio.TimeoutError:
+                print("警告: Letta 响应超时，跳过本轮。")
+                await asyncio.sleep(5)
+                continue
             
             async with shared_state.neuro_last_speech_lock:
                 if ai_full_response_text and ai_full_response_text.strip():

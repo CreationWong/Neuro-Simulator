@@ -2,6 +2,7 @@
 from letta_client import Letta, MessageCreate, TextContent, LlmConfig, AssistantMessage
 from fastapi import HTTPException, status
 from .config import config_manager
+import asyncio
 
 # 初始化 Letta 客户端
 letta_client: Letta | None = None
@@ -106,7 +107,9 @@ async def get_neuro_response(chat_messages: list[dict]) -> str:
     print(f"正在向 Neuro Agent 发送输入 (包含 {len(chat_messages)} 条消息)..." )
 
     try:
-        response = letta_client.agents.messages.create(
+        # 使用 asyncio.to_thread 在线程池中执行阻塞调用，避免阻塞事件循环
+        response = await asyncio.to_thread(
+            letta_client.agents.messages.create,
             agent_id=config_manager.settings.api_keys.neuro_agent_id,
             messages=[MessageCreate(role="user", content=injected_chat_text)]
         )
