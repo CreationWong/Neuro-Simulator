@@ -9,6 +9,8 @@ let currentConfig = {}; // 存储当前配置
 let toastContainer = null; // 横幅提示容器
 let confirmDialog = null; // 确认对话框元素
 let confirmResolver = null; // 确认对话框的Promise resolver
+let healthCheckInterval = null; // 添加健康检查定时器
+let disconnectNotified = false; // 添加断连通知标志，防止重复提示
 
 // DOM 元素
 const connectionForm = document.getElementById('connectionForm');
@@ -39,6 +41,9 @@ const tabContents = document.querySelectorAll('.tab-content');
 // 更新连接状态显示
 function updateConnectionStatus(connected, message = '') {
     isConnected = connected;
+    // 重置断连通知标志
+    disconnectNotified = false;
+    
     if (connected) {
         statusDot.className = 'status-dot connected';
         statusText.textContent = message || '已连接';
@@ -60,7 +65,11 @@ function updateConnectionStatus(connected, message = '') {
         
         // 关闭日志WebSocket连接
         if (logWebSocket) {
-            logWebSocket.close();
+            try {
+                logWebSocket.close(1000, 'Client disconnecting'); // 正常关闭代码
+            } catch (e) {
+                console.error('关闭WebSocket时出错:', e);
+            }
             logWebSocket = null;
         }
     }
@@ -130,6 +139,18 @@ async function apiRequest(endpoint, options = {}, skipConnectionCheck = false) {
         return await response.json();
     } catch (error) {
         console.error('API请求错误:', error);
+        // 如果是网络错误且不是跳过连接检查的情况，认为连接已断开
+        if ((error instanceof TypeError && error.message === 'Failed to fetch') && !skipConnectionCheck) {
+            // 只有在还没有通知过断连的情况下才显示提示
+            if (!disconnectNotified) {
+                disconnectNotified = true;
+                // 更新连接状态为断开
+                updateConnectionStatus(false, '连接已断开');
+                showDisconnectDialog();
+                // 切换到连接页面
+                switchTab('connection');
+            }
+        }
         throw error;
     }
 }
@@ -185,6 +206,29 @@ async function connectToBackend(autoConnect = false) {
             connectLogWebSocket();
             // 默认切换到控制页面
             switchTab('control');
+            // 启动健康检查定时器（如果还没有）
+            if (!healthCheckInterval) {
+                healthCheckInterval = setInterval(async () => {
+                    if (isConnected) {
+                        try {
+                            // 发送一个简单的健康检查请求
+                            await apiRequest('/api/system/health', {}, true);
+                        } catch (error) {
+                            // 如果是网络错误，认为连接已断开
+                            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                                // 只有在还没有通知过断连的情况下才显示提示
+                                if (!disconnectNotified) {
+                                    disconnectNotified = true;
+                                    updateConnectionStatus(false, '连接已断开');
+                                    showDisconnectDialog();
+                                    // 切换到连接页面
+                                    switchTab('connection');
+                                }
+                            }
+                        }
+                    }
+                }, 10000); // 每10秒检查一次连接健康状态
+            }
         } else {
             throw new Error('后端服务不健康');
         }
@@ -194,6 +238,13 @@ async function connectToBackend(autoConnect = false) {
         if (!autoConnect) {
             showToast(`连接失败: ${error.message}`, 'error');
         }
+        // 清除健康检查定时器
+        if (healthCheckInterval) {
+            clearInterval(healthCheckInterval);
+            healthCheckInterval = null;
+        }
+        // 切换到连接页面
+        switchTab('connection');
     }
 }
 
@@ -205,6 +256,13 @@ function disconnectFromBackend() {
     showToast('已断开连接', 'info');
     // 切换回连接页面
     switchTab('connection');
+    // 清除健康检查定时器
+    if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+        healthCheckInterval = null;
+    }
+    // 重置断连通知标志
+    disconnectNotified = false;
 }
 
 // 更新直播状态
@@ -217,6 +275,20 @@ async function updateStreamStatus() {
         streamStatus.textContent = '无法获取状态';
         streamStatus.style.color = '#F44336';
         console.error('获取直播状态失败:', error);
+        
+        // 检查是否是连接问题，如果是则更新连接状态
+        if (error.message.includes('Failed to fetch') || error.message.includes('未连接到后端')) {
+            // 只有在还没有通知过断连的情况下才显示提示
+            if (!disconnectNotified) {
+                disconnectNotified = true;
+                // 显示断连提示对话框
+                showDisconnectDialog();
+            }
+            // 更新连接状态为断开
+            updateConnectionStatus(false, '连接已断开');
+            // 切换到连接页面
+            switchTab('connection');
+        }
     }
 }
 
@@ -492,13 +564,39 @@ function connectLogWebSocket() {
         
         logWebSocket.onerror = (error) => {
             console.error('日志WebSocket错误:', error);
+            // 只有在还没有通知过断连的情况下才显示提示
+            if (!disconnectNotified) {
+                disconnectNotified = true;
+                // 如果WebSocket出错，认为连接可能已断开
+                updateConnectionStatus(false, '连接已断开');
+                showDisconnectDialog();
+                // 切换到连接页面
+                switchTab('connection');
+            }
         };
         
         logWebSocket.onclose = () => {
             console.log('日志WebSocket连接已关闭');
+            // 检查是否是异常关闭，如果是则更新连接状态
+            if (isConnected && !disconnectNotified) {
+                disconnectNotified = true;
+                updateConnectionStatus(false, '连接已断开');
+                showDisconnectDialog();
+                // 切换到连接页面
+                switchTab('connection');
+            }
         };
     } catch (error) {
         console.error('连接日志WebSocket失败:', error);
+        // 只有在还没有通知过断连的情况下才显示提示
+        if (!disconnectNotified) {
+            disconnectNotified = true;
+            // 更新连接状态为断开
+            updateConnectionStatus(false, '连接已断开');
+            showDisconnectDialog();
+            // 切换到连接页面
+            switchTab('connection');
+        }
     }
 }
 
@@ -683,6 +781,38 @@ function showConfirmDialog(message) {
     });
 }
 
+// 显示断连对话框
+function showDisconnectDialog() {
+    // 使用确认对话框显示断连信息，但只显示确定按钮
+    showConfirmDialog('与后端的连接已断开，请重新连接。').then(() => {
+        // 用户点击确定后，对话框会自动关闭
+    });
+    
+    // 为了只显示确定按钮，我们需要修改对话框的HTML
+    setTimeout(() => {
+        if (confirmDialog) {
+            const cancelButton = confirmDialog.querySelector('.confirm-cancel');
+            const okButton = confirmDialog.querySelector('.confirm-ok');
+            
+            // 隐藏取消按钮
+            if (cancelButton) {
+                cancelButton.style.display = 'none';
+            }
+            
+            // 修改确定按钮文本
+            if (okButton) {
+                okButton.textContent = '确定';
+            }
+            
+            // 修改消息显示
+            const messageEl = confirmDialog.querySelector('.confirm-message');
+            if (messageEl) {
+                messageEl.textContent = '与后端的连接已断开，请重新连接。';
+            }
+        }
+    }, 10);
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
@@ -721,4 +851,26 @@ document.addEventListener('DOMContentLoaded', () => {
             getLogs();
         }
     }, 30000); // 每30秒检查一次
+    
+    // 添加连接健康检查
+    healthCheckInterval = setInterval(async () => {
+        if (isConnected) {
+            try {
+                // 发送一个简单的健康检查请求
+                await apiRequest('/api/system/health', {}, true);
+            } catch (error) {
+                // 如果是网络错误，认为连接已断开
+                if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                    // 只有在还没有通知过断连的情况下才显示提示
+                    if (!disconnectNotified) {
+                        disconnectNotified = true;
+                        updateConnectionStatus(false, '连接已断开');
+                        showDisconnectDialog();
+                        // 切换到连接页面
+                        switchTab('connection');
+                    }
+                }
+            }
+        }
+    }, 10000); // 每10秒检查一次连接健康状态
 });
