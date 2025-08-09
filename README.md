@@ -82,7 +82,7 @@ venv/bin/pip install -e .
 ### 2. 运行服务端
 
 ```bash
-# 使用默认配置 (~/.config/neuro-simulator/)
+# 使用默认工作目录 (~/.config/neuro-simulator/)
 neuro
 
 # 指定工作目录
@@ -99,7 +99,7 @@ neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
 
 ### 3. 客户端安装
 
-**若无需二次开发，可以直接从Releases中下载（仅支持Win/Linux）**
+**若无需二次开发，也请克隆项目，并按下面的方式运行开发版/构建客户端**
 
 **若需要二次开发，请克隆项目：**
 ```bash
@@ -134,7 +134,7 @@ npm run tauri build
 
 ```bash
 cd dashboard_web
-# 使用 Python 简单 HTTP 服务器
+# 若临时使用，建议使用 Python 的简单 HTTP 服务器
 python -m http.server 8080
 ```
 

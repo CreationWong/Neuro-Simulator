@@ -115,6 +115,16 @@ server:
 
 另外，如果面板和服务端不能用 `localhost` 互相连通，请记得在 `client_origins` 中添加控制面板的地址。
 
+如果想偷懒，可以设置为：
+
+```yaml
+  panel_password: ""
+  client_origins:
+    - "*"
+```
+
+在这种情况下，请自行确保服务器安全，强烈建议仅用于纯内网乃至本机部署。
+
 ## 安全说明
 
 1. 控制面板通过 `API token` 进行身份验证

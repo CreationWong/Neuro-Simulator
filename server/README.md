@@ -44,7 +44,8 @@ working_dir_example/     # 工作目录结构，请将这个目录重命名和�
 ## 安装与配置
 
 0. **在运行server前，必须有已经配置完成的Letta Agent。**
-1. 复制一份 `../docs/working_dir_example` 到你想要的位置，作为配置文件目录
+1. 复制一份 `../docs/working_dir_example` 到你想要的位置，作为配置文件目录.
+   - 程序会在未指定 `--dir` 的情况下自动生成一个工作目录，路径为 `~/.config/neuro-simulator/`
 2. 然后进入配置文件目录，复制 `config.yaml.example` 到 `config.yaml`
 3. 编辑 `config.yaml` 文件，填入必要的 API 密钥和配置项：
    - Letta Token 和 Agent ID
