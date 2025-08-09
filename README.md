@@ -50,12 +50,15 @@ Neuro-Simulator/
 为了运行本项目，你至少需要拥有这些外部服务的API资源：
 - Letta Cloud或自托管的Letta Server，以及在其中配置完毕的Agent，作为本项目的核心
   - 官方文档：https://docs.letta.com/
-  - Agent配置示例：参见./docs/letta_agents_example/
+  - Agent配置示例：参见 `./docs/letta_agents_example/`
 - Gemini或兼容OpenAI API的LLM服务商，这一项除了被本项目的Chatbot调用外，也可在Letta中使用，具体参考Letta文档
-  - Letta文档中关于自定义LLM的说明：https://docs.letta.com/connecting-model-providers/
-  - 推荐使用SiliconFlow，规模9B以下模型不限量免费调用：https://cloud.siliconflow.cn/i/lnHouO6z
+  - Letta文档中关于自定义LLM的说明：
+    https://docs.letta.com/connecting-model-providers/
+  - 推荐使用SiliconFlow，规模9B以下模型不限量免费调用：
+    https://cloud.siliconflow.cn/i/lnHouO6z
 - Azure语音服务API，作为本项目TTS的唯一来源
-  - 注册免费层F0即可，每月额度0.5M字符：https://azure.microsoft.com/products/ai-services/ai-speech/
+  - 注册免费层F0即可，每月额度0.5M字符：
+    https://azure.microsoft.com/products/ai-services/ai-speech/
 
 ### 1. 服务端安装
 
