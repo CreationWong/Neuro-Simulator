@@ -84,7 +84,7 @@
   color: white;
   transition: none;
   text-shadow: 0 0 4px var(--neuro-shadow-color), 0 0 4px var(--neuro-shadow-color), 0 0 4px var(--neuro-shadow-color);
-  font-family: 'First Coffee', cursive;
+  font-family: 'First Coffee', 'Noto Sans SC';
   /* 基于容器尺寸的字体大小 */
   font-size: 3cqi;
 }
@@ -192,7 +192,7 @@ body.chat-collapsed #show-chat-button {
   /* 隐藏滚动条 */
   scrollbar-width: none; /* Firefox */
   /* 使用Comic Sans字体，如果不可用则回退到其他字体 */
-  font-family: 'Comic Sans MS', 'Comic Sans', cursive, sans-serif;
+  font-family: 'Comic Sans MS', 'Noto Sans SC';
   /* 禁用鼠标悬浮效果和用户交互 */
   pointer-events: none;
   user-select: none;

@@ -34,6 +34,20 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Comic Sans MS';
+  src: url('/comic.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/noto-sans-sc.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
 /* --- 全局HTML和Body基础样式 --- */
 html, body {
   height: 100%;
