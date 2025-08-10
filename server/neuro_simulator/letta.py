@@ -91,8 +91,8 @@ async def reset_neuro_agent_memory():
 
 async def get_neuro_response(chat_messages: list[dict]) -> str:
     if letta_client is None or not config_manager.settings.api_keys.neuro_agent_id:
-        print("警告: Letta client 或 Agent ID 未配置，无法获取响应。")
-        return "我暂时无法回应，请稍后再试。"
+        print("错误: Letta client 或 Agent ID 未配置，无法获取响应。")
+        return "Someone tell Vedal there is a problem with my AI."
 
     if chat_messages:
         injected_chat_lines = [f"{chat['username']}: {chat['text']}" for chat in chat_messages]
@@ -128,7 +128,7 @@ async def get_neuro_response(chat_messages: list[dict]) -> str:
         
         if not ai_full_response_text:
             print(f"警告: 未能从 Letta 响应中解析出有效的文本。响应对象: {response}")
-            return "I seem to be at a loss for words right now."
+            return "Someone tell Vedal there is a problem with my AI."
 
         print(f"成功从 Letta 解析到响应: '{ai_full_response_text[:70]}...'")
         return ai_full_response_text
