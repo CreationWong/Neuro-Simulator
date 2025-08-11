@@ -112,54 +112,29 @@ class MemoryManager:
         with open(self.temp_memory_file, 'w', encoding='utf-8') as f:
             json.dump(self.temp_memory, f, ensure_ascii=False, indent=2)
             
-    async def reset_all_memory(self):
-        """Reset all memory to default values"""
-        # Reset to defaults
-        self.init_memory = {
-            "name": "Neuro-Sama",
-            "role": "AI VTuber",
-            "personality": "Friendly, curious, and entertaining",
-            "capabilities": [
-                "Chat with viewers",
-                "Answer questions",
-                "Entertain audience",
-                "Express opinions"
-            ]
-        }
-        
-        self.core_memory = {
-            "blocks": {
-                "general_knowledge": {
-                    "id": "general_knowledge",
-                    "title": "General Knowledge",
-                    "description": "Basic facts and knowledge about the world",
-                    "content": [
-                        "The earth is round",
-                        "Water boils at 100°C at sea level",
-                        "Humans need oxygen to survive"
-                    ]
-                },
-                "stream_info": {
-                    "id": "stream_info",
-                    "title": "Stream Information",
-                    "description": "Information about this stream and Neuro-Sama",
-                    "content": [
-                        "This is a simulation of Neuro-Sama, an AI VTuber",
-                        "The stream is meant for entertainment and experimentation",
-                        "Viewers can interact with Neuro-Sama through chat"
-                    ]
+    async def reset_temp_memory(self):
+        """Reset only temp memory to default values from example files"""
+        # Load default temp memory from example
+        example_temp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                         "..", "docs", "working_dir_example", "agent", "memory", "temp_memory.json")
+        if os.path.exists(example_temp_path):
+            with open(example_temp_path, 'r', encoding='utf-8') as f:
+                self.temp_memory = json.load(f)
+        else:
+            # Fallback to empty list with one test entry if example file not found
+            self.temp_memory = [
+                {
+                    "id": "0test0",
+                    "content": "This is a test temp_memory.",
+                    "role": "Vedal987",
+                    "timestamp": "2024-12-24T00:00:00.000000"
                 }
-            }
-        }
+            ]
         
-        self.temp_memory = []
-        
-        # Save all memory types
-        await self._save_init_memory()
-        await self._save_core_memory()
+        # Save only temp memory
         await self._save_temp_memory()
         
-        print("All memory has been reset to default values")
+        print("Temp memory has been reset to default values from example files")
         
     async def get_full_context(self) -> str:
         """Get all memory as context for LLM"""

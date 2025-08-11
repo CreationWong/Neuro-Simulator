@@ -324,6 +324,12 @@ header h1 {
   background-color: var(--twitch-warning-button-hover-bg);
 }
 
+/* --- 小按钮样式 --- */
+.btn.small {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
 /* --- 直播控制样式 --- */
 .stream-status {
   margin-bottom: 20px;
@@ -417,6 +423,369 @@ header h1 {
   border: 1px solid var(--twitch-border-color);
   background-color: var(--twitch-button-bg);
   color: var(--twitch-text-color);
+}
+
+/* --- Agent 控制样式 --- */
+.agent-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--twitch-border-color);
+  margin-bottom: 20px;
+}
+
+.agent-tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--twitch-secondary-text-color);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.agent-tab-btn:hover {
+  color: var(--twitch-text-color);
+  background-color: var(--twitch-hover-bg);
+}
+
+.agent-tab-btn.active {
+  color: var(--twitch-purple);
+  border-bottom-color: var(--twitch-purple);
+}
+
+.agent-tab-content {
+  display: none;
+}
+
+.agent-tab-content.active {
+  display: block;
+}
+
+.agent-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--twitch-purple);
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+.messages-output, .agent-logs-output {
+  background-color: var(--twitch-button-bg);
+  border-radius: 4px;
+  padding: 15px;
+  min-height: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--twitch-border-color);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.log-entry {
+  margin-bottom: 5px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--twitch-border-color);
+}
+
+.log-entry.log-error {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.log-entry.log-warning {
+  color: #ff9800;
+}
+
+.log-entry.log-debug {
+  color: #2196f3;
+}
+
+.log-entry.log-info {
+  color: var(--twitch-text-color);
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+}
+
+.message-role {
+  font-weight: bold;
+}
+
+.message-time {
+  color: var(--twitch-secondary-text-color);
+}
+
+.message-content {
+  white-space: pre-wrap;
+}
+
+.processing-details {
+  padding: 10px;
+  background-color: var(--twitch-hover-bg);
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.processing-details h4 {
+  margin: 0 0 10px 0;
+  color: var(--twitch-text-color);
+}
+
+.processing-details ul {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.processing-details li {
+  margin-bottom: 5px;
+}
+
+.tool-executions {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: rgba(145, 71, 255, 0.1);
+  border-radius: 4px;
+}
+
+.tool-executions ul {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.tool-executions li {
+  margin-bottom: 10px;
+}
+
+.tool-executions .error {
+  color: var(--twitch-danger-button-bg);
+}
+
+.memory-section {
+  margin-bottom: 30px;
+}
+
+.memory-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--twitch-text-color);
+}
+
+.memory-output {
+  background-color: var(--twitch-button-bg);
+  border-radius: 4px;
+  padding: 15px;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--twitch-border-color);
+}
+
+.memory-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--twitch-border-color);
+}
+
+.memory-item:last-child {
+  border-bottom: none;
+}
+
+.memory-content {
+  flex: 1;
+  margin-right: 10px;
+}
+
+.memory-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.memory-block {
+  border: 1px solid var(--twitch-border-color);
+  border-radius: 4px;
+  padding: 15px;
+  background-color: var(--twitch-button-bg);
+  margin-bottom: 15px;
+}
+
+.memory-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.memory-block-header h4 {
+  margin: 0;
+  color: var(--twitch-text-color);
+}
+
+.memory-block-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.memory-block-description {
+  color: var(--twitch-secondary-text-color);
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.memory-block-content ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.memory-block-content li {
+  margin-bottom: 5px;
+}
+
+.tools-output {
+  background-color: var(--twitch-button-bg);
+  border-radius: 4px;
+  padding: 15px;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--twitch-border-color);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.tool-connection {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--twitch-border-color);
+}
+
+.tool-connection h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--twitch-text-color);
+}
+
+/* --- 模态对话框样式 --- */
+.modal-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.modal-dialog.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background-color: var(--twitch-chat-bg);
+  border-radius: 8px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--twitch-border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--twitch-text-color);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
 }
 
 /* --- 页脚样式 --- */
@@ -609,18 +978,24 @@ footer p {
   
   .form-actions,
   .control-buttons,
-  .config-actions {
+  .config-actions,
+  .agent-controls {
     flex-direction: column;
   }
   
   .control-buttons .btn,
-  .config-actions .btn {
+  .config-actions .btn,
+  .agent-controls .btn {
     width: 100%;
   }
   
   .logs-controls {
     flex-direction: column;
     align-items: stretch;
+  }
+  
+  .step-branch {
+    padding-left: 10px;
   }
   
   /* 移动端横幅提示 */

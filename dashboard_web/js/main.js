@@ -11,6 +11,7 @@ let confirmDialog = null; // 确认对话框元素
 let confirmResolver = null; // 确认对话框的Promise resolver
 let healthCheckInterval = null; // 添加健康检查定时器
 let disconnectNotified = false; // 添加断连通知标志，防止重复提示
+let modalDialog = null; // 模态对话框元素
 
 // DOM 元素
 const connectionForm = document.getElementById('connectionForm');
@@ -34,6 +35,32 @@ const logsOutput = document.getElementById('logsOutput');
 const logLines = document.getElementById('logLines');
 const refreshLogsBtn = document.getElementById('refreshLogsBtn');
 
+// Agent 控制相关元素
+const refreshAgentLogsBtn = document.getElementById('refreshAgentLogsBtn');
+const clearAgentLogsBtn = document.getElementById('clearAgentLogsBtn');
+const agentLogsOutput = document.getElementById('agentLogsOutput');
+const refreshTempMemoryBtn = document.getElementById('refreshTempMemoryBtn');
+const clearTempMemoryBtn = document.getElementById('clearTempMemoryBtn');
+const tempMemoryOutput = document.getElementById('tempMemoryOutput');
+const refreshCoreMemoryBtn = document.getElementById('refreshCoreMemoryBtn');
+const addCoreMemoryBlockBtn = document.getElementById('addCoreMemoryBlockBtn');
+const coreMemoryOutput = document.getElementById('coreMemoryOutput');
+const refreshToolsBtn = document.getElementById('refreshToolsBtn');
+const toolsOutput = document.getElementById('toolsOutput');
+const toolName = document.getElementById('toolName');
+const aiToolName = document.getElementById('aiToolName');
+const connectToolBtn = document.getElementById('connectToolBtn');
+
+// Agent 标签页相关元素
+const agentTabBtns = document.querySelectorAll('.agent-tab-btn');
+const agentTabContents = document.querySelectorAll('.agent-tab-content');
+
+// 模态对话框相关元素
+const addMemoryBlockDialog = document.getElementById('addMemoryBlockDialog');
+const addMemoryBlockForm = document.getElementById('addMemoryBlockForm');
+const cancelAddMemoryBtn = document.getElementById('cancelAddMemoryBtn');
+const closeDialogBtns = document.querySelectorAll('.close-btn');
+
 // 标签页相关元素
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -52,6 +79,7 @@ function updateConnectionStatus(connected, message = '') {
         // 显示控制、配置和日志标签页
         document.querySelector('[data-tab="control"]').style.display = 'block';
         document.querySelector('[data-tab="config"]').style.display = 'block';
+        document.querySelector('[data-tab="agent"]').style.display = 'block';
         document.querySelector('[data-tab="logs"]').style.display = 'block';
     } else {
         statusDot.className = 'status-dot disconnected';
@@ -61,6 +89,7 @@ function updateConnectionStatus(connected, message = '') {
         // 隐藏控制、配置和日志标签页
         document.querySelector('[data-tab="control"]').style.display = 'none';
         document.querySelector('[data-tab="config"]').style.display = 'none';
+        document.querySelector('[data-tab="agent"]').style.display = 'none';
         document.querySelector('[data-tab="logs"]').style.display = 'none';
         
         // 关闭日志WebSocket连接
@@ -89,6 +118,27 @@ function switchTab(tabName) {
     // 显示对应的内容区域
     tabContents.forEach(content => {
         if (content.id === `${tabName}-tab`) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+}
+
+// 切换Agent标签页
+function switchAgentTab(tabName) {
+    // 更新标签页激活状态
+    agentTabBtns.forEach(tab => {
+        if (tab.dataset.agentTab === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // 显示对应的内容区域
+    agentTabContents.forEach(content => {
+        if (content.id === `${tabName}-agent-tab`) {
             content.classList.add('active');
         } else {
             content.classList.remove('active');
@@ -340,6 +390,24 @@ async function restartStream() {
     }
 }
 
+// 重置Agent记忆
+async function resetAgentMemory() {
+    const confirmed = await showConfirmDialog('确定要重置Agent的记忆吗？这将清除所有临时记忆和对话历史。');
+    if (!confirmed) {
+        return;
+    }
+    
+    try {
+        const response = await apiRequest('/api/agent/reset_memory', { method: 'POST' });
+        showToast(response.message, 'success');
+        // 刷新记忆显示
+        refreshTempMemory();
+        refreshCoreMemory();
+    } catch (error) {
+        showToast(`操作失败: ${error.message}`, 'error');
+    }
+}
+
 // 将配置对象转换为表单值
 function configToForm(config) {
     // 遍历表单中的每个输入元素
@@ -433,9 +501,7 @@ async function getConfig() {
         checkForMissingConfigItems(config);
     } catch (error) {
         console.error('获取配置失败:', error);
-        showToast(`获取配置失败: ${error.message}
-
-请检查后端日志以获取更多信息。`, 'error');
+        showToast(`获取配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`, 'error');
     }
 }
 
@@ -458,6 +524,8 @@ function checkForMissingConfigItems(config) {
         'audience_simulation.max_output_tokens',
         'audience_simulation.username_blocklist',
         'audience_simulation.username_pool',
+        'agent.agent_provider',
+        'agent.agent_model',
         'performance.neuro_input_queue_max_size',
         'performance.audience_chat_buffer_max_size',
         'performance.initial_chat_backlog_limit'
@@ -607,44 +675,466 @@ function refreshLogs() {
     }
 }
 
+// Agent 相关功能
+
+// 切换Agent标签页
+function switchAgentTab(tabName) {
+    // 更新标签页激活状态
+    agentTabBtns.forEach(tab => {
+        if (tab.dataset.agentTab === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // 显示对应的内容区域
+    agentTabContents.forEach(content => {
+        if (content.id === `${tabName}-agent-tab`) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+}
+
+// 刷新Agent日志
+async function refreshAgentLogs() {
+    if (!isConnected) return;
+    
+    try {
+        console.log("DEBUG: Refreshing agent logs");
+        // 获取Agent日志
+        const response = await apiRequest('/api/agent/logs?lines=100');
+        console.log("DEBUG: Received agent logs response:", response);
+        displayAgentLogs(response.logs);
+    } catch (error) {
+        console.error("DEBUG: Error fetching agent logs:", error);
+        showToast(`获取Agent日志失败: ${error.message}`, 'error');
+    }
+}
+
+// 显示Agent日志
+function displayAgentLogs(logs) {
+    if (!agentLogsOutput) return;
+    
+    // 清空现有内容
+    agentLogsOutput.innerHTML = '';
+    
+    // 直接显示日志内容，每行一个div，最新日志在底部
+    logs.forEach(logEntry => {
+        const logDiv = document.createElement('div');
+        logDiv.className = 'log-entry';
+        
+        // 根据日志级别设置样式
+        if (logEntry.includes('ERROR') || logEntry.includes('Error')) {
+            logDiv.classList.add('log-error');
+        } else if (logEntry.includes('WARNING') || logEntry.includes('Warning')) {
+            logDiv.classList.add('log-warning');
+        } else if (logEntry.includes('DEBUG') || logEntry.includes('Debug')) {
+            logDiv.classList.add('log-debug');
+        } else {
+            logDiv.classList.add('log-info');
+        }
+        
+        logDiv.textContent = logEntry;
+        agentLogsOutput.appendChild(logDiv);
+    });
+    
+    // 滚动到底部以显示最新日志
+    agentLogsOutput.scrollTop = agentLogsOutput.scrollHeight;
+}
+
+// 清空Agent日志
+async function clearAgentLogs() {
+    const confirmed = await showConfirmDialog('确定要清空Agent日志吗？');
+    if (!confirmed) return;
+    
+    try {
+        // 这里应该调用一个清空日志的API端点
+        // 暂时我们只是清空显示区域
+        agentLogsOutput.innerHTML = '';
+        showToast('Agent日志已清空', 'success');
+    } catch (error) {
+        showToast(`清空Agent日志失败: ${error.message}`, 'error');
+    }
+}
+
+// 刷新临时记忆
+async function refreshTempMemory() {
+    if (!isConnected) return;
+    
+    try {
+        // 获取完整的临时记忆内容
+        const tempMemory = await apiRequest('/api/agent/memory/temp');
+        displayTempMemory(tempMemory);
+    } catch (error) {
+        showToast(`获取临时记忆失败: ${error.message}`, 'error');
+    }
+}
+
+// 显示临时记忆
+function displayTempMemory(messages) {
+    if (!tempMemoryOutput) return;
+    
+    tempMemoryOutput.innerHTML = '';
+    
+    messages.forEach((msg, index) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'memory-item';
+        
+        const timestamp = new Date(msg.timestamp).toLocaleString();
+        
+        itemDiv.innerHTML = `
+            <div class="memory-content">
+                <div><strong>[${msg.role}]</strong> ${msg.content || msg.text || ''}</div>
+                <div class="memory-time">${timestamp}</div>
+            </div>
+            <div class="memory-actions">
+                <button class="btn small danger delete-temp-memory-btn" data-index="${index}">删除</button>
+            </div>
+        `;
+        
+        tempMemoryOutput.appendChild(itemDiv);
+    });
+    
+    // 绑定删除按钮事件
+    const deleteButtons = tempMemoryOutput.querySelectorAll('.delete-temp-memory-btn');
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = e.target.dataset.index;
+            deleteTempMemoryItem(index);
+        });
+    });
+}
+
+// 删除临时记忆项
+async function deleteTempMemoryItem(index) {
+    const confirmed = await showConfirmDialog('确定要删除这条临时记忆吗？');
+    if (!confirmed) return;
+    
+    try {
+        // 对于builtin agent，我们无法直接删除单个消息
+        // 这里我们简单地从显示中移除
+        const items = tempMemoryOutput.querySelectorAll('.memory-item');
+        if (items[index]) {
+            items[index].remove();
+            showToast('记忆项已删除', 'success');
+        }
+    } catch (error) {
+        showToast(`删除记忆项失败: ${error.message}`, 'error');
+    }
+}
+
+// 清空临时记忆
+async function clearTempMemory() {
+    const confirmed = await showConfirmDialog('确定要清空所有临时记忆吗？');
+    if (!confirmed) return;
+    
+    try {
+        await apiRequest('/api/agent/memory/temp', { method: 'DELETE' });
+        tempMemoryOutput.innerHTML = '';
+        showToast('临时记忆已清空', 'success');
+    } catch (error) {
+        showToast(`清空临时记忆失败: ${error.message}`, 'error');
+    }
+}
+
+// 刷新核心记忆
+async function refreshCoreMemory() {
+    if (!isConnected) return;
+    
+    try {
+        const blocks = await apiRequest('/api/agent/memory/blocks');
+        displayCoreMemory(blocks);
+    } catch (error) {
+        showToast(`获取核心记忆失败: ${error.message}`, 'error');
+    }
+}
+
+// 显示核心记忆
+function displayCoreMemory(blocks) {
+    if (!coreMemoryOutput) return;
+    
+    coreMemoryOutput.innerHTML = '';
+    
+    // 遍历所有记忆块
+    Object.values(blocks).forEach(block => {
+        const blockDiv = document.createElement('div');
+        blockDiv.className = 'memory-block';
+        blockDiv.dataset.blockId = block.id;
+        
+        blockDiv.innerHTML = `
+            <div class="memory-block-header">
+                <h4>${block.title}</h4>
+                <div class="memory-block-actions">
+                    <button class="btn small secondary edit-memory-btn" data-block-id="${block.id}">编辑</button>
+                    <button class="btn small danger delete-memory-btn" data-block-id="${block.id}">删除</button>
+                </div>
+            </div>
+            <div class="memory-block-description">${block.description}</div>
+            <div class="memory-block-content">
+                <ul>
+                    ${block.content.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+        
+        coreMemoryOutput.appendChild(blockDiv);
+    });
+    
+    // 绑定编辑和删除按钮事件
+    const editButtons = coreMemoryOutput.querySelectorAll('.edit-memory-btn');
+    editButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const blockId = e.target.dataset.blockId;
+            editMemoryBlock(blockId);
+        });
+    });
+    
+    const deleteButtons = coreMemoryOutput.querySelectorAll('.delete-memory-btn');
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const blockId = e.target.dataset.blockId;
+            deleteMemoryBlock(blockId);
+        });
+    });
+}
+
+// 编辑记忆块
+async function editMemoryBlock(blockId) {
+    // 获取记忆块详情
+    try {
+        const block = await apiRequest(`/api/agent/memory/blocks/${blockId}`);
+        
+        // 显示编辑对话框（这里简化处理，实际应该有更完整的编辑界面）
+        const confirmed = await showConfirmDialog(`编辑记忆块 "${block.title}"?`);
+        if (confirmed) {
+            showToast('编辑功能待实现', 'info');
+        }
+    } catch (error) {
+        showToast(`获取记忆块详情失败: ${error.message}`, 'error');
+    }
+}
+
+// 删除记忆块
+async function deleteMemoryBlock(blockId) {
+    const confirmed = await showConfirmDialog('确定要删除这个记忆块吗？');
+    if (!confirmed) return;
+    
+    try {
+        await apiRequest(`/api/agent/memory/blocks/${blockId}`, { method: 'DELETE' });
+        showToast('记忆块已删除', 'success');
+        refreshCoreMemory(); // 刷新显示
+    } catch (error) {
+        showToast(`删除记忆块失败: ${error.message}`, 'error');
+    }
+}
+
+// 显示添加记忆块对话框
+function showAddMemoryBlockDialog() {
+    if (addMemoryBlockDialog) {
+        addMemoryBlockDialog.classList.add('show');
+    }
+}
+
+// 隐藏添加记忆块对话框
+function hideAddMemoryBlockDialog() {
+    if (addMemoryBlockDialog) {
+        addMemoryBlockDialog.classList.remove('show');
+    }
+}
+
+// 添加记忆块
+async function addMemoryBlock(e) {
+    e.preventDefault();
+    
+    const title = document.getElementById('memoryTitle').value;
+    const description = document.getElementById('memoryDescription').value;
+    const contentText = document.getElementById('memoryContent').value;
+    
+    // 将内容文本按行分割成数组
+    const content = contentText.split('\n').filter(line => line.trim() !== '');
+    
+    try {
+        await apiRequest('/api/agent/memory/blocks', {
+            method: 'POST',
+            body: JSON.stringify({ title, description, content })
+        });
+        
+        showToast('记忆块已添加', 'success');
+        hideAddMemoryBlockDialog();
+        refreshCoreMemory(); // 刷新显示
+        
+        // 重置表单
+        addMemoryBlockForm.reset();
+    } catch (error) {
+        showToast(`添加记忆块失败: ${error.message}`, 'error');
+    }
+}
+
+// 刷新工具
+async function refreshTools() {
+    if (!isConnected) return;
+    
+    try {
+        const tools = await apiRequest('/api/agent/tools');
+        displayTools(tools);
+    } catch (error) {
+        showToast(`获取工具列表失败: ${error.message}`, 'error');
+    }
+}
+
+// 显示工具
+function displayTools(tools) {
+    if (!toolsOutput) return;
+    
+    toolsOutput.innerHTML = `<pre>${tools.tools}</pre>`;
+}
+
+// 连接工具
+async function connectTool() {
+    const toolNameValue = toolName.value.trim();
+    const aiToolNameValue = aiToolName.value.trim();
+    
+    if (!toolNameValue || !aiToolNameValue) {
+        showToast('请填写工具名称和AI工具名称', 'warning');
+        return;
+    }
+    
+    try {
+        // 这里需要调用一个连接工具的API端点
+        // 目前我们只是显示一个消息
+        showToast(`工具 "${toolNameValue}" 已连接到 "${aiToolNameValue}"`, 'success');
+    } catch (error) {
+        showToast(`连接工具失败: ${error.message}`, 'error');
+    }
+}
+
 // 初始化事件监听器
 function initEventListeners() {
     // 连接表单提交
-    connectionForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        connectToBackend();
-    });
+    if (connectionForm) {
+        connectionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            connectToBackend();
+        });
+    }
     
     // 断开连接按钮
-    disconnectBtn.addEventListener('click', disconnectFromBackend);
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', disconnectFromBackend);
+    }
     
     // 直播控制按钮
-    startStreamBtn.addEventListener('click', startStream);
-    stopStreamBtn.addEventListener('click', stopStream);
-    restartStreamBtn.addEventListener('click', restartStream);
+    if (startStreamBtn) startStreamBtn.addEventListener('click', startStream);
+    if (stopStreamBtn) stopStreamBtn.addEventListener('click', stopStream);
+    if (restartStreamBtn) restartStreamBtn.addEventListener('click', restartStream);
+    
+    // Agent 控制按钮
+    if (refreshAgentLogsBtn) refreshAgentLogsBtn.addEventListener('click', refreshAgentLogs);
+    if (clearAgentLogsBtn) clearAgentLogsBtn.addEventListener('click', clearAgentLogs);
+    if (refreshTempMemoryBtn) refreshTempMemoryBtn.addEventListener('click', refreshTempMemory);
+    if (clearTempMemoryBtn) clearTempMemoryBtn.addEventListener('click', clearTempMemory);
+    if (refreshCoreMemoryBtn) refreshCoreMemoryBtn.addEventListener('click', refreshCoreMemory);
+    if (addCoreMemoryBlockBtn) addCoreMemoryBlockBtn.addEventListener('click', showAddMemoryBlockDialog);
+    if (refreshToolsBtn) refreshToolsBtn.addEventListener('click', refreshTools);
+    if (connectToolBtn) connectToolBtn.addEventListener('click', connectTool);
     
     // 配置管理表单
-    configForm.addEventListener('submit', saveConfig);
-    resetConfigBtn.addEventListener('click', resetConfigForm);
+    if (configForm) configForm.addEventListener('submit', saveConfig);
+    if (resetConfigBtn) resetConfigBtn.addEventListener('click', resetConfigForm);
     
     // 日志相关按钮
-    refreshLogsBtn.addEventListener('click', refreshLogs);
-    logLines.addEventListener('change', refreshLogs);
+    if (refreshLogsBtn) refreshLogsBtn.addEventListener('click', refreshLogs);
+    if (logLines) logLines.addEventListener('change', refreshLogs);
+    
+    // 用户友好视图切换 - 这个元素已经不存在了，所以注释掉相关代码
+    // if (friendlyViewToggle) friendlyViewToggle.addEventListener('change', refreshMessages);
     
     // 标签页切换
-    navTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            switchTab(tab.dataset.tab);
-            
-            // 当切换到配置标签页时，自动加载配置
-            if (tab.dataset.tab === 'config' && isConnected) {
-                getConfig().catch(error => {
-                    console.error('获取配置失败:', error);
-                    showToast(`获取配置失败: ${error.message}`, 'error');
-                });
+    if (navTabs) {
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchTab(tab.dataset.tab);
+                
+                // 当切换到配置标签页时，自动加载配置
+                if (tab.dataset.tab === 'config' && isConnected) {
+                    getConfig().catch(error => {
+                        console.error('获取配置失败:', error);
+                        showToast(`获取配置失败: ${error.message}`, 'error');
+                    });
+                }
+                
+                // 当切换到Agent标签页时，加载相关数据
+                if (tab.dataset.tab === 'agent' && isConnected) {
+                    // 默认显示Agent日志标签页
+                    switchAgentTab('messages');
+                    refreshAgentLogs();
+                }
+            });
+        });
+    }
+    
+    // Agent 标签页切换
+    if (agentTabBtns) {
+        agentTabBtns.forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchAgentTab(tab.dataset.agentTab);
+                
+                // 切换到不同Agent子标签页时加载对应数据
+                if (tab.dataset.agentTab === 'messages' && isConnected) {
+                    refreshAgentLogs();
+                } else if (tab.dataset.agentTab === 'memory' && isConnected) {
+                    refreshTempMemory();
+                    refreshCoreMemory();
+                } else if (tab.dataset.agentTab === 'tools' && isConnected) {
+                    refreshTools();
+                }
+            });
+        });
+    }
+    
+    // 当主标签页切换到Agent时，默认显示Agent日志
+    const agentMainTab = document.querySelector('[data-tab="agent"]');
+    if (agentMainTab) {
+        agentMainTab.addEventListener('click', () => {
+            if (isConnected) {
+                refreshAgentLogs();
             }
         });
-    });
+    }
+    
+    // 模态对话框事件
+    if (addMemoryBlockForm) {
+        addMemoryBlockForm.addEventListener('submit', addMemoryBlock);
+    }
+    
+    if (cancelAddMemoryBtn) {
+        cancelAddMemoryBtn.addEventListener('click', hideAddMemoryBlockDialog);
+    }
+    
+    // 关闭对话框按钮
+    if (closeDialogBtns) {
+        closeDialogBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 查找最近的模态对话框并隐藏
+                const dialog = btn.closest('.modal-dialog');
+                if (dialog) {
+                    dialog.classList.remove('show');
+                }
+            });
+        });
+    }
+    
+    // 点击对话框背景关闭对话框
+    if (addMemoryBlockDialog) {
+        addMemoryBlockDialog.addEventListener('click', (e) => {
+            if (e.target === addMemoryBlockDialog) {
+                hideAddMemoryBlockDialog();
+            }
+        });
+    }
 }
 
 // 显示横幅提示
@@ -816,6 +1306,12 @@ function showDisconnectDialog() {
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
+    
+    // 隐藏非连接标签页直到连接成功
+    document.querySelector('[data-tab="control"]').style.display = 'none';
+    document.querySelector('[data-tab="config"]').style.display = 'none';
+    document.querySelector('[data-tab="agent"]').style.display = 'none';
+    document.querySelector('[data-tab="logs"]').style.display = 'none';
     
     // 从localStorage恢复连接信息
     const savedUrl = localStorage.getItem('backendUrl');

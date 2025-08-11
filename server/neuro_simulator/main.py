@@ -36,10 +36,12 @@ from .stream_chat import (
 )
 from .websocket_manager import connection_manager
 from .stream_manager import live_stream_manager
+from .agent_api import router as agent_router
 import neuro_simulator.shared_state as shared_state
 
 # --- FastAPI 应用和模板设置 ---
 app = FastAPI(title="Neuro-Sama Simulator Backend")
+app.include_router(agent_router)  # Include the agent management API router
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config_manager.settings.server.client_origins + ["http://localhost:8080", "https://dashboard.live.jiahui.cafe"],  # 添加dashboard_web的地址
@@ -143,7 +145,11 @@ async def neuro_response_cycle():
     is_first_response = True
     
     # Dynamically import get_neuro_response to respect agent_type
-    from .letta import get_neuro_response
+    agent_type = config_manager.settings.agent_type
+    if agent_type == "builtin":
+        from .builtin_agent import get_builtin_response as get_neuro_response
+    else:
+        from .letta import get_neuro_response
 
     while True:
         try:
@@ -166,19 +172,34 @@ async def neuro_response_cycle():
                     timeout=10.0  # 默认10秒超时
                 )
             except asyncio.TimeoutError:
-                print("警告: Letta 响应超时，跳过本轮。")
+                print(f"警告: {agent_type} 响应超时，跳过本轮。")
                 await asyncio.sleep(5)
                 continue
             
             async with shared_state.neuro_last_speech_lock:
-                if ai_full_response_text and ai_full_response_text.strip():
-                    shared_state.neuro_last_speech = ai_full_response_text
+                # Handle both string and dict responses
+                response_text = ""
+                if isinstance(ai_full_response_text, dict):
+                    # Extract the final response from the dict
+                    response_text = ai_full_response_text.get("final_response", "")
+                else:
+                    response_text = ai_full_response_text if ai_full_response_text else ""
+                
+                if response_text and response_text.strip():
+                    shared_state.neuro_last_speech = response_text
                 else:
                     shared_state.neuro_last_speech = "(Neuro-Sama is currently silent...)"
-                    print("警告: 从 Letta 获取的响应为空，跳过本轮。")
+                    print(f"警告: 从 {agent_type} 获取的响应为空，跳过本轮。")
                     continue
             
-            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', ai_full_response_text.replace('\n', ' ').strip()) if s.strip()]
+            # Handle both string and dict responses for sentence splitting
+            response_text = ""
+            if isinstance(ai_full_response_text, dict):
+                response_text = ai_full_response_text.get("final_response", "")
+            else:
+                response_text = ai_full_response_text if ai_full_response_text else ""
+                
+            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', response_text.replace('\n', ' ').strip()) if s.strip()]
             if not sentences:
                 continue
 
@@ -239,7 +260,13 @@ async def startup_event():
     
     # Initialize the appropriate agent
     from .letta import initialize_agent
-    await initialize_agent()
+    from .builtin_agent import initialize_builtin_agent
+    
+    agent_type = config_manager.settings.agent_type
+    if agent_type == "builtin":
+        await initialize_builtin_agent()
+    else:
+        await initialize_agent()
     
     print("FastAPI 应用已启动。请通过外部控制面板控制直播进程。")
 
@@ -258,6 +285,12 @@ async def shutdown_event():
 @app.post("/api/stream/start", tags=["Stream Control"], dependencies=[Depends(get_api_token)])
 async def api_start_stream():
     """启动直播"""
+    # If using builtin agent, clear temp memory when starting stream
+    agent_type = config_manager.settings.agent_type
+    if agent_type == "builtin":
+        from .builtin_agent import clear_builtin_agent_temp_memory
+        await clear_builtin_agent_temp_memory()
+    
     if not process_manager.is_running:
         process_manager.start_live_processes()
         return {"status": "success", "message": "直播已启动"}
@@ -280,6 +313,20 @@ async def api_restart_stream():
     await asyncio.sleep(1)
     process_manager.start_live_processes()
     return {"status": "success", "message": "直播已重启"}
+
+@app.post("/api/agent/reset_memory", tags=["Agent"], dependencies=[Depends(get_api_token)])
+async def api_reset_agent_memory():
+    """重置Agent记忆"""
+    agent_type = config_manager.settings.agent_type
+    
+    if agent_type == "builtin":
+        from .builtin_agent import reset_builtin_agent_memory
+        await reset_builtin_agent_memory()
+        return {"status": "success", "message": "内置Agent记忆已重置"}
+    else:
+        from .letta import reset_neuro_agent_memory
+        await reset_neuro_agent_memory()
+        return {"status": "success", "message": "Letta Agent记忆已重置"}
 
 @app.get("/api/stream/status", tags=["Stream Control"], dependencies=[Depends(get_api_token)])
 async def api_get_stream_status():
@@ -389,6 +436,13 @@ def filter_config_for_frontend(settings):
             'stream_tags': settings.stream_metadata.stream_tags
         }
     
+    # Agent settings (不包含 agent_type)
+    if hasattr(settings, 'agent'):
+        filtered_settings['agent'] = {
+            'agent_provider': settings.agent.agent_provider,
+            'agent_model': settings.agent.agent_model
+        }
+    
     # Neuro behavior settings
     if hasattr(settings, 'neuro_behavior'):
         filtered_settings['neuro_behavior'] = {
@@ -438,6 +492,8 @@ async def update_configs(new_settings: dict):
             'stream_metadata.stream_title',
             'stream_metadata.stream_category',
             'stream_metadata.stream_tags',
+            'agent.agent_provider',  # 添加 agent 配置项（不包含 agent_type）
+            'agent.agent_model',
             'neuro_behavior.input_chat_sample_size',
             'neuro_behavior.post_speech_cooldown_sec',
             'neuro_behavior.initial_greeting',

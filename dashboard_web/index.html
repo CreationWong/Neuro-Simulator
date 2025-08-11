@@ -22,6 +22,36 @@
         </div>
     </div>
     
+    <!-- 添加记忆块对话框 -->
+    <div id="addMemoryBlockDialog" class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加记忆块</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addMemoryBlockForm">
+                    <div class="form-group">
+                        <label for="memoryTitle">标题:</label>
+                        <input type="text" id="memoryTitle" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="memoryDescription">描述:</label>
+                        <textarea id="memoryDescription" rows="2" class="form-control"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="memoryContent">内容 (每行一条):</label>
+                        <textarea id="memoryContent" rows="4" class="form-control"></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn secondary" id="cancelAddMemoryBtn">取消</button>
+                        <button type="submit" class="btn primary">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <div class="container">
         <header>
             <h1>vedal987 🐢 Simulator</h1>
@@ -43,6 +73,9 @@
                     </li>
                     <li class="nav-tab" data-tab="config">
                         <span>配置</span>
+                    </li>
+                    <li class="nav-tab" data-tab="agent">
+                        <span>Agent</span>
                     </li>
                     <li class="nav-tab" data-tab="logs">
                         <span>日志</span>
@@ -73,8 +106,8 @@
                     </div>
                 </section>
 
-                <!-- 直播控制区域 -->
-                <section class="tab-content" id="control-tab">
+                <!-- 控制标签页 -->
+                <section id="control-tab" class="tab-content">
                     <div class="card">
                         <h2>直播控制</h2>
                         <div class="stream-status">
@@ -127,6 +160,22 @@
                                 <div class="form-group">
                                     <label for="initial_greeting">初始问候语:</label>
                                     <textarea id="initial_greeting" name="neuro_behavior.initial_greeting" class="form-control" rows="3"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Agent Configuration Section -->
+                            <div class="config-section">
+                                <h3>Agent设置（仅当使用内建Agent时有效）</h3>
+                                <div class="form-group">
+                                    <label for="agent_provider">LLM提供商:</label>
+                                    <select id="agent_provider" name="agent.agent_provider" class="form-control">
+                                        <option value="gemini">Gemini</option>
+                                        <option value="openai">OpenAI</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="agent_model">模型:</label>
+                                    <input type="text" id="agent_model" name="agent.agent_model" class="form-control">
                                 </div>
                             </div>
 
@@ -198,6 +247,68 @@
                         </form>
                         <div class="config-warning">
                             <p>警告：如果配置文件被修改或添加了新条目，此面板可能不会显示所有设置。请检查后端日志以获取更多信息。</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Agent 标签页 -->
+                <section id="agent-tab" class="tab-content">
+                    <div class="card">
+                        <div class="agent-tabs">
+                            <button class="agent-tab-btn active" data-agent-tab="messages">Agent日志</button>
+                            <button class="agent-tab-btn" data-agent-tab="memory">记忆</button>
+                            <button class="agent-tab-btn" data-agent-tab="tools">工具</button>
+                        </div>
+                        
+                        <!-- Agent日志 Tab -->
+                        <div class="agent-tab-content active" id="messages-agent-tab">
+                            <div class="agent-controls">
+                                <button id="refreshAgentLogsBtn" class="btn secondary">刷新日志</button>
+                                <button id="clearAgentLogsBtn" class="btn danger">清空日志</button>
+                            </div>
+                            <div id="agentLogsOutput" class="messages-output"></div>
+                        </div>
+                        
+                        <!-- 记忆 Tab -->
+                        <div class="agent-tab-content" id="memory-agent-tab">
+                            <div class="memory-section">
+                                <h3>临时记忆 (Temp Memory)</h3>
+                                <div class="agent-controls">
+                                    <button id="refreshTempMemoryBtn" class="btn secondary">刷新</button>
+                                    <button id="clearTempMemoryBtn" class="btn danger">清空</button>
+                                </div>
+                                <div id="tempMemoryOutput" class="memory-output"></div>
+                            </div>
+                            
+                            <div class="memory-section">
+                                <h3>核心记忆 (Core Memory)</h3>
+                                <div class="agent-controls">
+                                    <button id="refreshCoreMemoryBtn" class="btn secondary">刷新</button>
+                                    <button id="addCoreMemoryBlockBtn" class="btn primary">添加记忆块</button>
+                                </div>
+                                <div id="coreMemoryOutput" class="memory-output"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 工具 Tab -->
+                        <div class="agent-tab-content" id="tools-agent-tab">
+                            <div class="agent-controls">
+                                <button id="refreshToolsBtn" class="btn secondary">刷新工具</button>
+                            </div>
+                            <div id="toolsOutput" class="tools-output"></div>
+                            
+                            <div class="tool-connection">
+                                <h3>工具连接</h3>
+                                <div class="form-group">
+                                    <label for="toolName">工具名称:</label>
+                                    <input type="text" id="toolName" class="form-control" placeholder="输入工具名称">
+                                </div>
+                                <div class="form-group">
+                                    <label for="aiToolName">连接到AI的工具:</label>
+                                    <input type="text" id="aiToolName" class="form-control" placeholder="输入AI工具名称">
+                                </div>
+                                <button id="connectToolBtn" class="btn primary">连接工具</button>
+                            </div>
                         </div>
                     </div>
                 </section>

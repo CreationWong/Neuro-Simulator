@@ -42,7 +42,15 @@ class ToolManager:
             "6. add_to_core_memory_block(block_id: string, item: string) - Add an item to a core memory block",
             "7. remove_from_core_memory_block(block_id: string, index: integer) - Remove an item from a core memory block by index",
             "8. add_temp_memory(content: string, role: string) - Add an item to temporary memory",
-            "9. speak(text: string) - Output text to the user"
+            "9. speak(text: string) - Output text to the user",
+            "",
+            "IMPORTANT INSTRUCTIONS:",
+            "- When you want to speak to the user, ONLY use the speak tool with your response as the text parameter",
+            "- DO NOT use print() or any other wrapper functions around the speak tool",
+            "- Example of correct usage: speak(text='Hello, how can I help you today?')",
+            "- Example of incorrect usage: print(speak(text='Hello, how can I help you today?'))",
+            "- ONLY return ONE tool call per response",
+            "- Format your response as plain text with the tool call, nothing else"
         ]
         return "\n".join(descriptions)
         
@@ -98,6 +106,7 @@ class ToolManager:
         
     async def _speak(self, text: str) -> str:
         """Output text - this is how the agent communicates with users"""
-        # This is a placeholder - in practice, this would send the text to the output system
+        # Store the spoken text in memory so it can be retrieved by the agent
+        await self.memory_manager.add_temp_memory(text, "assistant")
         print(f"Agent says: {text}")
         return text
