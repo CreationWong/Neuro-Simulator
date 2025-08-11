@@ -3,50 +3,86 @@ from letta_client import Letta, MessageCreate, TextContent, LlmConfig, Assistant
 from fastapi import HTTPException, status
 from .config import config_manager
 import asyncio
+from typing import Union, TYPE_CHECKING
 
-# 初始化 Letta 客户端
-letta_client: Letta | None = None
-try:
-    if not config_manager.settings.api_keys.letta_token:
-        raise ValueError("LETTA_API_TOKEN is not set. Cannot initialize Letta client.")
-    
-    # 使用 settings 对象进行配置
-    client_args = {'token': config_manager.settings.api_keys.letta_token}
-    if config_manager.settings.api_keys.letta_base_url:
-        client_args['base_url'] = config_manager.settings.api_keys.letta_base_url
-        print(f"Letta client is being initialized for self-hosted URL: {config_manager.settings.api_keys.letta_base_url}")
-    else:
-        print("Letta client is being initialized for Letta Cloud.")
+if TYPE_CHECKING:
+    from .agent.core import Agent as LocalAgent
 
-    letta_client = Letta(**client_args)
+# Global variables
+letta_client: Union[Letta, None] = None
+local_agent: Union["LocalAgent", None] = None
 
-    if config_manager.settings.api_keys.neuro_agent_id:
-        try:
-            agent_data = letta_client.agents.retrieve(agent_id=config_manager.settings.api_keys.neuro_agent_id)
-            print(f"成功获取 Letta Agent 详情，ID: {agent_data.id}")
-            llm_model_info = "N/A"
-            if hasattr(agent_data, 'model') and agent_data.model:
-                llm_model_info = agent_data.model
-            elif agent_data.llm_config:
-                if isinstance(agent_data.llm_config, LlmConfig):
-                    llm_config_dict = agent_data.llm_config.model_dump() if hasattr(agent_data.llm_config, 'model_dump') else agent_data.llm_config.__dict__
-                    llm_model_info = llm_config_dict.get('model_name') or llm_config_dict.get('name') or llm_config_dict.get('model')
-                if not llm_model_info:
-                    llm_model_info = str(agent_data.llm_config)
-            print(f"  -> Agent 名称: {agent_data.name}")
-            print(f"  -> LLM 模型: {llm_model_info}")
+def initialize_letta_client():
+    """Initializes the Letta client if not already initialized."""
+    global letta_client
+    if letta_client:
+        return
 
-        except Exception as e:
-            error_msg = f"错误: 无法获取 Neuro Letta Agent (ID: {config_manager.settings.api_keys.neuro_agent_id})。请确保 ID 正确，且服务可访问。详情: {e}"
-            print(error_msg)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
-except Exception as e:
-    print(f"初始化 Letta 客户端失败: {e}")
-    letta_client = None
+    try:
+        if not config_manager.settings.api_keys.letta_token:
+            raise ValueError("LETTA_API_TOKEN is not set. Cannot initialize Letta client.")
+        
+        client_args = {'token': config_manager.settings.api_keys.letta_token}
+        if config_manager.settings.api_keys.letta_base_url:
+            client_args['base_url'] = config_manager.settings.api_keys.letta_base_url
+            print(f"Letta client is being initialized for self-hosted URL: {config_manager.settings.api_keys.letta_base_url}")
+        else:
+            print("Letta client is being initialized for Letta Cloud.")
+
+        letta_client = Letta(**client_args)
+
+        if config_manager.settings.api_keys.neuro_agent_id:
+            try:
+                agent_data = letta_client.agents.retrieve(agent_id=config_manager.settings.api_keys.neuro_agent_id)
+                print(f"成功获取 Letta Agent 详情，ID: {agent_data.id}")
+                llm_model_info = "N/A"
+                if hasattr(agent_data, 'model') and agent_data.model:
+                    llm_model_info = agent_data.model
+                elif agent_data.llm_config:
+                    if isinstance(agent_data.llm_config, LlmConfig):
+                        llm_config_dict = agent_data.llm_config.model_dump() if hasattr(agent_data.llm_config, 'model_dump') else agent_data.llm_config.__dict__
+                        llm_model_info = llm_config_dict.get('model_name') or llm_config_dict.get('name') or llm_config_dict.get('model')
+                    if not llm_model_info:
+                        llm_model_info = str(agent_data.llm_config)
+                print(f"  -> Agent 名称: {agent_data.name}")
+                print(f"  -> LLM 模型: {llm_model_info}")
+            except Exception as e:
+                error_msg = f"错误: 无法获取 Neuro Letta Agent (ID: {config_manager.settings.api_keys.neuro_agent_id})。请确保 ID 正确，且服务可访问。详情: {e}"
+                print(error_msg)
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
+    except Exception as e:
+        print(f"初始化 Letta 客户端失败: {e}")
+        letta_client = None
 
 def get_letta_client():
     if letta_client is None: raise ValueError("Letta client is not initialized.")
     return letta_client
+
+async def initialize_agent():
+    """Initialize the appropriate agent based on configuration"""
+    global local_agent
+    
+    agent_type = config_manager.settings.agent_type
+    
+    if agent_type == "builtin":
+        try:
+            from .agent.core import Agent as LocalAgentImport
+            from .stream_manager import live_stream_manager
+            
+            local_agent = LocalAgentImport(working_dir=live_stream_manager._working_dir)
+            await local_agent.initialize()
+            print("Local Agent initialized successfully")
+        except Exception as e:
+            print(f"初始化本地 Agent 失败: {e}")
+            local_agent = None
+    elif agent_type == "letta":
+        initialize_letta_client()
+        print("Using Letta as the agent")
+    else:
+        print(f"Unknown agent type: {agent_type}. Defaulting to Letta.")
+        initialize_letta_client()
+        
+    return agent_type
 
 async def reset_neuro_agent_memory():
     """
@@ -54,42 +90,71 @@ async def reset_neuro_agent_memory():
     1. 清空所有消息历史记录。
     2. 清空指定的 'conversation_summary' 核心内存块。
     """
-    agent_id = config_manager.settings.api_keys.neuro_agent_id
-    if letta_client is None or not agent_id: 
-        print("Letta client 或 Agent ID 未配置，跳过重置。")
+    # Check which agent to use
+    agent_type = config_manager.settings.agent_type
+    
+    if agent_type == "builtin" and local_agent is not None:
+        await local_agent.reset_memory()
+        print("Local Agent memory has been reset.")
         return
+    
+    # Fallback to Letta if not using local agent or local agent is not available
+    if agent_type == "letta":
+        # Ensure letta client is initialized before using it
+        initialize_letta_client()
+        if letta_client is None:
+            print("Letta client 未初始化，跳过重置。")
+            return
+            
+        agent_id = config_manager.settings.api_keys.neuro_agent_id
+        if not agent_id: 
+            print("Letta Agent ID 未配置，跳过重置。")
+            return
 
-    # --- 步骤 1: 重置消息历史记录 (上下文) ---
-    try:
-        letta_client.agents.messages.reset(agent_id=agent_id)
-        print(f"Neuro Agent (ID: {agent_id}) 的消息历史已成功重置。")
-    except Exception as e:
-        print(f"警告: 重置 Agent 消息历史失败: {e}。")
+        # --- 步骤 1: 重置消息历史记录 (上下文) ---
+        try:
+            letta_client.agents.messages.reset(agent_id=agent_id)
+            print(f"Neuro Agent (ID: {agent_id}) 的消息历史已成功重置。")
+        except Exception as e:
+            print(f"警告: 重置 Agent 消息历史失败: {e}。")
 
-    # --- 步骤 2: 清空 'conversation_summary' 核心内存块 ---
-    block_label_to_clear = "conversation_summary"
-    try:
-        print(f"正在尝试清空核心记忆块: '{block_label_to_clear}'...")
-        
-        # 调用 modify 方法，将 value 设置为空字符串
-        letta_client.agents.blocks.modify(
-            agent_id=agent_id,
-            block_label=block_label_to_clear,
-            value="" 
-        )
-        
-        print(f"核心记忆块 '{block_label_to_clear}' 已成功清空。")
-    except Exception as e:
-        # 优雅地处理块不存在的情况
-        # API 在找不到块时通常会返回包含 404 或 "not found" 的错误
-        error_str = str(e).lower()
-        if "not found" in error_str or "404" in error_str:
-             print(f"信息: 核心记忆块 '{block_label_to_clear}' 不存在，无需清空。")
-        else:
-             print(f"警告: 清空核心记忆块 '{block_label_to_clear}' 失败: {e}。")
-
+        # --- 步骤 2: 清空 'conversation_summary' 核心内存块 ---
+        block_label_to_clear = "conversation_summary"
+        try:
+            print(f"正在尝试清空核心记忆块: '{block_label_to_clear}'...")
+            
+            # 调用 modify 方法，将 value 设置为空字符串
+            letta_client.agents.blocks.modify(
+                agent_id=agent_id,
+                block_label=block_label_to_clear,
+                value="" 
+            )
+            
+            print(f"核心记忆块 '{block_label_to_clear}' 已成功清空。")
+        except Exception as e:
+            # 优雅地处理块不存在的情况
+            # API 在找不到块时通常会返回包含 404 或 "not found" 的错误
+            error_str = str(e).lower()
+            if "not found" in error_str or "404" in error_str:
+                 print(f"信息: 核心记忆块 '{block_label_to_clear}' 不存在，无需清空。")
+            else:
+                 print(f"警告: 清空核心记忆块 '{block_label_to_clear}' 失败: {e}。")
 
 async def get_neuro_response(chat_messages: list[dict]) -> str:
+    # Check which agent to use
+    agent_type = config_manager.settings.agent_type
+    
+    if agent_type == "builtin":
+        if local_agent is not None:
+            response = await local_agent.process_messages(chat_messages)
+            return response
+        else:
+            print("错误: 本地 Agent 未初始化，无法获取响应。")
+            return "My brain is not working, please tell Vedal."
+
+    # Fallback to Letta if not using local agent or local agent is not available
+    # Ensure letta client is initialized before using it
+    initialize_letta_client()
     if letta_client is None or not config_manager.settings.api_keys.neuro_agent_id:
         print("错误: Letta client 或 Agent ID 未配置，无法获取响应。")
         return "Someone tell Vedal there is a problem with my AI."

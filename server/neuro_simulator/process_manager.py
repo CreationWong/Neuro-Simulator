@@ -27,11 +27,14 @@ class ProcessManager:
         from .main import generate_audience_chat_task, neuro_response_cycle, broadcast_events_task
         from .stream_manager import live_stream_manager
         from .stream_chat import clear_all_queues
-        from .letta import reset_neuro_agent_memory
+        
+        # Initialize Agent and reset memory
+        from .letta import reset_neuro_agent_memory, initialize_agent
+        import asyncio
+        asyncio.create_task(initialize_agent())
         
         # 清理状态和队列，开始新的直播周期
         clear_all_queues()
-        asyncio.create_task(reset_neuro_agent_memory())
         live_stream_manager.reset_stream_state()
 
         # 创建并存储任务

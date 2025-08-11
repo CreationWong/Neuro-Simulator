@@ -39,6 +39,22 @@ stream_metadata:
   # 直播标签 - 用于描述直播内容的标签列表
   stream_tags: ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"]
 
+# Agent Type Selection
+# Choose which agent to use for Neuro-sama's brain.
+# - "letta": Use a remote agent hosted on the Letta platform. (Requires letta_token and neuro_agent_id)
+# - "builtin": Use the local, built-in agent. (Requires separate LLM provider configuration below)
+agent_type: "builtin"
+
+# Built-in Agent Settings
+# These settings are ONLY used if agent_type is "builtin".
+agent:
+  # LLM provider for the agent's core logic. Supported: "gemini", "openai"
+  agent_provider: "gemini"
+  # The specific model to use for the agent.
+  # Example for Gemini: "gemini-1.5-pro-latest", "gemini-1.5-flash-latest"
+  # Example for OpenAI: "gpt-4o", "gpt-3.5-turbo"
+  agent_model: "gemini-1.5-flash-latest"
+
 # --- Neuro 行为与节奏控制 ---
 neuro_behavior:
   # 输入聊天采样数量 - 每次生成 Neuro 回复时从观众聊天中采样的消息数量，不建议太长

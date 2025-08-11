@@ -28,6 +28,13 @@ class StreamMetadataSettings(BaseModel):
     stream_category: str = "谈天说地"
     stream_tags: List[str] = Field(default_factory=lambda: ["Vtuber"])
 
+class AgentSettings(BaseModel):
+    """Settings for the built-in agent"""
+    agent_provider: str = "gemini"
+    agent_model: str = "gemini-1.5-flash-latest"
+    # Placeholder for future agent-specific settings
+    # llm_temperature: float = 0.7 
+
 class NeuroBehaviorSettings(BaseModel):
     input_chat_sample_size: int = 10
     post_speech_cooldown_sec: float = 1.0
@@ -80,11 +87,13 @@ class ServerSettings(BaseModel):
 class AppSettings(BaseModel):
     api_keys: ApiKeysSettings = Field(default_factory=ApiKeysSettings)
     stream_metadata: StreamMetadataSettings = Field(default_factory=StreamMetadataSettings)
+    agent: AgentSettings = Field(default_factory=AgentSettings)
     neuro_behavior: NeuroBehaviorSettings = Field(default_factory=NeuroBehaviorSettings)
     audience_simulation: AudienceSimSettings = Field(default_factory=AudienceSimSettings)
     tts: TTSSettings = Field(default_factory=TTSSettings)
     performance: PerformanceSettings = Field(default_factory=PerformanceSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
+    agent_type: str = "letta"  # 可选 "letta" 或 "builtin"
 
 # --- 2. 加载和管理配置的逻辑 ---
 
@@ -134,15 +143,16 @@ class ConfigManager:
         base_settings = AppSettings.model_validate(yaml_config)
 
         # 检查关键配置项
-        missing_keys = []
-        if not base_settings.api_keys.letta_token:
-            missing_keys.append("api_keys.letta_token")
-        if not base_settings.api_keys.neuro_agent_id:
-            missing_keys.append("api_keys.neuro_agent_id")
+        if base_settings.agent_type == "letta":
+            missing_keys = []
+            if not base_settings.api_keys.letta_token:
+                missing_keys.append("api_keys.letta_token")
+            if not base_settings.api_keys.neuro_agent_id:
+                missing_keys.append("api_keys.neuro_agent_id")
             
-        if missing_keys:
-            raise ValueError(f"Critical config missing in config.yaml: {', '.join(missing_keys)}. "
-                           f"Please check your config.yaml file against config.yaml.example.")
+            if missing_keys:
+                raise ValueError(f"Critical config missing in config.yaml for letta agent: {', '.join(missing_keys)}. "
+                               f"Please check your config.yaml file against config.yaml.example.")
 
         logging.info("Configuration loaded successfully.")
         return base_settings

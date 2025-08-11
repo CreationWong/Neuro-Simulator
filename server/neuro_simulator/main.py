@@ -28,7 +28,7 @@ from .log_handler import configure_logging, log_queue
 
 # --- 功能模块导入 ---
 from .chatbot import ChatbotManager, get_dynamic_audience_prompt
-from .letta import get_neuro_response, reset_neuro_agent_memory
+# from .letta import get_neuro_response, reset_neuro_agent_memory, initialize_agent # This will be imported dynamically
 from .audio_synthesis import synthesize_audio_segment
 from .stream_chat import (
     add_to_audience_buffer, add_to_neuro_input_queue, 
@@ -142,6 +142,9 @@ async def neuro_response_cycle():
     print("Neuro响应周期: 任务启动。")
     is_first_response = True
     
+    # Dynamically import get_neuro_response to respect agent_type
+    from .letta import get_neuro_response
+
     while True:
         try:
             if is_first_response:
@@ -233,6 +236,10 @@ async def startup_event():
     
     config_manager.register_update_callback(metadata_callback)
     config_manager.register_update_callback(chatbot_manager.handle_config_update)
+    
+    # Initialize the appropriate agent
+    from .letta import initialize_agent
+    await initialize_agent()
     
     print("FastAPI 应用已启动。请通过外部控制面板控制直播进程。")
 
