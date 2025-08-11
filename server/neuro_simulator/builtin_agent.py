@@ -39,7 +39,7 @@ async def reset_builtin_agent_memory():
     print(f"DEBUG: local_agent in reset function: {local_agent}")
     
     if local_agent is not None:
-        await local_agent.reset_memory()
+        await local_agent.reset_all_memory()
         print("Local Agent memory has been reset.")
     else:
         print("错误: 本地 Agent 未初始化，无法重置记忆。")
@@ -56,6 +56,19 @@ async def clear_builtin_agent_temp_memory():
         print("Local Agent temp memory has been cleared.")
     else:
         print("错误: 本地 Agent 未初始化，无法清空临时记忆。")
+
+async def clear_builtin_agent_context():
+    """Clear the builtin agent's context (dialog history)"""
+    global local_agent
+    print("DEBUG: clear_builtin_agent_context called")
+    print(f"DEBUG: local_agent in clear context function: {local_agent}")
+    
+    if local_agent is not None:
+        # Reset only context
+        await local_agent.memory_manager.reset_context()
+        print("Local Agent context has been cleared.")
+    else:
+        print("错误: 本地 Agent 未初始化，无法清空上下文。")
 
 async def get_builtin_response(chat_messages: list[dict]) -> dict:
     """Get response from the builtin agent with detailed processing information"""

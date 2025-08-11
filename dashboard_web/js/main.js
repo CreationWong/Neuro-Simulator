@@ -4,7 +4,7 @@
 let backendUrl = '';
 let authToken = '';
 let isConnected = false;
-let logWebSocket = null;
+let adminWebSocket = null;
 let currentConfig = {}; // 存储当前配置
 let toastContainer = null; // 横幅提示容器
 let confirmDialog = null; // 确认对话框元素
@@ -30,15 +30,12 @@ const restartStreamBtn = document.getElementById('restartStreamBtn');
 const configForm = document.getElementById('configForm');
 const resetConfigBtn = document.getElementById('resetConfigBtn');
 
-// 日志显示相关元素
-const logsOutput = document.getElementById('logsOutput');
-const logLines = document.getElementById('logLines');
-const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+
 
 // Agent 控制相关元素
-const refreshAgentLogsBtn = document.getElementById('refreshAgentLogsBtn');
-const clearAgentLogsBtn = document.getElementById('clearAgentLogsBtn');
+const serverLogsOutput = document.getElementById('serverLogsOutput');
 const agentLogsOutput = document.getElementById('agentLogsOutput');
+const contextOutput = document.getElementById('contextOutput');
 const refreshTempMemoryBtn = document.getElementById('refreshTempMemoryBtn');
 const clearTempMemoryBtn = document.getElementById('clearTempMemoryBtn');
 const tempMemoryOutput = document.getElementById('tempMemoryOutput');
@@ -80,7 +77,6 @@ function updateConnectionStatus(connected, message = '') {
         document.querySelector('[data-tab="control"]').style.display = 'block';
         document.querySelector('[data-tab="config"]').style.display = 'block';
         document.querySelector('[data-tab="agent"]').style.display = 'block';
-        document.querySelector('[data-tab="logs"]').style.display = 'block';
     } else {
         statusDot.className = 'status-dot disconnected';
         statusText.textContent = message || '未连接';
@@ -90,16 +86,15 @@ function updateConnectionStatus(connected, message = '') {
         document.querySelector('[data-tab="control"]').style.display = 'none';
         document.querySelector('[data-tab="config"]').style.display = 'none';
         document.querySelector('[data-tab="agent"]').style.display = 'none';
-        document.querySelector('[data-tab="logs"]').style.display = 'none';
         
-        // 关闭日志WebSocket连接
-        if (logWebSocket) {
+        // 关闭管理WebSocket连接
+        if (adminWebSocket) {
             try {
-                logWebSocket.close(1000, 'Client disconnecting'); // 正常关闭代码
+                adminWebSocket.close(1000, 'Client disconnecting'); // 正常关闭代码
             } catch (e) {
                 console.error('关闭WebSocket时出错:', e);
             }
-            logWebSocket = null;
+            adminWebSocket = null;
         }
     }
 }
@@ -252,8 +247,8 @@ async function connectToBackend(autoConnect = false) {
             }
             // 更新直播状态
             updateStreamStatus();
-            // 连接日志WebSocket
-            connectLogWebSocket();
+            // 连接管理WebSocket
+            connectAdminWebSocket();
             // 默认切换到控制页面
             switchTab('control');
             // 启动健康检查定时器（如果还没有）
@@ -392,7 +387,7 @@ async function restartStream() {
 
 // 重置Agent记忆
 async function resetAgentMemory() {
-    const confirmed = await showConfirmDialog('确定要重置Agent的记忆吗？这将清除所有临时记忆和对话历史。');
+    const confirmed = await showConfirmDialog('确定要重置Agent的所有记忆吗？这将清除临时记忆、对话历史和核心记忆。');
     if (!confirmed) {
         return;
     }
@@ -402,6 +397,7 @@ async function resetAgentMemory() {
         showToast(response.message, 'success');
         // 刷新记忆显示
         refreshTempMemory();
+        refreshContext();
         refreshCoreMemory();
     } catch (error) {
         showToast(`操作失败: ${error.message}`, 'error');
@@ -588,50 +584,120 @@ async function saveConfig(e) {
     }
 }
 
-// 获取日志
-async function getLogs() {
-    try {
-        const lines = logLines.value;
-        const response = await apiRequest(`/api/logs?lines=${lines}`);
-        logsOutput.textContent = response.logs.join('\n');
-        // 滚动到底部
-        logsOutput.scrollTop = logsOutput.scrollHeight;
-    } catch (error) {
-        logsOutput.textContent = `获取日志失败: ${error.message}`;
-    }
-}
 
-// 连接日志WebSocket
-function connectLogWebSocket() {
-    if (logWebSocket) {
-        logWebSocket.close();
+
+// 连接管理WebSocket
+function connectAdminWebSocket() {
+    if (adminWebSocket) {
+        adminWebSocket.close();
     }
     
     try {
-        const wsUrl = backendUrl.replace(/^http/, 'ws') + '/ws/logs';
-        logWebSocket = new WebSocket(wsUrl);
+        const wsUrl = backendUrl.replace(/^http/, 'ws') + '/ws/admin';
+        adminWebSocket = new WebSocket(wsUrl);
         
-        logWebSocket.onopen = () => {
-            console.log('日志WebSocket连接已建立');
+        adminWebSocket.onopen = () => {
+            console.log('管理WebSocket连接已建立');
         };
         
-        logWebSocket.onmessage = (event) => {
-            const logEntry = event.data;
-            // 添加新日志到输出区域
-            logsOutput.textContent += logEntry + '\n';
-            // 保持滚动到底部（如果已经在底部）
-            if (logsOutput.scrollTop + logsOutput.clientHeight >= logsOutput.scrollHeight - 10) {
-                logsOutput.scrollTop = logsOutput.scrollHeight;
-            }
-            // 限制日志行数以防止内存问题
-            const lines = logsOutput.textContent.split('\n');
-            if (lines.length > 1000) {
-                logsOutput.textContent = lines.slice(-1000).join('\n');
+        adminWebSocket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                // 处理不同类型的数据
+                switch (data.type) {
+                    case 'server_log':
+                        // 处理服务器日志
+                        if (serverLogsOutput) {
+                            const logDiv = document.createElement('div');
+                            logDiv.className = 'log-entry log-server';
+                            
+                            // 确保data.content存在
+                            const content = data.content || data.message || 'Unknown server log message';
+                            
+                            // 根据日志级别设置样式
+                            if (content.includes('ERROR') || content.includes('Error')) {
+                                logDiv.classList.add('log-error');
+                            } else if (content.includes('WARNING') || content.includes('Warning')) {
+                                logDiv.classList.add('log-warning');
+                            } else if (content.includes('DEBUG') || content.includes('Debug')) {
+                                logDiv.classList.add('log-debug');
+                            } else {
+                                logDiv.classList.add('log-info');
+                            }
+                            
+                            logDiv.textContent = content;
+                            serverLogsOutput.appendChild(logDiv);
+                            
+                            // 保持只显示最新的1000行日志
+                            const logEntries = serverLogsOutput.querySelectorAll('.log-entry');
+                            if (logEntries.length > 1000) {
+                                // 删除多余的日志条目
+                                for (let i = 0; i < logEntries.length - 1000; i++) {
+                                    logEntries[i].remove();
+                                }
+                            }
+                            
+                            // 滚动到底部以显示最新日志
+                            serverLogsOutput.scrollTop = serverLogsOutput.scrollHeight;
+                        }
+                        break;
+                        
+                    case 'agent_log':
+                        // 处理Agent日志
+                        if (agentLogsOutput) {
+                            const logDiv = document.createElement('div');
+                            logDiv.className = 'log-entry log-agent';
+                            
+                            // 确保data.content存在
+                            const content = data.content || data.message || 'Unknown agent log message';
+                            
+                            // 根据日志级别设置样式
+                            if (content.includes('ERROR') || content.includes('Error')) {
+                                logDiv.classList.add('log-error');
+                            } else if (content.includes('WARNING') || content.includes('Warning')) {
+                                logDiv.classList.add('log-warning');
+                            } else if (content.includes('DEBUG') || content.includes('Debug')) {
+                                logDiv.classList.add('log-debug');
+                            } else {
+                                logDiv.classList.add('log-info');
+                            }
+                            
+                            logDiv.textContent = content;
+                            agentLogsOutput.appendChild(logDiv);
+                            
+                            // 保持只显示最新的1000行日志
+                            const logEntries = agentLogsOutput.querySelectorAll('.log-entry');
+                            if (logEntries.length > 1000) {
+                                // 删除多余的日志条目
+                                for (let i = 0; i < logEntries.length - 1000; i++) {
+                                    logEntries[i].remove();
+                                }
+                            }
+                            
+                            // 滚动到底部以显示最新日志
+                            agentLogsOutput.scrollTop = agentLogsOutput.scrollHeight;
+                        }
+                        break;
+                        
+                    case 'agent_context':
+                        // 处理Agent上下文
+                        if (data.action === 'update' && contextOutput) {
+                            // 清空现有内容并重新显示
+                            displayContext(data.messages);
+                        }
+                        break;
+                        
+                    default:
+                        console.warn('未知的WebSocket消息类型:', data.type);
+                }
+            } catch (error) {
+                console.error('解析WebSocket消息失败:', error);
             }
         };
         
-        logWebSocket.onerror = (error) => {
-            console.error('日志WebSocket错误:', error);
+        adminWebSocket.onerror = (error) => {
+            console.error('管理WebSocket错误:', error);
             // 只有在还没有通知过断连的情况下才显示提示
             if (!disconnectNotified) {
                 disconnectNotified = true;
@@ -643,8 +709,8 @@ function connectLogWebSocket() {
             }
         };
         
-        logWebSocket.onclose = () => {
-            console.log('日志WebSocket连接已关闭');
+        adminWebSocket.onclose = () => {
+            console.log('管理WebSocket连接已关闭');
             // 检查是否是异常关闭，如果是则更新连接状态
             if (isConnected && !disconnectNotified) {
                 disconnectNotified = true;
@@ -655,7 +721,7 @@ function connectLogWebSocket() {
             }
         };
     } catch (error) {
-        console.error('连接日志WebSocket失败:', error);
+        console.error('连接管理WebSocket失败:', error);
         // 只有在还没有通知过断连的情况下才显示提示
         if (!disconnectNotified) {
             disconnectNotified = true;
@@ -668,58 +734,15 @@ function connectLogWebSocket() {
     }
 }
 
-// 刷新日志
-function refreshLogs() {
-    if (isConnected) {
-        getLogs();
-    }
-}
+
 
 // Agent 相关功能
 
-// 切换Agent标签页
-function switchAgentTab(tabName) {
-    // 更新标签页激活状态
-    agentTabBtns.forEach(tab => {
-        if (tab.dataset.agentTab === tabName) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
-    });
-    
-    // 显示对应的内容区域
-    agentTabContents.forEach(content => {
-        if (content.id === `${tabName}-agent-tab`) {
-            content.classList.add('active');
-        } else {
-            content.classList.remove('active');
-        }
-    });
-}
 
-// 刷新Agent日志
-async function refreshAgentLogs() {
-    if (!isConnected) return;
-    
-    try {
-        console.log("DEBUG: Refreshing agent logs");
-        // 获取Agent日志
-        const response = await apiRequest('/api/agent/logs?lines=100');
-        console.log("DEBUG: Received agent logs response:", response);
-        displayAgentLogs(response.logs);
-    } catch (error) {
-        console.error("DEBUG: Error fetching agent logs:", error);
-        showToast(`获取Agent日志失败: ${error.message}`, 'error');
-    }
-}
 
 // 显示Agent日志
 function displayAgentLogs(logs) {
     if (!agentLogsOutput) return;
-    
-    // 清空现有内容
-    agentLogsOutput.innerHTML = '';
     
     // 直接显示日志内容，每行一个div，最新日志在底部
     logs.forEach(logEntry => {
@@ -741,24 +764,52 @@ function displayAgentLogs(logs) {
         agentLogsOutput.appendChild(logDiv);
     });
     
+    // 保持只显示最新的1000行日志
+    const logEntries = agentLogsOutput.querySelectorAll('.log-entry');
+    if (logEntries.length > 1000) {
+        // 删除多余的日志条目
+        for (let i = 0; i < logEntries.length - 1000; i++) {
+            logEntries[i].remove();
+        }
+    }
+    
     // 滚动到底部以显示最新日志
     agentLogsOutput.scrollTop = agentLogsOutput.scrollHeight;
 }
 
-// 清空Agent日志
-async function clearAgentLogs() {
-    const confirmed = await showConfirmDialog('确定要清空Agent日志吗？');
-    if (!confirmed) return;
+
+
+
+
+// 显示上下文
+function displayContext(messages) {
+    const contextOutput = document.getElementById('contextOutput');
+    if (!contextOutput) return;
     
-    try {
-        // 这里应该调用一个清空日志的API端点
-        // 暂时我们只是清空显示区域
-        agentLogsOutput.innerHTML = '';
-        showToast('Agent日志已清空', 'success');
-    } catch (error) {
-        showToast(`清空Agent日志失败: ${error.message}`, 'error');
-    }
+    contextOutput.innerHTML = '';
+    
+    messages.forEach((msg, index) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'memory-item';
+        
+        const timestamp = new Date(msg.timestamp).toLocaleString();
+        const roleDisplay = msg.role === 'user' ? '用户' : '助手';
+        
+        itemDiv.innerHTML = `
+            <div class="memory-content">
+                <div><strong>[${roleDisplay}]</strong> ${msg.content || msg.text || ''}</div>
+                <div class="memory-time">${timestamp}</div>
+            </div>
+        `;
+        
+        contextOutput.appendChild(itemDiv);
+    });
+    
+    // 滚动到底部以显示最新内容
+    contextOutput.scrollTop = contextOutput.scrollHeight;
 }
+
+
 
 // 刷新临时记忆
 async function refreshTempMemory() {
@@ -1032,8 +1083,7 @@ function initEventListeners() {
     if (restartStreamBtn) restartStreamBtn.addEventListener('click', restartStream);
     
     // Agent 控制按钮
-    if (refreshAgentLogsBtn) refreshAgentLogsBtn.addEventListener('click', refreshAgentLogs);
-    if (clearAgentLogsBtn) clearAgentLogsBtn.addEventListener('click', clearAgentLogs);
+    
     if (refreshTempMemoryBtn) refreshTempMemoryBtn.addEventListener('click', refreshTempMemory);
     if (clearTempMemoryBtn) clearTempMemoryBtn.addEventListener('click', clearTempMemory);
     if (refreshCoreMemoryBtn) refreshCoreMemoryBtn.addEventListener('click', refreshCoreMemory);
@@ -1045,9 +1095,7 @@ function initEventListeners() {
     if (configForm) configForm.addEventListener('submit', saveConfig);
     if (resetConfigBtn) resetConfigBtn.addEventListener('click', resetConfigForm);
     
-    // 日志相关按钮
-    if (refreshLogsBtn) refreshLogsBtn.addEventListener('click', refreshLogs);
-    if (logLines) logLines.addEventListener('change', refreshLogs);
+    
     
     // 用户友好视图切换 - 这个元素已经不存在了，所以注释掉相关代码
     // if (friendlyViewToggle) friendlyViewToggle.addEventListener('change', refreshMessages);
@@ -1068,9 +1116,8 @@ function initEventListeners() {
                 
                 // 当切换到Agent标签页时，加载相关数据
                 if (tab.dataset.tab === 'agent' && isConnected) {
-                    // 默认显示Agent日志标签页
-                    switchAgentTab('messages');
-                    refreshAgentLogs();
+                    // 默认显示Server日志标签页
+                    switchAgentTab('server-logs');
                 }
             });
         });
@@ -1083,8 +1130,12 @@ function initEventListeners() {
                 switchAgentTab(tab.dataset.agentTab);
                 
                 // 切换到不同Agent子标签页时加载对应数据
-                if (tab.dataset.agentTab === 'messages' && isConnected) {
-                    refreshAgentLogs();
+                if (tab.dataset.agentTab === 'server-logs' && isConnected) {
+                    serverLogsOutput.innerHTML = '';
+                } else if (tab.dataset.agentTab === 'agent-logs' && isConnected) {
+                    agentLogsOutput.innerHTML = '';
+                } else if (tab.dataset.agentTab === 'context' && isConnected) {
+                    contextOutput.innerHTML = '';
                 } else if (tab.dataset.agentTab === 'memory' && isConnected) {
                     refreshTempMemory();
                     refreshCoreMemory();
@@ -1095,12 +1146,13 @@ function initEventListeners() {
         });
     }
     
-    // 当主标签页切换到Agent时，默认显示Agent日志
+    // 当主标签页切换到Agent时，默认显示Server日志
     const agentMainTab = document.querySelector('[data-tab="agent"]');
     if (agentMainTab) {
         agentMainTab.addEventListener('click', () => {
             if (isConnected) {
-                refreshAgentLogs();
+                // 切换到Server日志标签页
+                switchAgentTab('server-logs');
             }
         });
     }
@@ -1311,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('[data-tab="control"]').style.display = 'none';
     document.querySelector('[data-tab="config"]').style.display = 'none';
     document.querySelector('[data-tab="agent"]').style.display = 'none';
-    document.querySelector('[data-tab="logs"]').style.display = 'none';
+    
     
     // 从localStorage恢复连接信息
     const savedUrl = localStorage.getItem('backendUrl');
@@ -1342,11 +1394,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 定期刷新日志
     setInterval(() => {
-        if (isConnected && logWebSocket && logWebSocket.readyState !== WebSocket.OPEN) {
+        if (isConnected && adminWebSocket && adminWebSocket.readyState !== WebSocket.OPEN) {
             // 如果WebSocket连接断开，尝试重新获取日志
             getLogs();
         }
     }, 30000); // 每30秒检查一次
+    
+    
     
     // 添加连接健康检查
     healthCheckInterval = setInterval(async () => {

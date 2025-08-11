@@ -75,11 +75,9 @@
                         <span>配置</span>
                     </li>
                     <li class="nav-tab" data-tab="agent">
-                        <span>Agent</span>
+                        <span>日志 & Agent</span>
                     </li>
-                    <li class="nav-tab" data-tab="logs">
-                        <span>日志</span>
-                    </li>
+                    
                 </ul>
             </nav>
 
@@ -255,18 +253,27 @@
                 <section id="agent-tab" class="tab-content">
                     <div class="card">
                         <div class="agent-tabs">
-                            <button class="agent-tab-btn active" data-agent-tab="messages">Agent日志</button>
+                            <button class="agent-tab-btn active" data-agent-tab="server-logs">Server日志</button>
+                            <button class="agent-tab-btn" data-agent-tab="agent-logs">Agent日志</button>
+                            <button class="agent-tab-btn" data-agent-tab="context">对话上下文</button>
                             <button class="agent-tab-btn" data-agent-tab="memory">记忆</button>
                             <button class="agent-tab-btn" data-agent-tab="tools">工具</button>
                         </div>
                         
+                        <!-- Server日志 Tab -->
+                        <div class="agent-tab-content active" id="server-logs-agent-tab">
+                            <div id="serverLogsOutput" class="messages-output"></div>
+                        </div>
+                        
                         <!-- Agent日志 Tab -->
-                        <div class="agent-tab-content active" id="messages-agent-tab">
-                            <div class="agent-controls">
-                                <button id="refreshAgentLogsBtn" class="btn secondary">刷新日志</button>
-                                <button id="clearAgentLogsBtn" class="btn danger">清空日志</button>
-                            </div>
+                        <div class="agent-tab-content" id="agent-logs-agent-tab">
                             <div id="agentLogsOutput" class="messages-output"></div>
+                        </div>
+                        
+                        <!-- 对话上下文 Tab -->
+                        <div class="agent-tab-content" id="context-agent-tab">
+                            
+                            <div id="contextOutput" class="memory-output"></div>
                         </div>
                         
                         <!-- 记忆 Tab -->
@@ -313,25 +320,7 @@
                     </div>
                 </section>
 
-                <!-- 日志显示区域 -->
-                <section class="tab-content" id="logs-tab">
-                    <div class="card">
-                        <h2>日志显示</h2>
-                        <div class="logs-container">
-                            <div id="logsOutput" class="logs-output"></div>
-                            <div class="logs-controls">
-                                <label for="logLines">显示行数:</label>
-                                <select id="logLines">
-                                    <option value="50">50</option>
-                                    <option value="100" selected>100</option>
-                                    <option value="200">200</option>
-                                    <option value="500">500</option>
-                                </select>
-                                <button id="refreshLogsBtn" class="btn">刷新日志</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                
             </div>
         </main>
 

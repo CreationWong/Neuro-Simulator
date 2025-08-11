@@ -106,7 +106,7 @@ class ToolManager:
         
     async def _speak(self, text: str) -> str:
         """Output text - this is how the agent communicates with users"""
-        # Store the spoken text in memory so it can be retrieved by the agent
-        await self.memory_manager.add_temp_memory(text, "assistant")
         print(f"Agent says: {text}")
+        # Note: Context is now managed in the process_messages method
+        # This tool only outputs the text, not stores it in memory
         return text

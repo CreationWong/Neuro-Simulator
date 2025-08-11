@@ -11,33 +11,33 @@ from datetime import datetime
 import sys
 import logging
 
+# Import the shared log queue from the main log_handler
+from ..log_handler import agent_log_queue, QueueLogHandler
+
 # Create a logger for the agent
 agent_logger = logging.getLogger("neuro_agent")
 agent_logger.setLevel(logging.DEBUG)
 
-# Create a custom handler to store logs in memory
-class MemoryHandler(logging.Handler):
-    def __init__(self, capacity=1000):
-        super().__init__()
-        self.capacity = capacity
-        self.logs = []
+# Configure agent logging to use the shared queue
+def configure_agent_logging():
+    """Configure agent logging to use the shared agent_log_queue"""
+    # Create a handler for the agent queue
+    agent_queue_handler = QueueLogHandler(agent_log_queue)
+    formatter = logging.Formatter('%(asctime)s - [AGENT] - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
+    agent_queue_handler.setFormatter(formatter)
     
-    def emit(self, record):
-        log_entry = self.format(record)
-        self.logs.append(log_entry)
-        # Keep only the last 'capacity' logs
-        if len(self.logs) > self.capacity:
-            self.logs = self.logs[-self.capacity:]
+    # Clear any existing handlers
+    if agent_logger.hasHandlers():
+        agent_logger.handlers.clear()
     
-    def get_logs(self, lines=50):
-        return self.logs[-lines:] if len(self.logs) > lines else self.logs
+    # Add the queue handler
+    agent_logger.addHandler(agent_queue_handler)
+    agent_logger.propagate = False  # Prevent logs from propagating to root logger
+    
+    print("Agent日志系统已配置，将日志输出到 agent_log_queue。")
 
-# Add the memory handler to the agent logger
-memory_handler = MemoryHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-memory_handler.setFormatter(formatter)
-agent_logger.addHandler(memory_handler)
-agent_logger.propagate = False  # Prevent logs from propagating to root logger
+# Configure agent logging when module is imported
+configure_agent_logging()
 
 class Agent:
     """Main Agent class that integrates LLM, memory, and tools"""
@@ -65,11 +65,20 @@ class Agent:
             self._initialized = True
             agent_logger.info("Agent initialized successfully")
         
-    async def reset_memory(self):
-        """Reset agent temp memory"""
+    async def reset_all_memory(self):
+        """Reset all agent memory types"""
+        # Reset temp memory
         await self.memory_manager.reset_temp_memory()
-        agent_logger.info("Agent temp memory reset successfully")
-        print("Agent temp memory reset successfully")
+        
+        # Reset context (dialog history)
+        await self.memory_manager.reset_context()
+        
+        agent_logger.info("All agent memory reset successfully")
+        print("All agent memory reset successfully")
+        
+    async def reset_memory(self):
+        """Reset agent temp memory (alias for backward compatibility)"""
+        await self.reset_all_memory()
         
     async def process_messages(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         """
@@ -86,19 +95,21 @@ class Agent:
         
         agent_logger.info(f"Processing {len(messages)} messages")
         
-        # Add messages to temp memory
+        # Add messages to context
         for msg in messages:
             content = f"{msg['username']}: {msg['text']}"
-            await self.memory_manager.add_temp_memory(content, "user")
-            agent_logger.debug(f"Added message to temp memory: {content}")
+            await self.memory_manager.add_context_entry("user", content)
+            agent_logger.debug(f"Added message to context: {content}")
             
         # Get full context for LLM
         context = await self.memory_manager.get_full_context()
         tool_descriptions = self.tool_manager.get_tool_descriptions()
         
+        # Get last agent response to avoid repetition
+        last_response = await self.memory_manager.get_last_agent_response()
+        
         # Create LLM prompt with context and tools
-        prompt = f"""
-You are {self.memory_manager.init_memory.get('name', 'Neuro-Sama')}, an AI VTuber.
+        prompt = f"""You are {self.memory_manager.init_memory.get('name', 'Neuro-Sama')}, an AI VTuber.
 Your personality: {self.memory_manager.init_memory.get('personality', 'Friendly and curious')}
 
 === CONTEXT ===
@@ -112,6 +123,12 @@ Process the user messages and respond appropriately. You can use tools to manage
 When you want to speak to the user, use the 'speak' tool with your response as the text parameter.
 When you want to update memory, use the appropriate memory management tools.
 Always think about whether you need to use tools before responding.
+
+IMPORTANT GUIDELINES:
+- Be creative and engaging in your responses
+- Avoid repeating the same phrases or ideas from your last response: "{last_response}" (if available)
+- Keep responses concise and conversational
+- Maintain your character's personality
 
 User messages:
 """
@@ -186,17 +203,23 @@ User messages:
             else:
                 agent_logger.warning(f"Failed to parse tool call from incomplete JSON block: {json_buffer}")
         
-        # If no speak tool was called, set final_response to empty
-        if not processing_result["final_response"]:
-            processing_result["final_response"] = ""
-            agent_logger.warning("No speak tool was called")
-            agent_logger.warning(f"LLM raw output: {response}")
+        # If we have a final response, add it to context
+        if processing_result["final_response"]:
+            await self.memory_manager.add_context_entry("assistant", processing_result["final_response"])
             
         agent_logger.info("Message processing completed")
         return processing_result
         
     async def _execute_parsed_tool(self, tool_call: Dict[str, Any], processing_result: Dict[str, Any]):
         """Execute a parsed tool call and update processing result"""
+        # Only prevent duplicate speak tool executions to avoid repeated responses
+        if tool_call["name"] == "speak":
+            for executed_tool in processing_result["tool_executions"]:
+                if (executed_tool["name"] == "speak" and 
+                    executed_tool["params"].get("text") == tool_call["params"].get("text")):
+                    agent_logger.debug(f"Skipping duplicate speak tool execution: {tool_call['params'].get('text')}")
+                    return
+        
         # Execute the tool
         try:
             tool_result = await self.execute_tool(tool_call["name"], tool_call["params"])
@@ -206,9 +229,10 @@ User messages:
             if tool_call["name"] == "speak":
                 processing_result["final_response"] = tool_call["params"].get("text", "")
                 agent_logger.info(f"Speak tool executed with text: {processing_result['final_response']}")
+            else:
+                agent_logger.debug(f"Tool execution result: {tool_result}")
                 
             processing_result["tool_executions"].append(tool_call)
-            agent_logger.debug(f"Tool execution result: {tool_result}")
         except Exception as e:
             tool_call["error"] = str(e)
             processing_result["tool_executions"].append(tool_call)
@@ -351,7 +375,8 @@ User messages:
         agent_logger.debug(f"Tool execution result: {result}")
         return result
 
-# Function to get agent logs
+# Function to get agent logs (now uses the shared queue)
 def get_agent_logs(lines: int = 50) -> List[str]:
-    """Get recent agent logs"""
-    return memory_handler.get_logs(lines)
+    """Get recent agent logs from the shared queue"""
+    logs_list = list(agent_log_queue)
+    return logs_list[-lines:] if len(logs_list) > lines else logs_list

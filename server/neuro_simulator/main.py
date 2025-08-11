@@ -24,7 +24,7 @@ from fastapi.security import APIKeyCookie
 # --- 核心模块导入 ---
 from .config import config_manager, AppSettings
 from .process_manager import process_manager
-from .log_handler import configure_logging, log_queue
+from .log_handler import configure_server_logging, server_log_queue, agent_log_queue
 
 # --- 功能模块导入 ---
 from .chatbot import ChatbotManager, get_dynamic_audience_prompt
@@ -36,11 +36,15 @@ from .stream_chat import (
 )
 from .websocket_manager import connection_manager
 from .stream_manager import live_stream_manager
-from .agent_api import router as agent_router
 import neuro_simulator.shared_state as shared_state
 
 # --- FastAPI 应用和模板设置 ---
-app = FastAPI(title="Neuro-Sama Simulator Backend")
+from .agent.api import router as agent_router
+
+app = FastAPI(title="vedal987 Simulator API", version="1.0.0")
+
+# 注册API路由
+app.include_router(agent_router)
 app.include_router(agent_router)  # Include the agent management API router
 app.add_middleware(
     CORSMiddleware,
@@ -246,7 +250,7 @@ async def neuro_response_cycle():
 async def startup_event():
     """应用启动时执行。"""
     global chatbot_manager
-    configure_logging()
+    configure_server_logging()
     
     # 实例化管理器
     chatbot_manager = ChatbotManager()
@@ -285,11 +289,12 @@ async def shutdown_event():
 @app.post("/api/stream/start", tags=["Stream Control"], dependencies=[Depends(get_api_token)])
 async def api_start_stream():
     """启动直播"""
-    # If using builtin agent, clear temp memory when starting stream
+    # If using builtin agent, clear temp memory and context when starting stream
     agent_type = config_manager.settings.agent_type
     if agent_type == "builtin":
-        from .builtin_agent import clear_builtin_agent_temp_memory
+        from .builtin_agent import clear_builtin_agent_temp_memory, clear_builtin_agent_context
         await clear_builtin_agent_temp_memory()
+        await clear_builtin_agent_context()
     
     if not process_manager.is_running:
         process_manager.start_live_processes()
@@ -337,16 +342,6 @@ async def api_get_stream_status():
     }
 
 # -------------------------------------------------------------
-# --- 日志 API 端点 ---
-# -------------------------------------------------------------
-
-@app.get("/api/logs", tags=["Logs"], dependencies=[Depends(get_api_token)])
-async def api_get_logs(lines: int = 50):
-    """获取最近的日志行"""
-    logs_list = list(log_queue)
-    return {"logs": logs_list[-lines:] if len(logs_list) > lines else logs_list}
-
-# -------------------------------------------------------------
 # --- WebSocket 端点 ---
 # -------------------------------------------------------------
 
@@ -380,23 +375,36 @@ async def websocket_stream_endpoint(websocket: WebSocket):
     finally:
         connection_manager.disconnect(websocket)
 
-@app.websocket("/ws/logs")
-async def websocket_logs_endpoint(websocket: WebSocket):
+@app.websocket("/ws/admin")
+async def websocket_admin_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
-        for log_entry in list(log_queue):
-            await websocket.send_text(log_entry)
+        # Send initial server logs
+        for log_entry in list(server_log_queue):
+            await websocket.send_json({"type": "server_log", "data": log_entry})
+        
+        # Send initial agent logs
+        for log_entry in list(agent_log_queue):
+            await websocket.send_json({"type": "agent_log", "data": log_entry})
         
         while websocket.client_state == WebSocketState.CONNECTED:
-            if log_queue:
-                log_entry = log_queue.popleft()
-                await websocket.send_text(log_entry)
-            else:
+            # Check for new server logs
+            if server_log_queue:
+                log_entry = server_log_queue.popleft()
+                await websocket.send_json({"type": "server_log", "data": log_entry})
+            
+            # Check for new agent logs
+            if agent_log_queue:
+                log_entry = agent_log_queue.popleft()
+                await websocket.send_json({"type": "agent_log", "data": log_entry})
+            
+            # Small delay to prevent busy waiting
+            if not server_log_queue and not agent_log_queue:
                 await asyncio.sleep(0.1)
     except WebSocketDisconnect:
-        print("日志流客户端已断开连接。")
+        print("管理面板WebSocket客户端已断开连接。")
     finally:
-        print("日志流WebSocket连接关闭。")
+        print("管理面板WebSocket连接关闭。")
 
 
 # -------------------------------------------------------------

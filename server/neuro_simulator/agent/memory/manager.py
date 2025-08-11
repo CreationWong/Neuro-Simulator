@@ -17,7 +17,7 @@ def generate_id(length=6) -> str:
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 class MemoryManager:
-    """Manages three types of memory for the agent"""
+    """Manages different types of memory for the agent"""
     
     def __init__(self, working_dir: str = None):
         # Use provided working directory or default to current directory
@@ -30,12 +30,14 @@ class MemoryManager:
         # Memory file paths
         self.init_memory_file = os.path.join(self.memory_dir, "init_memory.json")
         self.core_memory_file = os.path.join(self.memory_dir, "core_memory.json")
+        self.dialog_history_file = os.path.join(self.memory_dir, "dialog_history.json")
         self.temp_memory_file = os.path.join(self.memory_dir, "temp_memory.json")
         
         # In-memory storage
         self.init_memory: Dict[str, Any] = {}
         self.core_memory: Dict[str, Any] = {}
-        self.temp_memory: List[Dict[str, Any]] = {}
+        self.dialog_history: List[Dict[str, Any]] = []  # 专门的对话历史
+        self.temp_memory: List[Dict[str, Any]] = []     # 真正的临时内存
         
     async def initialize(self):
         """Load all memory types from files"""
@@ -90,6 +92,13 @@ class MemoryManager:
             }
             await self._save_core_memory()
             
+        # Load dialog history
+        if os.path.exists(self.dialog_history_file):
+            with open(self.dialog_history_file, 'r', encoding='utf-8') as f:
+                self.dialog_history = json.load(f)
+        else:
+            self.dialog_history = []
+            
         # Load temp memory (frequently changed by agent)
         if os.path.exists(self.temp_memory_file):
             with open(self.temp_memory_file, 'r', encoding='utf-8') as f:
@@ -107,11 +116,50 @@ class MemoryManager:
         with open(self.core_memory_file, 'w', encoding='utf-8') as f:
             json.dump(self.core_memory, f, ensure_ascii=False, indent=2)
             
+    async def _save_context(self):
+        """Save context to file"""
+        with open(self.dialog_history_file, 'w', encoding='utf-8') as f:
+            json.dump(self.dialog_history, f, ensure_ascii=False, indent=2)
+            
     async def _save_temp_memory(self):
         """Save temp memory to file"""
         with open(self.temp_memory_file, 'w', encoding='utf-8') as f:
             json.dump(self.temp_memory, f, ensure_ascii=False, indent=2)
             
+    async def add_context_entry(self, role: str, content: str):
+        """Add an entry to context"""
+        entry = {
+            "id": generate_id(),
+            "role": role,  # "user" or "assistant"
+            "content": content,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.dialog_history.append(entry)
+        
+        # Keep only last 20 context entries (10 rounds)
+        if len(self.dialog_history) > 20:
+            self.dialog_history = self.dialog_history[-20:]
+            
+        await self._save_context()
+        
+    async def get_recent_context(self, rounds: int = 5) -> List[Dict[str, Any]]:
+        """Get recent context (default: last 5 rounds, 10 entries)"""
+        # Each round consists of user message and assistant response
+        entries_needed = rounds * 2
+        return self.dialog_history[-entries_needed:] if self.dialog_history else []
+        
+    async def get_last_agent_response(self) -> Optional[str]:
+        """Get the last response from the agent"""
+        for entry in reversed(self.dialog_history):
+            if entry["role"] == "assistant":
+                return entry["content"]
+        return None
+        
+    async def reset_context(self):
+        """Reset context"""
+        self.dialog_history = []
+        await self._save_context()
+        
     async def reset_temp_memory(self):
         """Reset only temp memory to default values from example files"""
         # Load default temp memory from example
@@ -155,25 +203,33 @@ class MemoryManager:
                 for item in block["content"]:
                     context_parts.append(f"  - {item}")
                     
-        # Add temp memory
-        context_parts.append("\n=== TEMP MEMORY (Recent Context) ===")
-        for i, item in enumerate(self.temp_memory[-20:]):  # Last 20 items
-            context_parts.append(f"{i+1}. [{item.get('role', 'unknown')}] {item.get('content', '')}")
+        # Add context (recent conversation history)
+        context_parts.append("\n=== CONTEXT (Recent Conversation) ===")
+        recent_context = await self.get_recent_context(5)
+        for i, entry in enumerate(recent_context):
+            role_display = "User" if entry["role"] == "user" else "Assistant"
+            context_parts.append(f"{i+1}. [{role_display}] {entry['content']}")
             
+        # Add temp memory (only for temporary state, not dialog history)
+        if self.temp_memory:
+            context_parts.append("\n=== TEMP MEMORY (Processing State) ===")
+            for item in self.temp_memory:
+                context_parts.append(f"[{item.get('role', 'system')}] {item.get('content', '')}")
+                
         return "\n".join(context_parts)
         
-    async def add_temp_memory(self, content: str, role: str = "user"):
-        """Add an item to temp memory"""
+    async def add_temp_memory(self, content: str, role: str = "system"):
+        """Add an item to temp memory (for temporary processing state)"""
         self.temp_memory.append({
-            "id": generate_id(),  # Generate a random ID
+            "id": generate_id(),
             "content": content,
             "role": role,
             "timestamp": datetime.now().isoformat()
         })
         
-        # Keep only last 100 items
-        if len(self.temp_memory) > 100:
-            self.temp_memory = self.temp_memory[-100:]
+        # Keep only last 20 temp items
+        if len(self.temp_memory) > 20:
+            self.temp_memory = self.temp_memory[-20:]
             
         await self._save_temp_memory()
         
