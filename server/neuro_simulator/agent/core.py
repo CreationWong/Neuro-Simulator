@@ -101,6 +101,15 @@ class Agent:
             await self.memory_manager.add_context_entry("user", content)
             agent_logger.debug(f"Added message to context: {content}")
             
+        # Send context update via WebSocket after adding user messages
+        from ..websocket_manager import connection_manager
+        context_messages = await self.memory_manager.get_recent_context()
+        await connection_manager.broadcast({
+            "type": "agent_context",
+            "action": "update",
+            "messages": context_messages
+        })
+            
         # Get full context for LLM
         context = await self.memory_manager.get_full_context()
         tool_descriptions = self.tool_manager.get_tool_descriptions()
@@ -206,6 +215,15 @@ User messages:
         # If we have a final response, add it to context
         if processing_result["final_response"]:
             await self.memory_manager.add_context_entry("assistant", processing_result["final_response"])
+            
+        # Send context update via WebSocket
+        from ..websocket_manager import connection_manager
+        context_messages = await self.memory_manager.get_recent_context()
+        await connection_manager.broadcast({
+            "type": "agent_context",
+            "action": "update",
+            "messages": context_messages
+        })
             
         agent_logger.info("Message processing completed")
         return processing_result

@@ -387,6 +387,20 @@ async def websocket_admin_endpoint(websocket: WebSocket):
         for log_entry in list(agent_log_queue):
             await websocket.send_json({"type": "agent_log", "data": log_entry})
         
+        # Send initial context
+        # Import the appropriate agent based on config
+        from .config import config_manager
+        agent_type = config_manager.settings.agent_type
+        if agent_type == "builtin":
+            from .builtin_agent import local_agent
+            if local_agent is not None:
+                context_messages = await local_agent.memory_manager.get_recent_context()
+                await websocket.send_json({
+                    "type": "agent_context",
+                    "action": "update",
+                    "messages": context_messages
+                })
+        
         while websocket.client_state == WebSocketState.CONNECTED:
             # Check for new server logs
             if server_log_queue:

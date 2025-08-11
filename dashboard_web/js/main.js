@@ -397,7 +397,6 @@ async function resetAgentMemory() {
         showToast(response.message, 'success');
         // 刷新记忆显示
         refreshTempMemory();
-        refreshContext();
         refreshCoreMemory();
     } catch (error) {
         showToast(`操作失败: ${error.message}`, 'error');
@@ -598,9 +597,12 @@ function connectAdminWebSocket() {
         
         adminWebSocket.onopen = () => {
             console.log('管理WebSocket连接已建立');
+            // 不再需要调用fetchInitialContext()，因为WebSocket管理员端点会在连接时发送初始上下文
         };
         
         adminWebSocket.onmessage = (event) => {
+            // 添加一个明显的调试信息
+            console.log('WebSocket消息接收:', event.data.substring(0, 100) + (event.data.length > 100 ? '...' : ''));
             try {
                 const data = JSON.parse(event.data);
                 
@@ -612,8 +614,8 @@ function connectAdminWebSocket() {
                             const logDiv = document.createElement('div');
                             logDiv.className = 'log-entry log-server';
                             
-                            // 确保data.content存在
-                            const content = data.content || data.message || 'Unknown server log message';
+                            // 确保data.data存在
+                            const content = data.data || data.content || data.message || 'Unknown server log message';
                             
                             // 根据日志级别设置样式
                             if (content.includes('ERROR') || content.includes('Error')) {
@@ -649,8 +651,8 @@ function connectAdminWebSocket() {
                             const logDiv = document.createElement('div');
                             logDiv.className = 'log-entry log-agent';
                             
-                            // 确保data.content存在
-                            const content = data.content || data.message || 'Unknown agent log message';
+                            // 确保data.data存在
+                            const content = data.data || data.content || data.message || 'Unknown agent log message';
                             
                             // 根据日志级别设置样式
                             if (content.includes('ERROR') || content.includes('Error')) {
@@ -681,15 +683,50 @@ function connectAdminWebSocket() {
                         break;
                         
                     case 'agent_context':
-                        // 处理Agent上下文
-                        if (data.action === 'update' && contextOutput) {
-                            // 清空现有内容并重新显示
-                            displayContext(data.messages);
+                        // 处理Agent上下文 - 像日志一样逐条追加
+                        if (contextOutput && Array.isArray(data.messages)) {
+                            // 清空现有内容
+                            contextOutput.innerHTML = '';
+                            
+                            // 逐条添加消息
+                            data.messages.forEach(msg => {
+                                const itemDiv = document.createElement('div');
+                                itemDiv.className = 'memory-item';
+                                
+                                // 从消息内容中提取角色和文本
+                                let role = msg.role || 'system';
+                                let content = msg.content || msg.text || '';
+                                let timestamp = msg.timestamp || new Date().toISOString();
+                                
+                                // 如果是处理详情消息，需要特殊处理
+                                if (msg.processing_details) {
+                                    const details = typeof msg.processing_details === 'string' ? 
+                                        JSON.parse(msg.processing_details) : msg.processing_details;
+                                    content = details.final_response || content;
+                                    role = 'assistant';
+                                }
+                                
+                                const timestampDisplay = new Date(timestamp).toLocaleString();
+                                const roleDisplay = role === 'user' ? '用户' : role === 'assistant' ? '助手' : role;
+                                
+                                itemDiv.innerHTML = `
+                                    <div class="memory-content">
+                                        <div><strong>[${roleDisplay}]</strong> ${content}</div>
+                                        <div class="memory-time">${timestampDisplay}</div>
+                                    </div>
+                                `;
+                                
+                                contextOutput.appendChild(itemDiv);
+                            });
+                            
+                            // 滚动到底部以显示最新内容
+                            contextOutput.scrollTop = contextOutput.scrollHeight;
                         }
                         break;
                         
                     default:
                         console.warn('未知的WebSocket消息类型:', data.type);
+                        console.log('完整消息内容:', data);
                 }
             } catch (error) {
                 console.error('解析WebSocket消息失败:', error);
@@ -738,7 +775,17 @@ function connectAdminWebSocket() {
 
 // Agent 相关功能
 
-
+// 刷新上下文
+async function refreshContext() {
+    if (!isConnected) return;
+    
+    try {
+        const contextMessages = await apiRequest('/api/agent/context');
+        displayContext(contextMessages);
+    } catch (error) {
+        showToast(`获取上下文失败: ${error.message}`, 'error');
+    }
+}
 
 // 显示Agent日志
 function displayAgentLogs(logs) {
@@ -783,30 +830,7 @@ function displayAgentLogs(logs) {
 
 // 显示上下文
 function displayContext(messages) {
-    const contextOutput = document.getElementById('contextOutput');
-    if (!contextOutput) return;
-    
-    contextOutput.innerHTML = '';
-    
-    messages.forEach((msg, index) => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'memory-item';
-        
-        const timestamp = new Date(msg.timestamp).toLocaleString();
-        const roleDisplay = msg.role === 'user' ? '用户' : '助手';
-        
-        itemDiv.innerHTML = `
-            <div class="memory-content">
-                <div><strong>[${roleDisplay}]</strong> ${msg.content || msg.text || ''}</div>
-                <div class="memory-time">${timestamp}</div>
-            </div>
-        `;
-        
-        contextOutput.appendChild(itemDiv);
-    });
-    
-    // 滚动到底部以显示最新内容
-    contextOutput.scrollTop = contextOutput.scrollHeight;
+    // 不再使用这个函数，上下文通过WebSocket实时处理
 }
 
 
@@ -1130,18 +1154,13 @@ function initEventListeners() {
                 switchAgentTab(tab.dataset.agentTab);
                 
                 // 切换到不同Agent子标签页时加载对应数据
-                if (tab.dataset.agentTab === 'server-logs' && isConnected) {
-                    serverLogsOutput.innerHTML = '';
-                } else if (tab.dataset.agentTab === 'agent-logs' && isConnected) {
-                    agentLogsOutput.innerHTML = '';
-                } else if (tab.dataset.agentTab === 'context' && isConnected) {
-                    contextOutput.innerHTML = '';
-                } else if (tab.dataset.agentTab === 'memory' && isConnected) {
+                if (tab.dataset.agentTab === 'memory' && isConnected) {
                     refreshTempMemory();
                     refreshCoreMemory();
                 } else if (tab.dataset.agentTab === 'tools' && isConnected) {
                     refreshTools();
                 }
+                // 注意：对于日志和上下文标签页，我们不再清空内容，而是保持已有的内容
             });
         });
     }
