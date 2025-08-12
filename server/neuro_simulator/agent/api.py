@@ -10,18 +10,14 @@ from ..config import config_manager
 
 # Dynamically import the appropriate agent based on config
 agent_type = config_manager.settings.agent_type
-print(f"DEBUG: Agent type from config: {agent_type}")
 
 if agent_type == "builtin":
     # We'll import the module, not the variable, to avoid import-time issues
     import neuro_simulator.builtin_agent as builtin_agent_module
-    print("DEBUG: Imported builtin agent module")
 else:
     from ..letta import letta_client, config_manager
-    print("DEBUG: Imported letta agent")
 
 router = APIRouter(prefix="/api/agent", tags=["Agent Management"])
-print("DEBUG: Created router")
 
 # Security dependency
 async def get_api_token(request: Request):
@@ -66,123 +62,85 @@ class MemoryCreateRequest(BaseModel):
 @router.get("/messages", dependencies=[Depends(get_api_token)])
 async def get_agent_messages():
     """Get agent's detailed message processing history"""
-    print("DEBUG: get_agent_messages called")
-    print(f"DEBUG: agent_type = {agent_type}")
     if agent_type == "builtin":
-        print("DEBUG: Using builtin agent")
         # Check if local_agent is initialized
-        print(f"DEBUG: local_agent = {builtin_agent_module.local_agent}")
         if builtin_agent_module.local_agent is None:
             # Try to initialize it
             try:
-                print("DEBUG: Trying to initialize builtin agent")
                 await builtin_agent_module.initialize_builtin_agent()
-                print("DEBUG: Builtin agent initialized")
-                print(f"DEBUG: local_agent after initialization: {builtin_agent_module.local_agent}")
             except Exception as e:
-                print(f"DEBUG: Failed to initialize builtin agent: {e}")
                 raise HTTPException(status_code=500, detail=f"Failed to initialize builtin agent: {str(e)}")
         
         if builtin_agent_module.local_agent is None:
-            print("DEBUG: local_agent is still None after initialization attempt")
             raise HTTPException(status_code=500, detail="Builtin agent not initialized")
         
         # Return temp memory which contains the message history with processing details
         all_messages = builtin_agent_module.local_agent.memory_manager.temp_memory
         # Filter to only include messages with processing details (marked by having 'processing_details' key)
         detailed_messages = [msg for msg in all_messages if 'processing_details' in msg]
-        print(f"DEBUG: Returning detailed messages: {detailed_messages}")
         return detailed_messages
     else:
-        print("DEBUG: Using letta agent")
         # For Letta agent, we need to get messages from the Letta API
         if letta_client is None:
             # Try to initialize letta client
             try:
-                print("DEBUG: Trying to initialize Letta client")
                 from ..letta import initialize_letta_client
                 initialize_letta_client()
-                print("DEBUG: Letta client initialized")
             except Exception as e:
-                print(f"DEBUG: Failed to initialize Letta client: {e}")
                 raise HTTPException(status_code=500, detail=f"Failed to initialize Letta client: {str(e)}")
                 
         if letta_client is None:
-            print("DEBUG: letta_client is still None after initialization attempt")
             raise HTTPException(status_code=500, detail="Letta client not initialized")
         
         try:
             agent_id = config_manager.settings.api_keys.neuro_agent_id
             if not agent_id:
-                print("DEBUG: neuro_agent_id not configured")
                 raise HTTPException(status_code=500, detail="Letta agent ID not configured")
             
-            print(f"DEBUG: Getting messages for agent_id: {agent_id}")
             messages = letta_client.agents.messages.list(agent_id=agent_id)
-            print(f"DEBUG: Got messages: {messages}")
             return messages
         except Exception as e:
-            print(f"DEBUG: Error getting messages: {e}")
             raise HTTPException(status_code=500, detail=f"Error getting messages: {str(e)}")
 
 @router.get("/context", dependencies=[Depends(get_api_token)])
 async def get_agent_context():
     """Get agent's conversation context"""
-    print("DEBUG: get_agent_context called")
-    print(f"DEBUG: agent_type = {agent_type}")
     if agent_type == "builtin":
-        print("DEBUG: Using builtin agent")
         # Check if local_agent is initialized
-        print(f"DEBUG: local_agent = {builtin_agent_module.local_agent}")
         if builtin_agent_module.local_agent is None:
             # Try to initialize it
             try:
-                print("DEBUG: Trying to initialize builtin agent")
                 await builtin_agent_module.initialize_builtin_agent()
-                print("DEBUG: Builtin agent initialized")
-                print(f"DEBUG: local_agent after initialization: {builtin_agent_module.local_agent}")
             except Exception as e:
-                print(f"DEBUG: Failed to initialize builtin agent: {e}")
                 raise HTTPException(status_code=500, detail=f"Failed to initialize builtin agent: {str(e)}")
         
         if builtin_agent_module.local_agent is None:
-            print("DEBUG: local_agent is still None after initialization attempt")
             raise HTTPException(status_code=500, detail="Builtin agent not initialized")
         
         # Return conversation context
         context_messages = await builtin_agent_module.local_agent.memory_manager.get_recent_context()
-        print(f"DEBUG: Returning context messages: {context_messages}")
         return context_messages
     else:
-        print("DEBUG: Using letta agent")
         # For Letta agent, we need to get messages from the Letta API
         if letta_client is None:
             # Try to initialize letta client
             try:
-                print("DEBUG: Trying to initialize Letta client")
                 from ..letta import initialize_letta_client
                 initialize_letta_client()
-                print("DEBUG: Letta client initialized")
             except Exception as e:
-                print(f"DEBUG: Failed to initialize Letta client: {e}")
                 raise HTTPException(status_code=500, detail=f"Failed to initialize Letta client: {str(e)}")
                 
         if letta_client is None:
-            print("DEBUG: letta_client is still None after initialization attempt")
             raise HTTPException(status_code=500, detail="Letta client not initialized")
         
         try:
             agent_id = config_manager.settings.api_keys.neuro_agent_id
             if not agent_id:
-                print("DEBUG: neuro_agent_id not configured")
                 raise HTTPException(status_code=500, detail="Letta agent ID not configured")
             
-            print(f"DEBUG: Getting messages for agent_id: {agent_id}")
             messages = letta_client.agents.messages.list(agent_id=agent_id)
-            print(f"DEBUG: Got messages: {messages}")
             return messages
         except Exception as e:
-            print(f"DEBUG: Error getting messages: {e}")
             raise HTTPException(status_code=500, detail=f"Error getting messages: {str(e)}")
 
 @router.delete("/messages", dependencies=[Depends(get_api_token)])

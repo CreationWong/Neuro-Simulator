@@ -151,7 +151,7 @@ User messages:
         
         # Generate response using LLM
         response = await self.llm_client.generate(prompt)
-        agent_logger.debug(f"LLM response received: {response[:100]}...")
+        agent_logger.debug(f"LLM response received: {response[:100] if response else 'None'}...")
         
         # Parse the response to handle tool calls
         # This is a simplified parser - in a full implementation, you would use a more robust method
@@ -164,7 +164,7 @@ User messages:
         
         # Extract tool calls from the response
         # Look for tool calls in the response
-        lines = response.split('\n')
+        lines = response.split('\n') if response else []
         i = 0
         json_buffer = ""  # Buffer to accumulate multi-line JSON
         in_json_block = False  # Flag to track if we're inside a JSON block
@@ -215,6 +215,15 @@ User messages:
         # If we have a final response, add it to context
         if processing_result["final_response"]:
             await self.memory_manager.add_context_entry("assistant", processing_result["final_response"])
+            
+        # Add detailed context entry with full LLM interaction details
+        await self.memory_manager.add_detailed_context_entry(
+            input_messages=messages,
+            prompt=prompt,
+            llm_response=response,
+            tool_executions=processing_result["tool_executions"],
+            final_response=processing_result["final_response"]
+        )
             
         # Send context update via WebSocket
         from ..websocket_manager import connection_manager

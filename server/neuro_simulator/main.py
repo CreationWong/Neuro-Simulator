@@ -401,6 +401,12 @@ async def websocket_admin_endpoint(websocket: WebSocket):
                     "messages": context_messages
                 })
         
+        # Keep track of last context messages to detect changes
+        last_context_messages = []
+        
+        # Start heartbeat task
+        heartbeat_task = asyncio.create_task(send_heartbeat(websocket))
+        
         while websocket.client_state == WebSocketState.CONNECTED:
             # Check for new server logs
             if server_log_queue:
@@ -412,13 +418,59 @@ async def websocket_admin_endpoint(websocket: WebSocket):
                 log_entry = agent_log_queue.popleft()
                 await websocket.send_json({"type": "agent_log", "data": log_entry})
             
+            # Check for context updates (for builtin agent)
+            if agent_type == "builtin" and local_agent is not None:
+                context_messages = await local_agent.memory_manager.get_recent_context()
+                # Compare with last context to detect changes
+                if context_messages != last_context_messages:
+                    # Send only new messages
+                    if len(context_messages) > len(last_context_messages):
+                        new_messages = context_messages[len(last_context_messages):]
+                        await websocket.send_json({
+                            "type": "agent_context",
+                            "action": "append",
+                            "messages": new_messages
+                        })
+                    else:
+                        # Only send full update if messages were actually removed (e.g., context reset)
+                        # Don't send update if it's just a reordering or modification
+                        if len(context_messages) < len(last_context_messages):
+                            await websocket.send_json({
+                                "type": "agent_context",
+                                "action": "update",
+                                "messages": context_messages
+                            })
+                        else:
+                            # Send as append if same length but different content
+                            await websocket.send_json({
+                                "type": "agent_context",
+                                "action": "append",
+                                "messages": context_messages
+                            })
+                    last_context_messages = context_messages
+            
             # Small delay to prevent busy waiting
-            if not server_log_queue and not agent_log_queue:
-                await asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
     except WebSocketDisconnect:
         print("管理面板WebSocket客户端已断开连接。")
     finally:
+        # Cancel heartbeat task
+        if 'heartbeat_task' in locals():
+            heartbeat_task.cancel()
         print("管理面板WebSocket连接关闭。")
+
+
+# 心跳任务，定期发送心跳消息以保持连接活跃
+async def send_heartbeat(websocket: WebSocket):
+    while websocket.client_state == WebSocketState.CONNECTED:
+        try:
+            # 发送心跳消息
+            await websocket.send_json({"type": "heartbeat", "timestamp": time.time()})
+            # 每5秒发送一次心跳
+            await asyncio.sleep(5)
+        except Exception as e:
+            print(f"发送心跳消息时出错: {e}")
+            break
 
 
 # -------------------------------------------------------------

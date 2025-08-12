@@ -63,32 +63,42 @@ class LLMClient:
             # temperature can be added later if needed from config
         )
         
-        # The new client's generate_content is synchronous, run it in a thread
-        response = await asyncio.to_thread(
-            self.client.models.generate_content,
-            model=self.model_name,
-            contents=prompt,
-            config=generation_config
-        )
-        return response.text
+        try:
+            # The new client's generate_content is synchronous, run it in a thread
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
+                model=self.model_name,
+                contents=prompt,
+                config=generation_config
+            )
+            return response.text if response and response.text else ""
+        except Exception as e:
+            print(f"Error in _generate_gemini: {e}")
+            return ""
 
     async def _generate_openai(self, prompt: str, max_tokens: int) -> str:
-        response = await self.client.chat.completions.create(
-            model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            # temperature can be added to config if needed
-        )
-        if response.choices and response.choices[0].message and response.choices[0].message.content:
-            return response.choices[0].message.content.strip()
-        return ""
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                # temperature can be added to config if needed
+            )
+            if response.choices and response.choices[0].message and response.choices[0].message.content:
+                return response.choices[0].message.content.strip()
+            return ""
+        except Exception as e:
+            print(f"Error in _generate_openai: {e}")
+            return ""
         
     async def generate(self, prompt: str, max_tokens: int = 1000) -> str:
         """Generate text using the configured LLM."""
         if not self.client:
             raise RuntimeError("LLM Client is not initialized.")
         try:
-            return await self._generate_func(prompt, max_tokens)
+            result = await self._generate_func(prompt, max_tokens)
+            # Ensure we always return a string, even if the result is None
+            return result if result is not None else ""
         except Exception as e:
             print(f"Error generating text with Agent LLM: {e}")
             return "My brain is not working, tell Vedal to check the logs."
