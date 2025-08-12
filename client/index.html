@@ -5,7 +5,8 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>𝐯𝐞𝐝𝐚𝐥𝟗𝟖𝟕 - 𝐓𝐰𝐢𝐭𝐜𝐡</title>
-    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="src/style.css"/>
+    <script src="src/tooltip.js"></script>
   </head>
   <body>
     <header id="twitch-header">
@@ -30,6 +31,9 @@
           <a class="nav-link" href="#">
             <p>浏览</p>
           </a>
+          <a class="nav-link" href="#">
+            <p data-tooltip="更多选择"><svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path d="M10 18a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0-6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM8 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"></path></svg></p>
+          </a>
         </div>
       </div>
 
@@ -43,19 +47,19 @@
       </div>
 
       <div class="top-nav-right">
-        <button class="nav-icon-button" aria-label="Prime 优惠">
+        <button class="nav-icon-button" aria-label="Prime" data-tooltip="Prime 新品">
           <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="M13.798 10.456 10 6.657l-3.798 3.799L4 8.805V13h12V8.805l-2.202 1.65zM18 5v8a2 2 0 0 1-2 2H4a2.002 2.002 0 0 1-2-2V5l4 3 4-4 4 4 4-3z" clip-rule="evenodd"></path></svg>
         </button>
-        <button class="nav-icon-button" aria-label="打开通知">
+        <button class="nav-icon-button" aria-label="通知" data-tooltip="打开通知">
           <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="M4 3h12l2 4v10H2V7l2-4zm.236 4H8v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V7h3.764l-1-2H5.236l-1 2zM16 9h-2.17A3.001 3.001 0 0 1 11 11H9a3.001 3.001 0 0 1-2.83-2H4v6h12V9z" clip-rule="evenodd"></path></svg>
         </button>
-        <button class="nav-icon-button" aria-label="悄悄话">
+        <button class="nav-icon-button" aria-label="悄悄话" data-tooltip="悄悄话">
           <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="M7.828 13 10 15.172 12.172 13H15V5H5v8h2.828zM10 18l-3-3H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2l-3 3z" clip-rule="evenodd"></path></svg>
         </button>
-        <button class="nav-icon-button" aria-label="购买呼币">
+        <button class="nav-icon-button" aria-label="购买呼币" data-tooltip="购买呼币">
           <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="m3 12 7-10 7 10-7 6-7-6zm2.678-.338L10 5.487l4.322 6.173-.85.728L10 11l-3.473 1.39-.849-.729z" clip-rule="evenodd"></path></svg>
         </button>
-        <button class="nav-icon-button" aria-label="免费体验无广告观赏">
+        <button class="nav-icon-button" aria-label="免费体验无广告观赏" data-tooltip="Turbo">
           <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path d="M10.114 9.622 11 7 7.175 9.323a.382.382 0 0 0 .013.65l.698.405L7 13l3.825-2.323a.382.382 0 0 0-.012-.65l-.699-.405z"></path><path fill-rule="evenodd" d="M18 7h-2V4H2v12h14v-3h2V7zm-4-1v3h2v2h-2v3H4V6h10z" clip-rule="evenodd"></path></svg>
           <span>免费体验无广告观赏</span>
         </button>
@@ -97,7 +101,7 @@
         <section id="stream-info">
           <div class="stream-info-layout">
             <div class="stream-info-left-column">
-              <a href="#" class="streamer-avatar-link">
+              <a href="https://twitch.tv/vedal987" class="streamer-avatar-link">
                 <div class="streamer-avatar-wrapper">
                   <img id="streamer-avatar" src="/avatar.webp" alt="Streamer Avatar" />
                   <div class="live-indicator-wrapper">
@@ -118,10 +122,10 @@
                   </div>
                 </div>
                 <div class="main-action-buttons">
-                    <button class="twitch-button icon-button" aria-label="关注">
+                    <button class="twitch-button icon-button" aria-label="关注" data-tooltip="取消关注">
                         <svg version="1.1" viewBox="0 0 20 20" x="0px" y="0px"><path d="M9.171 4.171A4 4 0 0 0 6.343 3H6a4 4 0 0 0-4 4v.343a4 4 0 0 0 1.172 2.829L10 17l6.828-6.828A4 4 0 0 0 18 7.343V7a4 4 0 0 0-4-4h-.343a4 4 0 0 0-2.829 1.172L10 5l-.829-.829z" fill-rule="evenodd"></path></svg>
                     </button>
-                    <button class="twitch-button icon-button" aria-label="通知">
+                    <button class="twitch-button icon-button" aria-label="通知" data-tooltip="关闭通知">
                         <svg version="1.1" viewBox="0 0 20 20" x="0px" y="0px"><path d="M3 14v-2c1-.5 1.75-1 2-2 .095-.38.154-.905.221-1.506C5.51 5.936 5.951 2 10 2c4.05 0 4.491 3.936 4.779 6.494.067.601.126 1.126.221 1.506.25 1 1 1.5 2 2v2H3zm6.998 4a2 2 0 0 1-2-2h4v.012a2 2 0 0 1-2 1.988z"></path></svg>
                     </button>
                     <button class="twitch-button" aria-label="购买呼币">
