@@ -5,8 +5,27 @@ let backendUrl = '';
 let authToken = '';
 let isConnected = false;
 let adminWebSocket = null;
-let healthCheckInterval = null; // 添加健康检查定时器
+let healthCheckInterval = null; // 保留健康检查定时器，但降低频率
 let disconnectNotified = false; // 添加断连通知标志，防止重复提示
+let connectionCheckWebSocket = null; // 专门用于连接检查的WebSocket
+
+// 添加一个函数来获取当前连接状态的详细信息
+function getConnectionStatusDetails() {
+    return {
+        isConnected: window.connectionModule.isConnected,  // 使用模块导出的isConnected
+        backendUrl: window.connectionModule.backendUrl,
+        authToken: window.connectionModule.authToken ? '***' : '', // 隐藏实际的token值
+        adminWebSocketReadyState: window.connectionModule.adminWebSocket ? window.connectionModule.adminWebSocket.readyState : 'null',
+        connectionCheckWebSocketReadyState: window.connectionModule.connectionCheckWebSocket ? window.connectionModule.connectionCheckWebSocket.readyState : 'null',
+        healthCheckInterval: window.connectionModule.healthCheckInterval ? 'active' : 'null',
+        disconnectNotified: window.connectionModule.disconnectNotified
+    }
+};
+
+// 处理心跳消息
+function handleHeartbeatMessage(data) {
+    // 心跳消息不需要特殊处理，只是用于保持WebSocket连接活跃
+}
 
 // DOM 元素
 const connectionForm = document.getElementById('connectionForm');
@@ -17,64 +36,85 @@ const statusText = connectionStatus.querySelector('.status-text');
 
 // 更新连接状态显示
 function updateConnectionStatus(connected, message = '') {
-    isConnected = connected;
+    window.connectionModule.isConnected = connected;
     // 重置断连通知标志
-    disconnectNotified = false;
+    window.connectionModule.disconnectNotified = false;
+    
+    const statusDot = document.getElementById('connectionStatus').querySelector('.status-dot');
+    const statusText = document.getElementById('connectionStatus').querySelector('.status-text');
     
     if (connected) {
         statusDot.className = 'status-dot connected';
         statusText.textContent = message || '已连接';
-        disconnectBtn.disabled = false;
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        if (disconnectBtn) {
+            disconnectBtn.disabled = false;
+        }
         
         // 显示控制、配置和日志标签页
-        document.querySelector('[data-tab="control"]').style.display = 'block';
-        document.querySelector('[data-tab="config"]').style.display = 'block';
-        document.querySelector('[data-tab="agent"]').style.display = 'block';
+        const controlTab = document.querySelector('[data-tab="control"]');
+        const configTab = document.querySelector('[data-tab="config"]');
+        const agentTab = document.querySelector('[data-tab="agent"]');
+        if (controlTab) controlTab.style.display = 'block';
+        if (configTab) configTab.style.display = 'block';
+        if (agentTab) agentTab.style.display = 'block';
     } else {
         statusDot.className = 'status-dot disconnected';
         statusText.textContent = message || '未连接';
-        disconnectBtn.disabled = true;
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        if (disconnectBtn) {
+            disconnectBtn.disabled = true;
+        }
         
         // 隐藏控制、配置和日志标签页
-        document.querySelector('[data-tab="control"]').style.display = 'none';
-        document.querySelector('[data-tab="config"]').style.display = 'none';
-        document.querySelector('[data-tab="agent"]').style.display = 'none';
+        const controlTab = document.querySelector('[data-tab="control"]');
+        const configTab = document.querySelector('[data-tab="config"]');
+        const agentTab = document.querySelector('[data-tab="agent"]');
+        if (controlTab) controlTab.style.display = 'none';
+        if (configTab) configTab.style.display = 'none';
+        if (agentTab) agentTab.style.display = 'none';
         
         // 关闭管理WebSocket连接
-        if (adminWebSocket) {
+        if (window.connectionModule.adminWebSocket) {
             try {
-                adminWebSocket.close(1000, 'Client disconnecting'); // 正常关闭代码
+                window.connectionModule.adminWebSocket.close(1000, 'Client disconnecting'); // 正常关闭代码
             } catch (e) {
-                console.error('关闭WebSocket时出错:', e);
+                console.error('关闭管理WebSocket时出错:', e);
             }
-            adminWebSocket = null;
+            window.connectionModule.adminWebSocket = null;
+        }
+        
+        // 关闭连接检查WebSocket连接
+        if (window.connectionModule.connectionCheckWebSocket) {
+            try {
+                window.connectionModule.connectionCheckWebSocket.close(1000, 'Client disconnecting'); // 正常关闭代码
+            } catch (e) {
+                console.error('关闭连接检查WebSocket时出错:', e);
+            }
+            window.connectionModule.connectionCheckWebSocket = null;
         }
     }
 }
 
 // 发送API请求的通用函数
 async function apiRequest(endpoint, options = {}, skipConnectionCheck = false) {
-    console.log('尝试发送API请求到:', endpoint); // 调试信息
-    if (!isConnected && !skipConnectionCheck) {
-        console.log('未连接到后端'); // 调试信息
+    if (!window.connectionModule.isConnected && !skipConnectionCheck) {
         throw new Error('未连接到后端');
     }
     
     // 确保URL格式正确，避免双斜杠
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
-    const url = backendUrl.endsWith('/') ? 
-        `${backendUrl.slice(0, -1)}${cleanEndpoint}` : 
-        `${backendUrl}${cleanEndpoint}`;
+    const url = window.connectionModule.backendUrl.endsWith('/') ? 
+        `${window.connectionModule.backendUrl.slice(0, -1)}${cleanEndpoint}` : 
+        `${window.connectionModule.backendUrl}${cleanEndpoint}`;
         
-    console.log('完整URL:', url); // 调试信息
     const headers = {
         'Content-Type': 'application/json'
     };
     
     // 只有当authToken存在且非空时才添加API Token头
-    if (authToken && authToken.trim() !== '') {
-        headers['X-API-Token'] = authToken;
-        console.log('使用API Token:', authToken); // 调试信息
+    if (window.connectionModule.authToken && window.connectionModule.authToken.trim() !== '') {
+        headers['X-API-Token'] = window.connectionModule.authToken;
     }
     
     const config = {
@@ -82,43 +122,43 @@ async function apiRequest(endpoint, options = {}, skipConnectionCheck = false) {
         ...options
     };
     
-    console.log('请求配置:', config); // 调试信息
     try {
         const response = await fetch(url, config);
-        console.log('响应:', response); // 调试信息
         if (!response.ok) {
+            // 特别处理401错误
             if (response.status === 401) {
                 throw new Error('认证失败，请检查密码');
             }
+            // 对于其他错误状态码，我们不一定会断开连接，除非是网络问题
             throw new Error(`请求失败: ${response.status} ${response.statusText}`);
         }
-        return await response.json();
+        const data = await response.json();
+        return data;
     } catch (error) {
-        console.error('API请求错误:', error);
         // 如果是网络错误且不是跳过连接检查的情况，认为连接已断开
         if ((error instanceof TypeError && error.message === 'Failed to fetch') && !skipConnectionCheck) {
-            // 只有在还没有通知过断连的情况下才显示提示
-            if (!disconnectNotified) {
-                disconnectNotified = true;
-                // 更新连接状态为断开
-                updateConnectionStatus(false, '连接已断开');
+            // 断开连接
+            window.connectionModule.disconnectNotified = true;
+            // 更新连接状态为断开
+            window.connectionModule.updateConnectionStatus(false, '连接已断开');
+            // 显示断连对话框
+            if (window.uiModule && window.uiModule.showDisconnectDialog) {
                 window.uiModule.showDisconnectDialog();
-                // 切换到连接页面
+            }
+            // 切换到连接页面
+            if (window.uiModule && window.uiModule.switchTab) {
                 window.uiModule.switchTab('connection');
             }
         }
+        // 对于其他错误，我们不改变连接状态
         throw error;
     }
 }
 
 // 连接到后端
 async function connectToBackend(autoConnect = false) {
-    console.log('开始连接到后端'); // 调试信息
     const url = document.getElementById('backendUrl').value.trim();
     const password = document.getElementById('password').value;
-    
-    console.log('后端URL:', url); // 调试信息
-    console.log('密码:', password); // 调试信息
     
     if (!url && !autoConnect) {
         window.uiModule.showToast('请输入后端地址', 'warning');
@@ -132,72 +172,76 @@ async function connectToBackend(autoConnect = false) {
     
     try {
         // 更新状态为连接中
+        const statusDot = document.getElementById('connectionStatus').querySelector('.status-dot');
+        const statusText = document.getElementById('connectionStatus').querySelector('.status-text');
         statusDot.className = 'status-dot connecting';
         statusText.textContent = '连接中...';
         
         // 保存连接信息到localStorage
-        backendUrl = url;
-        authToken = password || ''; // 保存密码，即使是空字符串
-        localStorage.setItem('backendUrl', backendUrl);
-        if (authToken) {
-            localStorage.setItem('authToken', authToken);
+        window.connectionModule.backendUrl = url;
+        window.connectionModule.authToken = password || ''; // 保存密码，即使是空字符串
+        localStorage.setItem('backendUrl', window.connectionModule.backendUrl);
+        if (window.connectionModule.authToken) {
+            localStorage.setItem('authToken', window.connectionModule.authToken);
         }
         
-        console.log('保存的后端URL:', backendUrl); // 调试信息
-        console.log('保存的认证Token:', authToken); // 调试信息
-        
         // 尝试获取后端状态以验证连接（跳过连接检查）
-        const response = await apiRequest('/api/system/health', {}, true);
-        
-        console.log('健康检查响应:', response); // 调试信息
+        const response = await window.connectionModule.apiRequest('/api/system/health', {}, true);
         
         if (response.status === 'healthy') {
-            updateConnectionStatus(true, '已连接');
+            window.connectionModule.updateConnectionStatus(true, '已连接');
             if (!autoConnect) {
                 window.uiModule.showToast('连接成功！', 'success');
             }
             // 更新直播状态
             window.streamModule.updateStreamStatus();
             // 连接管理WebSocket
-            connectAdminWebSocket();
+            window.connectionModule.connectAdminWebSocket();
             // 默认切换到控制页面
             window.uiModule.switchTab('control');
-            // 启动健康检查定时器（如果还没有）
-            if (!healthCheckInterval) {
-                healthCheckInterval = setInterval(async () => {
-                    if (isConnected) {
+            // 启动健康检查定时器（如果还没有），但降低频率到每30秒一次
+            if (!window.connectionModule.healthCheckInterval) {
+                window.connectionModule.healthCheckInterval = setInterval(async () => {
+                    if (window.connectionModule.isConnected) {
                         try {
                             // 发送一个简单的健康检查请求
-                            await apiRequest('/api/system/health', {}, true);
+                            await window.connectionModule.apiRequest('/api/system/health', {}, true);
                         } catch (error) {
                             // 如果是网络错误，认为连接已断开
                             if (error instanceof TypeError && error.message === 'Failed to fetch') {
-                                // 只有在还没有通知过断连的情况下才显示提示
-                                if (!disconnectNotified) {
-                                    disconnectNotified = true;
-                                    updateConnectionStatus(false, '连接已断开');
+                                // 断开连接
+                                window.connectionModule.disconnectNotified = true;
+                                // 更新连接状态为断开
+                                window.connectionModule.updateConnectionStatus(false, '连接已断开');
+                                // 显示断连对话框
+                                if (window.uiModule && window.uiModule.showDisconnectDialog) {
                                     window.uiModule.showDisconnectDialog();
-                                    // 切换到连接页面
+                                }
+                                // 切换到连接页面
+                                if (window.uiModule && window.uiModule.switchTab) {
                                     window.uiModule.switchTab('connection');
                                 }
                             }
                         }
                     }
-                }, 10000); // 每10秒检查一次连接健康状态
+                }, 30000); // 每30秒检查一次连接健康状态，降低频率
             }
+            
+            // 连接检查WebSocket
+            window.connectionModule.connectConnectionCheckWebSocket();
         } else {
             throw new Error('后端服务不健康');
         }
     } catch (error) {
         console.error('连接失败:', error);
-        updateConnectionStatus(false, '连接失败');
+        window.connectionModule.updateConnectionStatus(false, '连接失败');
         if (!autoConnect) {
             window.uiModule.showToast(`连接失败: ${error.message}`, 'error');
         }
         // 清除健康检查定时器
-        if (healthCheckInterval) {
-            clearInterval(healthCheckInterval);
-            healthCheckInterval = null;
+        if (window.connectionModule.healthCheckInterval) {
+            clearInterval(window.connectionModule.healthCheckInterval);
+            window.connectionModule.healthCheckInterval = null;
         }
         // 切换到连接页面
         window.uiModule.switchTab('connection');
@@ -206,39 +250,37 @@ async function connectToBackend(autoConnect = false) {
 
 // 断开连接
 function disconnectFromBackend() {
-    backendUrl = '';
-    authToken = '';
-    updateConnectionStatus(false, '已断开连接');
+    window.connectionModule.backendUrl = '';
+    window.connectionModule.authToken = '';
+    window.connectionModule.updateConnectionStatus(false, '已断开连接');
     window.uiModule.showToast('已断开连接', 'info');
     // 切换回连接页面
     window.uiModule.switchTab('connection');
     // 清除健康检查定时器
-    if (healthCheckInterval) {
-        clearInterval(healthCheckInterval);
-        healthCheckInterval = null;
+    if (window.connectionModule.healthCheckInterval) {
+        clearInterval(window.connectionModule.healthCheckInterval);
+        window.connectionModule.healthCheckInterval = null;
     }
     // 重置断连通知标志
-    disconnectNotified = false;
+    window.connectionModule.disconnectNotified = false;
 }
 
 // 连接管理WebSocket
 function connectAdminWebSocket() {
-    if (adminWebSocket) {
-        adminWebSocket.close();
+    if (window.connectionModule.adminWebSocket) {
+        window.connectionModule.adminWebSocket.close();
     }
     
     try {
-        const wsUrl = backendUrl.replace(/^http/, 'ws') + '/ws/admin';
-        adminWebSocket = new WebSocket(wsUrl);
+        const wsUrl = window.connectionModule.backendUrl.replace(/^http/, 'ws') + '/ws/admin';
+        window.connectionModule.adminWebSocket = new WebSocket(wsUrl);
         
-        adminWebSocket.onopen = () => {
+        window.connectionModule.adminWebSocket.onopen = () => {
             console.log('管理WebSocket连接已建立');
             // 不再需要调用fetchInitialContext()，因为WebSocket管理员端点会在连接时发送初始上下文
         };
         
-        adminWebSocket.onmessage = (event) => {
-            // 添加一个明显的调试信息
-            console.log('WebSocket消息接收:', event.data.substring(0, 100) + (event.data.length > 100 ? '...' : ''));
+        window.connectionModule.adminWebSocket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 
@@ -321,125 +363,106 @@ function connectAdminWebSocket() {
                         break;
                         
                     case 'agent_context':
-                        // 处理Agent上下文 - 像日志一样逐条追加
-                        const contextOutput = document.getElementById('contextOutput');
-                        if (contextOutput && Array.isArray(data.messages)) {
-                            // 清空现有内容
-                            contextOutput.innerHTML = '';
-                            
-                            // 逐条添加消息
-                            data.messages.forEach(msg => {
-                                const itemDiv = document.createElement('div');
-                                itemDiv.className = 'memory-item';
-                                
-                                // 从消息内容中提取角色和文本
-                                let role = msg.role || 'system';
-                                let content = msg.content || msg.text || '';
-                                let timestamp = msg.timestamp || new Date().toISOString();
-                                
-                                // 如果是处理详情消息，需要特殊处理
-                                if (msg.processing_details) {
-                                    const details = typeof msg.processing_details === 'string' ? 
-                                        JSON.parse(msg.processing_details) : msg.processing_details;
-                                    content = details.final_response || content;
-                                    role = 'assistant';
-                                }
-                                
-                                const timestampDisplay = new Date(timestamp).toLocaleString();
-                                const roleDisplay = role === 'user' ? '用户' : role === 'assistant' ? '助手' : role;
-                                
-                                itemDiv.innerHTML = `
-                                    <div class="memory-content">
-                                        <div><strong>[${roleDisplay}]</strong> ${content}</div>
-                                        <div class="memory-time">${timestampDisplay}</div>
-                                    </div>
-                                `;
-                                
-                                contextOutput.appendChild(itemDiv);
-                            });
-                            
-                            // 滚动到底部以显示最新内容
-                            contextOutput.scrollTop = contextOutput.scrollHeight;
-                        }
+                        // 处理Agent上下文 - 实时更新显示
+                        displayAgentContext(data.messages);
+                        break;
+                        
+                    case 'heartbeat':
+                        // 心跳消息，不需要特殊处理
+                        handleHeartbeatMessage(data);
                         break;
                         
                     default:
                         console.warn('未知的WebSocket消息类型:', data.type);
-                        console.log('完整消息内容:', data);
                 }
             } catch (error) {
                 console.error('解析WebSocket消息失败:', error);
             }
         };
         
-        adminWebSocket.onerror = (error) => {
+        window.connectionModule.adminWebSocket.onerror = (error) => {
             console.error('管理WebSocket错误:', error);
-            // 只有在还没有通知过断连的情况下才显示提示
-            if (!disconnectNotified) {
-                disconnectNotified = true;
-                // 如果WebSocket出错，认为连接可能已断开
-                updateConnectionStatus(false, '连接已断开');
-                window.uiModule.showDisconnectDialog();
-                // 切换到连接页面
-                window.uiModule.switchTab('connection');
-            }
+            // WebSocket错误不应该影响API连接状态
+            // 只需要记录错误并尝试重新连接
+            console.log('WebSocket错误，但API连接状态保持不变');
         };
         
-        adminWebSocket.onclose = () => {
+        window.connectionModule.adminWebSocket.onclose = () => {
             console.log('管理WebSocket连接已关闭');
-            // 检查是否是异常关闭，如果是则更新连接状态
-            if (isConnected && !disconnectNotified) {
-                disconnectNotified = true;
-                updateConnectionStatus(false, '连接已断开');
-                window.uiModule.showDisconnectDialog();
-                // 切换到连接页面
-                window.uiModule.switchTab('connection');
-            }
+            // WebSocket关闭不应该影响API连接状态
+            // 只需要记录并尝试重新连接
+            console.log('WebSocket关闭，但API连接状态保持不变');
         };
     } catch (error) {
         console.error('连接管理WebSocket失败:', error);
-        // 只有在还没有通知过断连的情况下才显示提示
-        if (!disconnectNotified) {
-            disconnectNotified = true;
-            // 更新连接状态为断开
-            updateConnectionStatus(false, '连接已断开');
-            window.uiModule.showDisconnectDialog();
-            // 切换到连接页面
-            window.uiModule.switchTab('connection');
-        }
+        // WebSocket连接失败不应该影响API连接状态
+        // 只需要记录错误
+        console.log('WebSocket连接失败，但API连接状态保持不变');
     }
 }
 
-// 显示断连对话框
-function showDisconnectDialog() {
-    // 使用确认对话框显示断连信息，但只显示确定按钮
-    showConfirmDialog('与后端的连接已断开，请重新连接。').then(() => {
-        // 用户点击确定后，对话框会自动关闭
-    });
+// 连接检查WebSocket（用于检测连接状态）
+function connectConnectionCheckWebSocket() {
+    // 如果已存在连接检查WebSocket，先关闭它
+    if (window.connectionModule.connectionCheckWebSocket) {
+        window.connectionModule.connectionCheckWebSocket.close();
+    }
     
-    // 为了只显示确定按钮，我们需要修改对话框的HTML
-    setTimeout(() => {
-        if (confirmDialog) {
-            const cancelButton = confirmDialog.querySelector('.confirm-cancel');
-            const okButton = confirmDialog.querySelector('.confirm-ok');
-            
-            // 隐藏取消按钮
-            if (cancelButton) {
-                cancelButton.style.display = 'none';
+    try {
+        const wsUrl = window.connectionModule.backendUrl.replace(/^http/, 'ws') + '/ws/admin';
+        window.connectionModule.connectionCheckWebSocket = new WebSocket(wsUrl);
+        
+        window.connectionModule.connectionCheckWebSocket.onopen = () => {
+            console.log('连接检查WebSocket连接已建立');
+        };
+        
+        window.connectionModule.connectionCheckWebSocket.onmessage = (event) => {
+            // 连接检查WebSocket只用于检测连接状态，不处理消息
+            // 但我们需要监听消息以保持连接活跃
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'heartbeat') {
+                    // 心跳消息，不需要特殊处理
+                }
+            } catch (error) {
+                console.error('解析连接检查WebSocket消息失败:', error);
             }
-            
-            // 修改确定按钮文本
-            if (okButton) {
-                okButton.textContent = '确定';
-            }
-            
-            // 修改消息显示
-            const messageEl = confirmDialog.querySelector('.confirm-message');
-            if (messageEl) {
-                messageEl.textContent = '与后端的连接已断开，请重新连接。';
-            }
+        };
+        
+        window.connectionModule.connectionCheckWebSocket.onerror = (error) => {
+            console.error('连接检查WebSocket错误:', error);
+            // WebSocket错误时，立即断开连接
+            handleWebSocketDisconnect();
+        };
+        
+        window.connectionModule.connectionCheckWebSocket.onclose = (event) => {
+            console.log('连接检查WebSocket连接已关闭，代码:', event.code, '原因:', event.reason);
+            // WebSocket关闭时，立即断开连接
+            handleWebSocketDisconnect();
+        };
+    } catch (error) {
+        console.error('连接检查WebSocket失败:', error);
+        // WebSocket连接失败时，立即断开连接
+        handleWebSocketDisconnect();
+    }
+}
+
+// 处理WebSocket断开连接
+function handleWebSocketDisconnect() {
+    // 检查是否已经通知过断连，防止重复通知
+    if (!window.connectionModule.disconnectNotified) {
+        window.connectionModule.disconnectNotified = true;
+        // 更新连接状态为断开
+        window.connectionModule.updateConnectionStatus(false, '连接已断开');
+        // 显示断连对话框
+        if (window.uiModule && window.uiModule.showDisconnectDialog) {
+            window.uiModule.showDisconnectDialog();
         }
-    }, 10);
+        // 切换到连接页面
+        if (window.uiModule && window.uiModule.switchTab) {
+            window.uiModule.switchTab('connection');
+        }
+    }
 }
 
 // 导出函数和变量供其他模块使用
@@ -449,8 +472,14 @@ window.connectionModule = {
     connectToBackend,
     disconnectFromBackend,
     connectAdminWebSocket,
-    showDisconnectDialog,
-    isConnected,
-    backendUrl,
-    authToken
+    connectConnectionCheckWebSocket,
+    handleHeartbeatMessage,
+    isConnected: false,
+    backendUrl: '',
+    authToken: '',
+    adminWebSocket: null,
+    connectionCheckWebSocket: null,
+    healthCheckInterval: null,
+    disconnectNotified: false,
+    getConnectionStatusDetails
 };

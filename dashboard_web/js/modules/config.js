@@ -7,6 +7,11 @@ let currentConfig = {}; // 存储当前配置
 
 // 将配置对象转换为表单值
 function configToForm(config) {
+    const configForm = document.getElementById('configForm');
+    if (!configForm) {
+        return;
+    }
+    
     // 遍历表单中的每个输入元素
     const formElements = configForm.querySelectorAll('input, select, textarea');
     
@@ -44,6 +49,11 @@ function configToForm(config) {
 
 // 将表单值转换为配置对象
 function formToConfig() {
+    const configForm = document.getElementById('configForm');
+    if (!configForm) {
+        return {};
+    }
+    
     const config = {};
     
     // 遍历表单中的每个输入元素
@@ -89,6 +99,23 @@ function formToConfig() {
 
 // 获取配置
 async function getConfig() {
+    // 强制检查window.connectionModule是否存在
+    if (!window.connectionModule) {
+        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
+        return;
+    }
+    
+    if (!window.connectionModule.isConnected) {
+        window.uiModule.showToast('未连接到后端', 'warning');
+        return;
+    }
+    
+    // 检查API请求函数是否存在
+    if (!window.connectionModule.apiRequest) {
+        window.uiModule.showToast('系统错误：API请求函数未找到', 'error');
+        return;
+    }
+    
     try {
         const config = await window.connectionModule.apiRequest('/api/configs');
         currentConfig = config; // 保存当前配置
@@ -156,7 +183,6 @@ function checkForMissingConfigItems(config) {
     );
     
     if (missingPaths.length > 0) {
-        console.warn('发现未在面板中显示的配置项:', missingPaths);
         // 可以在这里添加更多用户提示逻辑
     }
 }
@@ -189,5 +215,7 @@ async function saveConfig(e) {
 window.configModule = {
     getConfig,
     resetConfigForm,
-    saveConfig
+    saveConfig,
+    configToForm,
+    formToConfig
 };

@@ -251,36 +251,87 @@ function initEventListeners() {
     const addMemoryBlockForm = document.getElementById('addMemoryBlockForm');
     const cancelAddMemoryBtn = document.getElementById('cancelAddMemoryBtn');
     
-    if (refreshTempMemoryBtn) refreshTempMemoryBtn.addEventListener('click', window.agentModule.refreshTempMemory);
-    if (clearTempMemoryBtn) clearTempMemoryBtn.addEventListener('click', window.agentModule.clearTempMemory);
-    if (refreshCoreMemoryBtn) refreshCoreMemoryBtn.addEventListener('click', window.agentModule.refreshCoreMemory);
-    if (addCoreMemoryBlockBtn) addCoreMemoryBlockBtn.addEventListener('click', showAddMemoryBlockDialog);
-    if (refreshToolsBtn) refreshToolsBtn.addEventListener('click', window.agentModule.refreshTools);
-    if (connectToolBtn) connectToolBtn.addEventListener('click', window.agentModule.connectTool);
+    if (refreshTempMemoryBtn) {
+        refreshTempMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshTempMemory) {
+                window.agentModule.refreshTempMemory();
+            }
+        });
+    }
+    if (clearTempMemoryBtn) {
+        clearTempMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.clearTempMemory) {
+                window.agentModule.clearTempMemory();
+            }
+        });
+    }
+    if (refreshCoreMemoryBtn) {
+        refreshCoreMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshCoreMemory) {
+                window.agentModule.refreshCoreMemory();
+            }
+        });
+    }
+    if (addCoreMemoryBlockBtn) {
+        addCoreMemoryBlockBtn.addEventListener('click', () => {
+            showAddMemoryBlockDialog();
+        });
+    }
+    if (refreshToolsBtn) {
+        refreshToolsBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshTools) {
+                window.agentModule.refreshTools();
+            }
+        });
+    }
+    if (connectToolBtn) {
+        connectToolBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.connectTool) {
+                window.agentModule.connectTool();
+            }
+        });
+    }
     
     // 配置管理表单
     const configForm = document.getElementById('configForm');
     const resetConfigBtn = document.getElementById('resetConfigBtn');
-    if (configForm) configForm.addEventListener('submit', window.configModule.saveConfig);
-    if (resetConfigBtn) resetConfigBtn.addEventListener('click', window.configModule.resetConfigForm);
+    
+    if (configForm) {
+        configForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (window.configModule && window.configModule.saveConfig) {
+                window.configModule.saveConfig(e);
+            }
+        });
+    }
+    if (resetConfigBtn) {
+        resetConfigBtn.addEventListener('click', () => {
+            if (window.configModule && window.configModule.resetConfigForm) {
+                window.configModule.resetConfigForm();
+            }
+        });
+    }
     
     // 标签页切换
     const navTabs = document.querySelectorAll('.nav-tab');
+    
     if (navTabs) {
         navTabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 switchTab(tab.dataset.tab);
                 
                 // 当切换到配置标签页时，自动加载配置
-                if (tab.dataset.tab === 'config' && window.connectionModule.isConnected) {
-                    window.configModule.getConfig().catch(error => {
-                        console.error('获取配置失败:', error);
-                        showToast(`获取配置失败: ${error.message}`, 'error');
-                    });
+                if (tab.dataset.tab === 'config' && window.connectionModule && window.connectionModule.isConnected) {
+                    if (window.configModule && window.configModule.getConfig) {
+                        window.configModule.getConfig().catch(error => {
+                            console.error('获取配置失败:', error);
+                            showToast(`获取配置失败: ${error.message}`, 'error');
+                        });
+                    }
                 }
                 
                 // 当切换到Agent标签页时，加载相关数据
-                if (tab.dataset.tab === 'agent' && window.connectionModule.isConnected) {
+                if (tab.dataset.tab === 'agent' && window.connectionModule && window.connectionModule.isConnected) {
                     // 默认显示Server日志标签页
                     switchAgentTab('server-logs');
                 }
@@ -290,17 +341,22 @@ function initEventListeners() {
     
     // Agent 标签页切换
     const agentTabBtns = document.querySelectorAll('.agent-tab-btn');
+    
     if (agentTabBtns) {
         agentTabBtns.forEach(tab => {
             tab.addEventListener('click', () => {
                 switchAgentTab(tab.dataset.agentTab);
                 
                 // 切换到不同Agent子标签页时加载对应数据
-                if (tab.dataset.agentTab === 'memory' && window.connectionModule.isConnected) {
-                    window.agentModule.refreshTempMemory();
-                    window.agentModule.refreshCoreMemory();
-                } else if (tab.dataset.agentTab === 'tools' && window.connectionModule.isConnected) {
-                    window.agentModule.refreshTools();
+                if (tab.dataset.agentTab === 'memory' && window.connectionModule && window.connectionModule.isConnected) {
+                    if (window.agentModule && window.agentModule.refreshTempMemory && window.agentModule.refreshCoreMemory) {
+                        window.agentModule.refreshTempMemory();
+                        window.agentModule.refreshCoreMemory();
+                    }
+                } else if (tab.dataset.agentTab === 'tools' && window.connectionModule && window.connectionModule.isConnected) {
+                    if (window.agentModule && window.agentModule.refreshTools) {
+                        window.agentModule.refreshTools();
+                    }
                 }
                 // 注意：对于日志和上下文标签页，我们不再清空内容，而是保持已有的内容
             });
@@ -309,9 +365,10 @@ function initEventListeners() {
     
     // 当主标签页切换到Agent时，默认显示Server日志
     const agentMainTab = document.querySelector('[data-tab="agent"]');
+    
     if (agentMainTab) {
         agentMainTab.addEventListener('click', () => {
-            if (window.connectionModule.isConnected) {
+            if (window.connectionModule && window.connectionModule.isConnected) {
                 // 切换到Server日志标签页
                 switchAgentTab('server-logs');
             }
@@ -320,7 +377,13 @@ function initEventListeners() {
     
     // 模态对话框事件
     if (addMemoryBlockForm) {
-        addMemoryBlockForm.addEventListener('submit', window.agentModule.addMemoryBlock);
+        addMemoryBlockForm.addEventListener('submit', function(e) {
+            if (window.agentModule && window.agentModule.addMemoryBlock) {
+                window.agentModule.addMemoryBlock(e);
+            } else {
+                console.error('window.agentModule.addMemoryBlock未定义');
+            }
+        });
     }
     
     if (cancelAddMemoryBtn) {
@@ -350,6 +413,56 @@ function initEventListeners() {
             }
         });
     }
+    
+    // 上下文显示模式切换
+    const contextViewMode = document.getElementById('contextViewMode');
+    const modeLabel = document.getElementById('modeLabel');
+    if (contextViewMode && modeLabel) {
+        contextViewMode.addEventListener('change', function() {
+            modeLabel.textContent = this.checked ? '原始模式' : '对话模式';
+            // 重新渲染上下文显示
+            if (window.connectionModule.isConnected) {
+                // 使用重新渲染函数
+                window.agentModule.rerenderContext();
+            } else {
+                // 如果未连接，仍然需要更新显示
+                window.agentModule.refreshContext();
+            }
+        });
+    }
+}
+
+// 显示断连对话框
+function showDisconnectDialog() {
+    // 使用确认对话框显示断连信息，但只显示确定按钮
+    showConfirmDialog('与后端的连接已断开，请重新连接。').then(() => {
+        // 用户点击确定后，对话框会自动关闭
+    });
+    
+    // 为了只显示确定按钮，我们需要修改对话框的HTML
+    setTimeout(() => {
+        const confirmDialog = document.getElementById('confirmDialog');
+        if (confirmDialog) {
+            const cancelButton = confirmDialog.querySelector('.confirm-cancel');
+            const okButton = confirmDialog.querySelector('.confirm-ok');
+            
+            // 隐藏取消按钮
+            if (cancelButton) {
+                cancelButton.style.display = 'none';
+            }
+            
+            // 修改确定按钮文本
+            if (okButton) {
+                okButton.textContent = '确定';
+            }
+            
+            // 修改消息显示
+            const messageEl = confirmDialog.querySelector('.confirm-message');
+            if (messageEl) {
+                messageEl.textContent = '与后端的连接已断开，请重新连接。';
+            }
+        }
+    }, 10);
 }
 
 // 导出函数供其他模块使用
@@ -360,5 +473,6 @@ window.uiModule = {
     showConfirmDialog,
     showAddMemoryBlockDialog,
     hideAddMemoryBlockDialog,
+    showDisconnectDialog,
     initEventListeners
 };

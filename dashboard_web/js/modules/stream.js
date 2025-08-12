@@ -8,27 +8,39 @@ const restartStreamBtn = document.getElementById('restartStreamBtn');
 
 // 更新直播状态
 async function updateStreamStatus() {
+    // 检查连接模块是否存在
+    if (!window.connectionModule) {
+        return;
+    }
+    
     try {
         const status = await window.connectionModule.apiRequest('/api/stream/status');
-        streamStatus.textContent = status.is_running ? '运行中' : '已停止';
-        streamStatus.style.color = status.is_running ? '#4CAF50' : '#F44336';
+        const streamStatus = document.getElementById('streamStatus');
+        if (streamStatus) {
+            streamStatus.textContent = status.is_running ? '运行中' : '已停止';
+            streamStatus.style.color = status.is_running ? '#4CAF50' : '#F44336';
+        }
     } catch (error) {
-        streamStatus.textContent = '无法获取状态';
-        streamStatus.style.color = '#F44336';
-        console.error('获取直播状态失败:', error);
+        const streamStatus = document.getElementById('streamStatus');
+        if (streamStatus) {
+            streamStatus.textContent = '无法获取状态';
+            streamStatus.style.color = '#F44336';
+        }
         
-        // 检查是否是连接问题，如果是则更新连接状态
-        if (error.message.includes('Failed to fetch') || error.message.includes('未连接到后端')) {
-            // 只有在还没有通知过断连的情况下才显示提示
-            if (!window.connectionModule.disconnectNotified) {
-                window.connectionModule.disconnectNotified = true;
-                // 显示断连提示对话框
-                window.uiModule.showDisconnectDialog();
-            }
+        // 只有网络错误才更新连接状态
+        if (error.message.includes('Failed to fetch')) {
+            // 断开连接
+            window.connectionModule.disconnectNotified = true;
             // 更新连接状态为断开
             window.connectionModule.updateConnectionStatus(false, '连接已断开');
+            // 显示断连对话框
+            if (window.uiModule && window.uiModule.showDisconnectDialog) {
+                window.uiModule.showDisconnectDialog();
+            }
             // 切换到连接页面
-            window.uiModule.switchTab('connection');
+            if (window.uiModule && window.uiModule.switchTab) {
+                window.uiModule.switchTab('connection');
+            }
         }
     }
 }
@@ -37,6 +49,12 @@ async function updateStreamStatus() {
 async function startStream() {
     const confirmed = await window.uiModule.showConfirmDialog('确定要开始直播吗？');
     if (!confirmed) {
+        return;
+    }
+    
+    // 检查连接模块是否存在
+    if (!window.connectionModule) {
+        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
         return;
     }
     
@@ -56,6 +74,12 @@ async function stopStream() {
         return;
     }
     
+    // 检查连接模块是否存在
+    if (!window.connectionModule) {
+        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
+        return;
+    }
+    
     try {
         const response = await window.connectionModule.apiRequest('/api/stream/stop', { method: 'POST' });
         window.uiModule.showToast(response.message, 'success');
@@ -69,6 +93,12 @@ async function stopStream() {
 async function restartStream() {
     const confirmed = await window.uiModule.showConfirmDialog('确定要重启直播吗？这将停止并重新启动直播进程。');
     if (!confirmed) {
+        return;
+    }
+    
+    // 检查连接模块是否存在
+    if (!window.connectionModule) {
+        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
         return;
     }
     

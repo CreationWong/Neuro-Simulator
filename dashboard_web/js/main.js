@@ -32,8 +32,31 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 定期更新直播状态
     setInterval(() => {
+        // 检查连接模块是否存在
+        if (!window.connectionModule) {
+            console.error('window.connectionModule未定义');
+            return;
+        }
+        
         if (window.connectionModule.isConnected) {
-            window.streamModule.updateStreamStatus();
+            window.streamModule.updateStreamStatus().catch(error => {
+                console.error('定期更新直播状态失败:', error);
+                // 只有网络错误才更新连接状态
+                if (error.message.includes('Failed to fetch')) {
+                    // 断开连接
+                    window.connectionModule.disconnectNotified = true;
+                    // 更新连接状态为断开
+                    window.connectionModule.updateConnectionStatus(false, '连接已断开');
+                    // 显示断连对话框
+                    if (window.uiModule && window.uiModule.showDisconnectDialog) {
+                        window.uiModule.showDisconnectDialog();
+                    }
+                    // 切换到连接页面
+                    if (window.uiModule && window.uiModule.switchTab) {
+                        window.uiModule.switchTab('connection');
+                    }
+                }
+            });
         }
     }, 5000); // 每5秒更新一次
     
@@ -44,26 +67,4 @@ document.addEventListener('DOMContentLoaded', () => {
             // getLogs(); // 这个函数在新代码中未定义，暂时注释掉
         }
     }, 30000); // 每30秒检查一次
-    
-    // 添加连接健康检查
-    window.connectionModule.healthCheckInterval = setInterval(async () => {
-        if (window.connectionModule.isConnected) {
-            try {
-                // 发送一个简单的健康检查请求
-                await window.connectionModule.apiRequest('/api/system/health', {}, true);
-            } catch (error) {
-                // 如果是网络错误，认为连接已断开
-                if (error instanceof TypeError && error.message === 'Failed to fetch') {
-                    // 只有在还没有通知过断连的情况下才显示提示
-                    if (!window.connectionModule.disconnectNotified) {
-                        window.connectionModule.disconnectNotified = true;
-                        window.connectionModule.updateConnectionStatus(false, '连接已断开');
-                        window.uiModule.showDisconnectDialog();
-                        // 切换到连接页面
-                        window.uiModule.switchTab('connection');
-                    }
-                }
-            }
-        }
-    }, 10000); // 每10秒检查一次连接健康状态
 });
