@@ -330,10 +330,15 @@ function initEventListeners() {
                     }
                 }
                 
-                // 当切换到Agent标签页时，加载相关数据
-                if (tab.dataset.tab === 'agent' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 默认显示Server日志标签页
-                    switchAgentTab('server-logs');
+                // 当切换到日志标签页时，加载Server日志
+                if (tab.dataset.tab === 'logs' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 这里可以添加加载Server日志的逻辑
+                }
+                
+                // 当切换到Agent管理标签页时，加载相关数据
+                if (tab.dataset.tab === 'agent-management' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 默认显示上下文标签页
+                    switchAgentTab('context');
                 }
             });
         });
@@ -357,20 +362,24 @@ function initEventListeners() {
                     if (window.agentModule && window.agentModule.refreshTools) {
                         window.agentModule.refreshTools();
                     }
+                } else if (tab.dataset.agentTab === 'agent-logs' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 这里可以添加加载Agent日志的逻辑
+                } else if (tab.dataset.agentTab === 'context' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 这里可以添加加载上下文的逻辑
                 }
                 // 注意：对于日志和上下文标签页，我们不再清空内容，而是保持已有的内容
             });
         });
     }
     
-    // 当主标签页切换到Agent时，默认显示Server日志
-    const agentMainTab = document.querySelector('[data-tab="agent"]');
+    // 当主标签页切换到Agent管理时，默认显示上下文
+    const agentManagementTab = document.querySelector('[data-tab="agent-management"]');
     
-    if (agentMainTab) {
-        agentMainTab.addEventListener('click', () => {
+    if (agentManagementTab) {
+        agentManagementTab.addEventListener('click', () => {
             if (window.connectionModule && window.connectionModule.isConnected) {
-                // 切换到Server日志标签页
-                switchAgentTab('server-logs');
+                // 切换到上下文标签页
+                switchAgentTab('context');
             }
         });
     }

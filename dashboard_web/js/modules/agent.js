@@ -90,32 +90,63 @@ function displayContextConversationMode(messages) {
         // 根据消息类型显示不同内容
         if (msg.type === "llm_interaction") {
             // 详细上下文条目（AI响应）
+            // 格式化输入消息
+            const inputMessagesHtml = msg.input_messages && msg.input_messages.length > 0 ? 
+                `<div class="context-section">
+                    <div><strong>输入消息:</strong></div>
+                    <ul>
+                        ${msg.input_messages.map(input => `<li><strong>${input.username}:</strong> ${input.text}</li>`).join('')}
+                    </ul>
+                </div>` : '';
+            
+            // 格式化工具执行
+            const toolExecutionsHtml = msg.tool_executions && msg.tool_executions.length > 0 ? 
+                `<div class="context-section">
+                    <div><strong>工具执行:</strong></div>
+                    <ul>
+                        ${msg.tool_executions.map(tool => `
+                            <li>
+                                <div><strong>${tool.tool_name || tool.name || '未知工具'}</strong></div>
+                                <div>参数: ${JSON.stringify(tool.arguments || tool.params || {}, null, 2)}</div>
+                                ${tool.result ? `<div>结果: ${JSON.stringify(tool.result, null, 2)}</div>` : ''}
+                                ${tool.error ? `<div class="error">错误: ${tool.error}</div>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>` : '';
+            
+            // 格式化提示词（截取前500个字符，避免过长）
+            const promptPreview = msg.prompt ? msg.prompt.substring(0, 500) + (msg.prompt.length > 500 ? '...' : '') : '';
+            const promptHtml = msg.prompt ? 
+                `<div class="context-section">
+                    <div><strong>提示词:</strong></div>
+                    <div class="prompt-preview">${promptPreview}</div>
+                    <button class="btn small secondary expand-prompt-btn" data-full-prompt="${encodeURIComponent(msg.prompt)}">展开完整提示词</button>
+                </div>` : '';
+            
+            // 格式化LLM响应（截取前500个字符，避免过长）
+            const llmResponsePreview = msg.llm_response ? msg.llm_response.substring(0, 500) + (msg.llm_response.length > 500 ? '...' : '') : '';
+            const llmResponseHtml = msg.llm_response ? 
+                `<div class="context-section">
+                    <div><strong>LLM原始响应:</strong></div>
+                    <div class="llm-response-preview">${llmResponsePreview}</div>
+                    ${msg.llm_response.length > 500 ? `<button class="btn small secondary expand-llm-response-btn" data-full-response="${encodeURIComponent(msg.llm_response)}">展开完整响应</button>` : ''}
+                </div>` : '';
+            
             itemDiv.innerHTML = `
                 <div class="memory-content">
                     <div><strong>[AI响应]</strong></div>
                     <div class="memory-time">${timestampDisplay}</div>
                 </div>
                 <div class="memory-details">
-                    <div><strong>最终响应:</strong></div>
-                    <div>${msg.final_response || '无响应'}</div>
-                    ${msg.tool_executions && msg.tool_executions.length > 0 ? `
-                        <div class="tool-executions">
-                            <div><strong>工具执行:</strong></div>
-                            <ul>
-                                ${msg.tool_executions.map(tool => `
-                                    <li>
-                                        <div><strong>${tool.tool_name || tool.name || '未知工具'}</strong></div>
-                                        <div>参数: ${JSON.stringify(tool.arguments || tool.params || {})}</div>
-                                        <div>结果: ${tool.result || '无结果'}</div>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
-                    ${msg.llm_response ? `
-                        <div><strong>LLM原始响应:</strong></div>
-                        <div>${msg.llm_response}</div>
-                    ` : ''}
+                    <div class="context-section">
+                        <div><strong>最终响应:</strong></div>
+                        <div>${msg.final_response || '无响应'}</div>
+                    </div>
+                    ${inputMessagesHtml}
+                    ${toolExecutionsHtml}
+                    ${promptHtml}
+                    ${llmResponseHtml}
                 </div>
             `;
         } else {
@@ -134,6 +165,9 @@ function displayContextConversationMode(messages) {
         
         contextOutput.appendChild(itemDiv);
     });
+    
+    // 绑定展开按钮事件
+    bindExpandButtons();
     
     // 滚动到底部以显示最新内容
     contextOutput.scrollTop = contextOutput.scrollHeight;
@@ -239,32 +273,63 @@ function displayAgentContext(messages) {
             // 对话模式显示
             if (msg.type === "llm_interaction") {
                 // 详细上下文条目（AI响应）
+                // 格式化输入消息
+                const inputMessagesHtml = msg.input_messages && msg.input_messages.length > 0 ? 
+                    `<div class="context-section">
+                        <div><strong>输入消息:</strong></div>
+                        <ul>
+                            ${msg.input_messages.map(input => `<li><strong>${input.username}:</strong> ${input.text}</li>`).join('')}
+                        </ul>
+                    </div>` : '';
+                
+                // 格式化工具执行
+                const toolExecutionsHtml = msg.tool_executions && msg.tool_executions.length > 0 ? 
+                    `<div class="context-section">
+                        <div><strong>工具执行:</strong></div>
+                        <ul>
+                            ${msg.tool_executions.map(tool => `
+                                <li>
+                                    <div><strong>${tool.tool_name || tool.name || '未知工具'}</strong></div>
+                                    <div>参数: ${JSON.stringify(tool.arguments || tool.params || {}, null, 2)}</div>
+                                    ${tool.result ? `<div>结果: ${JSON.stringify(tool.result, null, 2)}</div>` : ''}
+                                    ${tool.error ? `<div class="error">错误: ${tool.error}</div>` : ''}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>` : '';
+                
+                // 格式化提示词（截取前500个字符，避免过长）
+                const promptPreview = msg.prompt ? msg.prompt.substring(0, 500) + (msg.prompt.length > 500 ? '...' : '') : '';
+                const promptHtml = msg.prompt ? 
+                    `<div class="context-section">
+                        <div><strong>提示词:</strong></div>
+                        <div class="prompt-preview">${promptPreview}</div>
+                        <button class="btn small secondary expand-prompt-btn" data-full-prompt="${encodeURIComponent(msg.prompt)}">展开完整提示词</button>
+                    </div>` : '';
+                
+                // 格式化LLM响应（截取前500个字符，避免过长）
+                const llmResponsePreview = msg.llm_response ? msg.llm_response.substring(0, 500) + (msg.llm_response.length > 500 ? '...' : '') : '';
+                const llmResponseHtml = msg.llm_response ? 
+                    `<div class="context-section">
+                        <div><strong>LLM原始响应:</strong></div>
+                        <div class="llm-response-preview">${llmResponsePreview}</div>
+                        ${msg.llm_response.length > 500 ? `<button class="btn small secondary expand-llm-response-btn" data-full-response="${encodeURIComponent(msg.llm_response)}">展开完整响应</button>` : ''}
+                    </div>` : '';
+                
                 itemDiv.innerHTML = `
                     <div class="memory-content">
                         <div><strong>[AI响应]</strong></div>
                         <div class="memory-time">${timestampDisplay}</div>
                     </div>
                     <div class="memory-details">
-                        <div><strong>最终响应:</strong></div>
-                        <div>${msg.final_response || '无响应'}</div>
-                        ${msg.tool_executions && msg.tool_executions.length > 0 ? `
-                            <div class="tool-executions">
-                                <div><strong>工具执行:</strong></div>
-                                <ul>
-                                    ${msg.tool_executions.map(tool => `
-                                        <li>
-                                            <div><strong>${tool.tool_name || tool.name || '未知工具'}</strong></div>
-                                            <div>参数: ${JSON.stringify(tool.arguments || tool.params || {})}</div>
-                                            <div>结果: ${tool.result || '无结果'}</div>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        ` : ''}
-                        ${msg.llm_response ? `
-                            <div><strong>LLM原始响应:</strong></div>
-                            <div>${msg.llm_response}</div>
-                        ` : ''}
+                        <div class="context-section">
+                            <div><strong>最终响应:</strong></div>
+                            <div>${msg.final_response || '无响应'}</div>
+                        </div>
+                        ${inputMessagesHtml}
+                        ${toolExecutionsHtml}
+                        ${promptHtml}
+                        ${llmResponseHtml}
                     </div>
                 `;
             } else {
@@ -285,6 +350,11 @@ function displayAgentContext(messages) {
         contextOutput.appendChild(itemDiv);
     });
     
+    // 绑定展开按钮事件
+    if (newMessages.length > 0) {
+        bindExpandButtons();
+    }
+    
     // 只有在添加了新消息时才滚动到底部
     if (newMessages.length > 0) {
         contextOutput.scrollTop = contextOutput.scrollHeight;
@@ -302,6 +372,22 @@ function rerenderContext() {
     // 获取当前的显示模式
     const contextViewMode = document.getElementById('contextViewMode');
     const isRawMode = contextViewMode && contextViewMode.checked;
+    
+    // 更新模式标签
+    const modeLabel = document.getElementById('modeLabel');
+    if (modeLabel) {
+        modeLabel.textContent = isRawMode ? '原始模式' : '对话模式';
+    }
+    
+    // 重新渲染所有消息
+    const messages = Array.from(contextOutput.querySelectorAll('.memory-item')).map(item => {
+        // 从现有DOM元素中提取消息数据
+        // 这是一个简化的实现，实际应用中可能需要更复杂的数据提取逻辑
+        return {
+            id: item.dataset.messageId,
+            // 其他字段需要从DOM中提取或重新获取
+        };
+    });
     
     // 最简单和最可靠的方法是重新获取数据
     // 这样可以确保所有消息都按照正确的格式显示
@@ -622,3 +708,50 @@ window.agentModule = {
     displayTools,
     connectTool
 };
+
+// 绑定展开按钮事件
+function bindExpandButtons() {
+    // 展开完整提示词按钮
+    const expandPromptButtons = document.querySelectorAll('.expand-prompt-btn');
+    expandPromptButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fullPrompt = decodeURIComponent(e.target.dataset.fullPrompt);
+            // 在新窗口中显示完整提示词
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <html>
+                <head>
+                    <title>完整提示词</title>
+                    <style>
+                        body { font-family: monospace; white-space: pre-wrap; margin: 20px; }
+                    </style>
+                </head>
+                <body>${fullPrompt.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body>
+                </html>
+            `);
+            newWindow.document.close();
+        });
+    });
+    
+    // 展开完整LLM响应按钮
+    const expandLlmResponseButtons = document.querySelectorAll('.expand-llm-response-btn');
+    expandLlmResponseButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fullResponse = decodeURIComponent(e.target.dataset.fullResponse);
+            // 在新窗口中显示完整LLM响应
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <html>
+                <head>
+                    <title>完整LLM响应</title>
+                    <style>
+                        body { font-family: monospace; white-space: pre-wrap; margin: 20px; }
+                    </style>
+                </head>
+                <body>${fullResponse.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body>
+                </html>
+            `);
+            newWindow.document.close();
+        });
+    });
+}

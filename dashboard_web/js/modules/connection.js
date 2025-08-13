@@ -54,10 +54,11 @@ function updateConnectionStatus(connected, message = '') {
         // 显示控制、配置和日志标签页
         const controlTab = document.querySelector('[data-tab="control"]');
         const configTab = document.querySelector('[data-tab="config"]');
-        const agentTab = document.querySelector('[data-tab="agent"]');
+        const logsTab = document.querySelector('[data-tab="logs"]');
         if (controlTab) controlTab.style.display = 'block';
         if (configTab) configTab.style.display = 'block';
-        if (agentTab) agentTab.style.display = 'block';
+        if (logsTab) logsTab.style.display = 'block';
+        // agentManagementTab 和 chatbotManagementTab 的显示由配置决定，在获取配置后处理
     } else {
         statusDot.className = 'status-dot disconnected';
         statusText.textContent = message || '未连接';
@@ -69,10 +70,14 @@ function updateConnectionStatus(connected, message = '') {
         // 隐藏控制、配置和日志标签页
         const controlTab = document.querySelector('[data-tab="control"]');
         const configTab = document.querySelector('[data-tab="config"]');
-        const agentTab = document.querySelector('[data-tab="agent"]');
+        const logsTab = document.querySelector('[data-tab="logs"]');
+        const agentManagementTab = document.querySelector('[data-tab="agent-management"]');
+        const chatbotManagementTab = document.querySelector('[data-tab="chatbot-management"]');
         if (controlTab) controlTab.style.display = 'none';
         if (configTab) configTab.style.display = 'none';
-        if (agentTab) agentTab.style.display = 'none';
+        if (logsTab) logsTab.style.display = 'none';
+        if (agentManagementTab) agentManagementTab.style.display = 'none';
+        if (chatbotManagementTab) chatbotManagementTab.style.display = 'none';
         
         // 关闭管理WebSocket连接
         if (window.connectionModule.adminWebSocket) {
@@ -229,6 +234,14 @@ async function connectToBackend(autoConnect = false) {
             
             // 连接检查WebSocket
             window.connectionModule.connectConnectionCheckWebSocket();
+            
+            // 获取配置并更新Agent管理标签页的可见性
+            if (window.configModule && window.configModule.getConfig) {
+                window.configModule.getConfig().catch(error => {
+                    console.error('获取配置失败:', error);
+                    window.uiModule.showToast(`获取配置失败: ${error.message}`, 'error');
+                });
+            }
         } else {
             throw new Error('后端服务不健康');
         }

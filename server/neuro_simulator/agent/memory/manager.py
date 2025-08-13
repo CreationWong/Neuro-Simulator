@@ -147,11 +147,30 @@ class MemoryManager:
     async def add_detailed_context_entry(self, input_messages: List[Dict[str, str]], 
                                          prompt: str, llm_response: str, 
                                          tool_executions: List[Dict[str, Any]], 
-                                         final_response: str):
-        """Add a detailed context entry with full LLM interaction details"""
+                                         final_response: str,
+                                         entry_id: str = None):
+        """Add or update a detailed context entry with full LLM interaction details"""
+        # Check if we're updating an existing entry
+        if entry_id:
+            # Find the entry with the given ID and update it
+            for entry in self.context_history:
+                if entry.get("id") == entry_id:
+                    entry.update({
+                        "input_messages": input_messages,
+                        "prompt": prompt,
+                        "llm_response": llm_response,
+                        "tool_executions": tool_executions,
+                        "final_response": final_response,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    await self._save_context()
+                    return entry_id
+        
+        # If no entry_id was provided or the entry wasn't found, create a new one
         entry = {
-            "id": generate_id(),
+            "id": entry_id or generate_id(),
             "type": "llm_interaction",
+            "role": "assistant",  # Add role for llm_interaction entries
             "input_messages": input_messages,
             "prompt": prompt,
             "llm_response": llm_response,
@@ -166,6 +185,7 @@ class MemoryManager:
             self.context_history = self.context_history[-20:]
             
         await self._save_context()
+        return entry["id"]
         
     async def get_recent_context(self, rounds: int = 5) -> List[Dict[str, Any]]:
         """Get recent context (default: last 5 rounds, 10 entries)"""
@@ -181,9 +201,9 @@ class MemoryManager:
         """Get the last response from the agent"""
         for entry in reversed(self.context_history):
             if entry.get("role") == "assistant":
-                return entry["content"]
+                return entry.get("content")
             elif entry.get("type") == "llm_interaction":
-                return entry["final_response"]
+                return entry.get("final_response")
         return None
         
     async def reset_context(self):
@@ -238,8 +258,21 @@ class MemoryManager:
         context_parts.append("\n=== CONTEXT (Recent Conversation) ===")
         recent_context = await self.get_recent_context(5)
         for i, entry in enumerate(recent_context):
-            role_display = "User" if entry["role"] == "user" else "Assistant"
-            context_parts.append(f"{i+1}. [{role_display}] {entry['content']}")
+            # Handle entries with and without 'role' field
+            if "role" in entry:
+                role_display = "User" if entry["role"] == "user" else "Assistant"
+                content = entry.get('content', entry.get('final_response', 'Unknown entry'))
+                context_parts.append(f"{i+1}. [{role_display}] {content}")
+            elif "type" in entry and entry["type"] == "llm_interaction":
+                # For detailed LLM interaction entries with role: assistant
+                if entry.get("role") == "assistant":
+                    context_parts.append(f"{i+1}. [Assistant] {entry.get('final_response', 'Processing step')}")
+                else:
+                    # For other llm_interaction entries without role
+                    context_parts.append(f"{i+1}. [System] {entry.get('final_response', 'Processing step')}")
+            else:
+                # Default fallback
+                context_parts.append(f"{i+1}. [System] {entry.get('content', 'Unknown entry')}")
             
         # Add temp memory (only for temporary state, not dialog history)
         if self.temp_memory:

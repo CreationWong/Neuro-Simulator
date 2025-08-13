@@ -80,6 +80,46 @@
   font-size: 12px;
 }
 
+/* --- 上下文显示优化样式 --- */
+.context-section {
+  margin-bottom: 15px;
+}
+
+.context-section:last-child {
+  margin-bottom: 0;
+}
+
+.context-section > div:first-child {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.context-section ul {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.context-section li {
+  margin-bottom: 8px;
+}
+
+.prompt-preview, .llm-response-preview {
+  background-color: var(--twitch-chat-bg);
+  border-radius: 3px;
+  padding: 10px;
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.expand-prompt-btn, .expand-llm-response-btn {
+  margin-top: 5px;
+}
+
 /* --- 全局基础样式 --- */
 * {
   box-sizing: border-box;

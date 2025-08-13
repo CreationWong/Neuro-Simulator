@@ -123,6 +123,9 @@ async function getConfig() {
         
         // 检查是否有未显示的配置项
         checkForMissingConfigItems(config);
+        
+        // 检查是否使用了内建Agent并相应地显示/隐藏Agent管理标签页
+        updateAgentManagementVisibility(config);
     } catch (error) {
         console.error('获取配置失败:', error);
         window.uiModule.showToast(`获取配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`, 'error');
@@ -211,11 +214,47 @@ async function saveConfig(e) {
     }
 }
 
+// 检查是否使用了内建Agent并相应地显示/隐藏Agent管理标签页
+function updateAgentManagementVisibility(config) {
+    // 使用setTimeout确保DOM完全加载后再修改元素
+    setTimeout(() => {
+        const agentManagementTab = document.getElementById('agentManagementTab');
+        const chatbotManagementTab = document.getElementById('chatbotManagementTab');
+        
+        // 如果通过ID获取不到，尝试通过data属性获取
+        const agentManagementTabByData = agentManagementTab || document.querySelector('[data-tab="agent-management"]');
+        const chatbotManagementTabByData = chatbotManagementTab || document.querySelector('[data-tab="chatbot-management"]');
+        
+        if (agentManagementTabByData && chatbotManagementTabByData) {
+            // 检查配置中是否使用了内建Agent
+            // 根据配置结构，agent_type 字段标识使用的Agent类型
+            // 如果没有agent_type字段，默认认为是builtin agent
+            const isBuiltinAgent = !config.agent_type || config.agent_type === 'builtin';
+            
+            if (isBuiltinAgent) {
+                agentManagementTabByData.style.display = 'block';
+            } else {
+                agentManagementTabByData.style.display = 'none';
+                
+                // 如果当前激活的标签页是Agent管理，则切换到连接标签页
+                const activeTab = document.querySelector('.nav-tab.active');
+                if (activeTab && activeTab.dataset.tab === 'agent-management') {
+                    window.uiModule.switchTab('connection');
+                }
+            }
+            
+            // 目前ChatBot管理标签页始终隐藏，日后实现时再显示
+            chatbotManagementTabByData.style.display = 'none';
+        }
+    }, 0); // 使用0毫秒延时，确保在当前执行栈清空后再执行
+}
+
 // 导出函数供其他模块使用
 window.configModule = {
     getConfig,
     resetConfigForm,
     saveConfig,
     configToForm,
-    formToConfig
+    formToConfig,
+    updateAgentManagementVisibility
 };

@@ -109,6 +109,15 @@ class Agent:
             "action": "update",
             "messages": context_messages
         })
+        
+        # Add detailed context entry for the start of processing
+        processing_entry_id = await self.memory_manager.add_detailed_context_entry(
+            input_messages=messages,
+            prompt="Processing started",
+            llm_response="",
+            tool_executions=[],
+            final_response="Processing started"
+        )
             
         # Get full context for LLM
         context = await self.memory_manager.get_full_context()
@@ -131,6 +140,11 @@ Your personality: {self.memory_manager.init_memory.get('personality', 'Friendly 
 Process the user messages and respond appropriately. You can use tools to manage memory or output responses.
 When you want to speak to the user, use the 'speak' tool with your response as the text parameter.
 When you want to update memory, use the appropriate memory management tools.
+You are fully responsible for managing your own memory. Use the memory tools proactively when you need to:
+- Remember important information from the conversation
+- Update your knowledge or personality
+- Store observations about users or events
+- Retrieve relevant information to inform your responses
 Always think about whether you need to use tools before responding.
 
 IMPORTANT GUIDELINES:
@@ -149,9 +163,29 @@ User messages:
         
         agent_logger.debug("Sending prompt to LLM")
         
+        # Add detailed context entry for the prompt
+        await self.memory_manager.add_detailed_context_entry(
+            input_messages=messages,
+            prompt=prompt,
+            llm_response="",
+            tool_executions=[],
+            final_response="Prompt sent to LLM",
+            entry_id=processing_entry_id
+        )
+        
         # Generate response using LLM
         response = await self.llm_client.generate(prompt)
         agent_logger.debug(f"LLM response received: {response[:100] if response else 'None'}...")
+        
+        # Add detailed context entry for the LLM response
+        await self.memory_manager.add_detailed_context_entry(
+            input_messages=messages,
+            prompt=prompt,
+            llm_response=response,
+            tool_executions=[],
+            final_response="LLM response received",
+            entry_id=processing_entry_id
+        )
         
         # Parse the response to handle tool calls
         # This is a simplified parser - in a full implementation, you would use a more robust method
@@ -186,6 +220,15 @@ User messages:
                 if tool_call:
                     agent_logger.info(f"Executing tool: {tool_call['name']}")
                     await self._execute_parsed_tool(tool_call, processing_result)
+                    # Update detailed context entry for tool execution
+                    await self.memory_manager.add_detailed_context_entry(
+                        input_messages=messages,
+                        prompt=prompt,
+                        llm_response=response,
+                        tool_executions=processing_result["tool_executions"].copy(),  # Pass a copy of current tool executions
+                        final_response=f"Executed tool: {tool_call['name']}",
+                        entry_id=processing_entry_id
+                    )
                 else:
                     agent_logger.warning(f"Failed to parse tool call from JSON block: {json_buffer}")
             elif in_json_block:
@@ -199,6 +242,15 @@ User messages:
                     if tool_call:
                         agent_logger.info(f"Executing tool: {tool_call['name']}")
                         await self._execute_parsed_tool(tool_call, processing_result)
+                        # Update detailed context entry for tool execution
+                        await self.memory_manager.add_detailed_context_entry(
+                            input_messages=messages,
+                            prompt=prompt,
+                            llm_response=response,
+                            tool_executions=processing_result["tool_executions"].copy(),  # Pass a copy of current tool executions
+                            final_response=f"Executed tool: {tool_call['name']}",
+                            entry_id=processing_entry_id
+                        )
                     else:
                         agent_logger.warning(f"Failed to parse tool call from line: {line}")
             i += 1
@@ -209,6 +261,15 @@ User messages:
             if tool_call:
                 agent_logger.info(f"Executing tool: {tool_call['name']}")
                 await self._execute_parsed_tool(tool_call, processing_result)
+                # Update detailed context entry for tool execution
+                await self.memory_manager.add_detailed_context_entry(
+                    input_messages=messages,
+                    prompt=prompt,
+                    llm_response=response,
+                    tool_executions=processing_result["tool_executions"].copy(),  # Pass a copy of current tool executions
+                    final_response=f"Executed tool: {tool_call['name']}",
+                    entry_id=processing_entry_id
+                )
             else:
                 agent_logger.warning(f"Failed to parse tool call from incomplete JSON block: {json_buffer}")
         
@@ -216,13 +277,14 @@ User messages:
         if processing_result["final_response"]:
             await self.memory_manager.add_context_entry("assistant", processing_result["final_response"])
             
-        # Add detailed context entry with full LLM interaction details
+        # Update the detailed context entry with final LLM interaction details
         await self.memory_manager.add_detailed_context_entry(
             input_messages=messages,
             prompt=prompt,
             llm_response=response,
             tool_executions=processing_result["tool_executions"],
-            final_response=processing_result["final_response"]
+            final_response=processing_result["final_response"],
+            entry_id=processing_entry_id
         )
             
         # Send context update via WebSocket

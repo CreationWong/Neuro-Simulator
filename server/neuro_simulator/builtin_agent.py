@@ -70,17 +70,7 @@ async def get_builtin_response(chat_messages: list[dict]) -> dict:
     if local_agent is not None:
         response = await local_agent.process_messages(chat_messages)
         
-        # Store processing details in temp memory
-        processing_entry = {
-            "id": f"proc_{int(time.time() * 1000)}",
-            "content": f"Processed {len(chat_messages)} messages",
-            "role": "system",
-            "timestamp": datetime.now().isoformat(),
-            "processing_details": response
-        }
-        # Convert to string for storage in temp memory
-        await local_agent.memory_manager.add_temp_memory(str(processing_entry), "system")
-        
+        # Return the response directly without adding processing details to temp memory
         return response
     else:
         print("错误: 本地 Agent 未初始化，无法获取响应。")

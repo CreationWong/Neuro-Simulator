@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 隐藏非连接标签页直到连接成功
     document.querySelector('[data-tab="control"]').style.display = 'none';
     document.querySelector('[data-tab="config"]').style.display = 'none';
-    document.querySelector('[data-tab="agent"]').style.display = 'none';
+    document.querySelector('[data-tab="logs"]').style.display = 'none';
+    // agent-management 和 chatbot-management 标签页的显示由配置决定
+    // 不在初始化时隐藏它们，而是在连接成功并获取配置后再决定是否显示
     
     // 从localStorage恢复连接信息
     const savedUrl = localStorage.getItem('backendUrl');
