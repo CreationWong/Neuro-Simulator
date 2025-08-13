@@ -203,6 +203,93 @@ function showAddMemoryBlockDialog() {
     }
 }
 
+// 显示添加临时记忆对话框
+function showAddTempMemoryDialog() {
+    // 创建对话框元素
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-dialog show';
+    dialog.id = 'addTempMemoryDialog';
+    
+    dialog.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加临时记忆</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addTempMemoryForm">
+                    <div class="form-group">
+                        <label for="tempMemoryRole">角色:</label>
+                        <select id="tempMemoryRole" class="form-control">
+                            <option value="system">system</option>
+                            <option value="user">user</option>
+                            <option value="assistant">assistant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tempMemoryContent">内容:</label>
+                        <textarea id="tempMemoryContent" rows="4" class="form-control"></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn secondary" id="cancelAddTempMemoryBtn">取消</button>
+                        <button type="submit" class="btn primary">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    // 添加到文档中
+    document.body.appendChild(dialog);
+    
+    // 绑定事件
+    const closeBtn = dialog.querySelector('.close-btn');
+    const cancelBtn = document.getElementById('cancelAddTempMemoryBtn');
+    const form = document.getElementById('addTempMemoryForm');
+    
+    const closeDialog = () => {
+        dialog.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', closeDialog);
+    
+    // 点击对话框背景关闭
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            closeDialog();
+        }
+    });
+    
+    // 表单提交事件
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const role = document.getElementById('tempMemoryRole').value;
+        const content = document.getElementById('tempMemoryContent').value;
+        
+        if (!content.trim()) {
+            window.uiModule.showToast('请输入内容', 'warning');
+            return;
+        }
+        
+        try {
+            await window.connectionModule.apiRequest('/api/agent/memory/temp', {
+                method: 'POST',
+                body: JSON.stringify({ content, role })
+            });
+            
+            window.uiModule.showToast('临时记忆已添加', 'success');
+            closeDialog();
+            if (window.agentModule && window.agentModule.refreshTempMemory) {
+                window.agentModule.refreshTempMemory(); // 刷新显示
+            }
+        } catch (error) {
+            window.uiModule.showToast(`添加临时记忆失败: ${error.message}`, 'error');
+        }
+    });
+}
+
 // 隐藏添加记忆块对话框
 function hideAddMemoryBlockDialog() {
     if (addMemoryBlockDialog) {
@@ -237,7 +324,9 @@ function initEventListeners() {
     if (restartStreamBtn) restartStreamBtn.addEventListener('click', window.streamModule.restartStream);
     
     // Agent 控制按钮
+    const refreshInitMemoryBtn = document.getElementById('refreshInitMemoryBtn');
     const refreshTempMemoryBtn = document.getElementById('refreshTempMemoryBtn');
+    const addTempMemoryBtn = document.getElementById('addTempMemoryBtn');
     const clearTempMemoryBtn = document.getElementById('clearTempMemoryBtn');
     const tempMemoryOutput = document.getElementById('tempMemoryOutput');
     const refreshCoreMemoryBtn = document.getElementById('refreshCoreMemoryBtn');
@@ -251,6 +340,13 @@ function initEventListeners() {
     const addMemoryBlockForm = document.getElementById('addMemoryBlockForm');
     const cancelAddMemoryBtn = document.getElementById('cancelAddMemoryBtn');
     
+    if (refreshInitMemoryBtn) {
+        refreshInitMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshInitMemory) {
+                window.agentModule.refreshInitMemory();
+            }
+        });
+    }
     if (refreshTempMemoryBtn) {
         refreshTempMemoryBtn.addEventListener('click', () => {
             if (window.agentModule && window.agentModule.refreshTempMemory) {
@@ -264,6 +360,9 @@ function initEventListeners() {
                 window.agentModule.clearTempMemory();
             }
         });
+    }
+    if (addTempMemoryBtn) {
+        addTempMemoryBtn.addEventListener('click', showAddTempMemoryDialog);
     }
     if (refreshCoreMemoryBtn) {
         refreshCoreMemoryBtn.addEventListener('click', () => {
@@ -354,7 +453,8 @@ function initEventListeners() {
                 
                 // 切换到不同Agent子标签页时加载对应数据
                 if (tab.dataset.agentTab === 'memory' && window.connectionModule && window.connectionModule.isConnected) {
-                    if (window.agentModule && window.agentModule.refreshTempMemory && window.agentModule.refreshCoreMemory) {
+                    if (window.agentModule && window.agentModule.refreshInitMemory && window.agentModule.refreshTempMemory && window.agentModule.refreshCoreMemory) {
+                        window.agentModule.refreshInitMemory();
                         window.agentModule.refreshTempMemory();
                         window.agentModule.refreshCoreMemory();
                     }
@@ -481,6 +581,7 @@ window.uiModule = {
     showToast,
     showConfirmDialog,
     showAddMemoryBlockDialog,
+    showAddTempMemoryDialog,
     hideAddMemoryBlockDialog,
     showDisconnectDialog,
     initEventListeners

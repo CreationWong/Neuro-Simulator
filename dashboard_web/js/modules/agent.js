@@ -33,6 +33,276 @@ async function refreshContext() {
     }
 }
 
+// 刷新初始化记忆
+async function refreshInitMemory() {
+    if (!window.connectionModule.isConnected) {
+        window.uiModule.showToast('未连接到后端', 'warning');
+        return;
+    }
+    
+    try {
+        const initMemory = await window.connectionModule.apiRequest('/api/agent/memory/init');
+        displayInitMemory(initMemory);
+    } catch (error) {
+        console.error('获取初始化记忆失败:', error);
+        window.uiModule.showToast(`获取初始化记忆失败: ${error.message}`, 'error');
+    }
+}
+
+// 显示初始化记忆
+function displayInitMemory(memory) {
+    const initMemoryOutput = document.getElementById('initMemoryOutput');
+    if (!initMemoryOutput) {
+        return;
+    }
+    
+    initMemoryOutput.innerHTML = '';
+    
+    // 创建编辑表单
+    const form = document.createElement('form');
+    form.id = 'initMemoryForm';
+    
+    // 添加一个隐藏的输入框来存储原始的键列表
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.id = 'initMemoryKeys';
+    hiddenInput.value = JSON.stringify(Object.keys(memory));
+    form.appendChild(hiddenInput);
+    
+    // 遍历记忆对象的每个属性
+    for (const [key, value] of Object.entries(memory)) {
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+        formGroup.dataset.key = key; // 添加数据属性以便于识别
+        
+        const label = document.createElement('label');
+        label.textContent = key;
+        label.setAttribute('for', `init-memory-${key}`);
+        
+        // 创建删除按钮
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn small danger delete-init-key-btn';
+        deleteBtn.textContent = '删除';
+        deleteBtn.dataset.key = key;
+        deleteBtn.style.float = 'right';
+        deleteBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            deleteInitMemoryKey(key);
+        });
+        
+        let input;
+        if (Array.isArray(value)) {
+            // 对于数组，使用文本域
+            input = document.createElement('textarea');
+            input.value = value.join('\n');
+            input.rows = 4;
+        } else if (typeof value === 'object' && value !== null) {
+            // 对于对象，使用文本域显示JSON
+            input = document.createElement('textarea');
+            input.value = JSON.stringify(value, null, 2);
+            input.rows = 6;
+        } else {
+            // 对于字符串和其他基本类型，使用输入框
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = value;
+        }
+        
+        input.id = `init-memory-${key}`;
+        input.name = key;
+        input.className = 'form-control';
+        
+        label.appendChild(deleteBtn);
+        formGroup.appendChild(label);
+        formGroup.appendChild(input);
+        form.appendChild(formGroup);
+    }
+    
+    // 添加新增键的表单
+    const addKeyGroup = document.createElement('div');
+    addKeyGroup.className = 'form-group';
+    
+    const addKeyLabel = document.createElement('label');
+    addKeyLabel.textContent = '添加新键:';
+    
+    const newKeyInput = document.createElement('input');
+    newKeyInput.type = 'text';
+    newKeyInput.id = 'newInitMemoryKey';
+    newKeyInput.placeholder = '输入新键名';
+    newKeyInput.className = 'form-control';
+    
+    const addKeyBtn = document.createElement('button');
+    addKeyBtn.type = 'button';
+    addKeyBtn.className = 'btn secondary';
+    addKeyBtn.textContent = '添加';
+    addKeyBtn.addEventListener('click', addInitMemoryKey);
+    
+    addKeyGroup.appendChild(addKeyLabel);
+    addKeyGroup.appendChild(newKeyInput);
+    addKeyGroup.appendChild(addKeyBtn);
+    form.appendChild(addKeyGroup);
+    
+    // 添加保存按钮
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'button-group';
+    
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'btn primary';
+    saveBtn.textContent = '保存';
+    saveBtn.addEventListener('click', saveInitMemory);
+    
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'btn secondary';
+    resetBtn.textContent = '重置';
+    resetBtn.addEventListener('click', refreshInitMemory);
+    
+    buttonGroup.appendChild(resetBtn);
+    buttonGroup.appendChild(saveBtn);
+    form.appendChild(buttonGroup);
+    
+    initMemoryOutput.appendChild(form);
+}
+
+// 删除初始化记忆的键
+function deleteInitMemoryKey(key) {
+    const confirmed = window.confirm(`确定要删除键 "${key}" 吗？`);
+    if (!confirmed) return;
+    
+    const formGroup = document.querySelector(`.form-group[data-key="${key}"]`);
+    if (formGroup) {
+        formGroup.remove();
+        
+        // 更新隐藏的键列表
+        const hiddenInput = document.getElementById('initMemoryKeys');
+        if (hiddenInput) {
+            const keys = JSON.parse(hiddenInput.value);
+            const index = keys.indexOf(key);
+            if (index > -1) {
+                keys.splice(index, 1);
+                hiddenInput.value = JSON.stringify(keys);
+            }
+        }
+    }
+}
+
+// 添加初始化记忆的键
+function addInitMemoryKey() {
+    const newKeyInput = document.getElementById('newInitMemoryKey');
+    const key = newKeyInput.value.trim();
+    
+    if (!key) {
+        window.uiModule.showToast('请输入键名', 'warning');
+        return;
+    }
+    
+    // 检查键是否已存在
+    const existingInput = document.getElementById(`init-memory-${key}`);
+    if (existingInput) {
+        window.uiModule.showToast(`键 "${key}" 已存在`, 'warning');
+        return;
+    }
+    
+    // 创建新的表单组
+    const form = document.getElementById('initMemoryForm');
+    const formGroup = document.createElement('div');
+    formGroup.className = 'form-group';
+    formGroup.dataset.key = key;
+    
+    const label = document.createElement('label');
+    label.textContent = key;
+    label.setAttribute('for', `init-memory-${key}`);
+    
+    // 创建删除按钮
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'btn small danger delete-init-key-btn';
+    deleteBtn.textContent = '删除';
+    deleteBtn.dataset.key = key;
+    deleteBtn.style.float = 'right';
+    deleteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        deleteInitMemoryKey(key);
+    });
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `init-memory-${key}`;
+    input.name = key;
+    input.className = 'form-control';
+    input.value = '';
+    
+    label.appendChild(deleteBtn);
+    formGroup.appendChild(label);
+    formGroup.appendChild(input);
+    
+    // 插入到添加键的表单组之前
+    const addKeyGroup = document.querySelector('#newInitMemoryKey').closest('.form-group');
+    form.insertBefore(formGroup, addKeyGroup);
+    
+    // 更新隐藏的键列表
+    const hiddenInput = document.getElementById('initMemoryKeys');
+    if (hiddenInput) {
+        const keys = JSON.parse(hiddenInput.value);
+        if (!keys.includes(key)) {
+            keys.push(key);
+            hiddenInput.value = JSON.stringify(keys);
+        }
+    }
+    
+    // 清空输入框
+    newKeyInput.value = '';
+    
+    window.uiModule.showToast(`已添加键 "${key}"`, 'success');
+}
+
+// 保存初始化记忆
+async function saveInitMemory() {
+    const form = document.getElementById('initMemoryForm');
+    if (!form) return;
+    
+    const updatedMemory = {};
+    
+    // 获取所有表单元素
+    const formElements = form.querySelectorAll('.form-group[data-key] .form-control');
+    
+    // 构造更新后的记忆对象
+    formElements.forEach(element => {
+        const key = element.name;
+        const value = element.value;
+        
+        // 尝试解析JSON对象
+        try {
+            const trimmedValue = value.trim();
+            if (trimmedValue.startsWith('{') || trimmedValue.startsWith('[')) {
+                updatedMemory[key] = JSON.parse(trimmedValue);
+            } else if (trimmedValue.includes('\n')) {
+                // 处理多行文本（数组）
+                updatedMemory[key] = trimmedValue.split('\n').filter(line => line.trim() !== '');
+            } else {
+                // 其他情况作为字符串处理
+                updatedMemory[key] = value;
+            }
+        } catch (e) {
+            // 如果JSON解析失败，作为字符串处理
+            updatedMemory[key] = value;
+        }
+    });
+    
+    try {
+        await window.connectionModule.apiRequest('/api/agent/memory/init', {
+            method: 'PUT',
+            body: JSON.stringify({ memory: updatedMemory })
+        });
+        window.uiModule.showToast('初始化记忆保存成功', 'success');
+    } catch (error) {
+        console.error('保存初始化记忆失败:', error);
+        window.uiModule.showToast(`保存初始化记忆失败: ${error.message}`, 'error');
+    }
+}
+
 // 显示Agent日志
 function displayAgentLogs(logs) {
     if (!agentLogsOutput) return;
@@ -461,6 +731,200 @@ function displayTempMemory(messages) {
     });
 }
 
+// 显示添加临时记忆对话框
+function showAddTempMemoryDialog() {
+    // 创建对话框元素
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-dialog show';
+    dialog.id = 'addTempMemoryDialog';
+    
+    dialog.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加临时记忆</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addTempMemoryForm">
+                    <div class="form-group">
+                        <label for="tempMemoryRole">角色:</label>
+                        <select id="tempMemoryRole" class="form-control">
+                            <option value="system">system</option>
+                            <option value="user">user</option>
+                            <option value="assistant">assistant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tempMemoryContent">内容:</label>
+                        <textarea id="tempMemoryContent" rows="4" class="form-control"></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn secondary" id="cancelAddTempMemoryBtn">取消</button>
+                        <button type="submit" class="btn primary">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    // 添加到文档中
+    document.body.appendChild(dialog);
+    
+    // 绑定事件
+    const closeBtn = dialog.querySelector('.close-btn');
+    const cancelBtn = document.getElementById('cancelAddTempMemoryBtn');
+    const form = document.getElementById('addTempMemoryForm');
+    
+    const closeDialog = () => {
+        dialog.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', closeDialog);
+    
+    // 点击对话框背景关闭
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            closeDialog();
+        }
+    });
+    
+    // 表单提交事件
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const role = document.getElementById('tempMemoryRole').value;
+        const content = document.getElementById('tempMemoryContent').value;
+        
+        if (!content.trim()) {
+            window.uiModule.showToast('请输入内容', 'warning');
+            return;
+        }
+        
+        try {
+            await window.connectionModule.apiRequest('/api/agent/memory/temp', {
+                method: 'POST',
+                body: JSON.stringify({ content, role })
+            });
+            
+            window.uiModule.showToast('临时记忆已添加', 'success');
+            closeDialog();
+            refreshTempMemory(); // 刷新显示
+        } catch (error) {
+            window.uiModule.showToast(`添加临时记忆失败: ${error.message}`, 'error');
+        }
+    });
+}
+
+// 编辑临时记忆项
+async function editTempMemoryItem(index) {
+    // 获取当前临时记忆项
+    const items = tempMemoryOutput.querySelectorAll('.memory-item');
+    if (!items[index]) return;
+    
+    // 提取当前项的内容
+    const item = items[index];
+    const roleElement = item.querySelector('strong');
+    const contentElement = item.querySelector('.memory-content');
+    
+    // 获取角色和内容
+    const roleMatch = roleElement.textContent.match(/\[(.*?)\]/);
+    const role = roleMatch ? roleMatch[1] : 'system';
+    const content = contentElement.textContent.replace(`[${role}] `, '').trim();
+    
+    // 创建对话框元素
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-dialog show';
+    dialog.id = 'editTempMemoryDialog';
+    
+    dialog.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑临时记忆</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editTempMemoryForm">
+                    <input type="hidden" id="editTempMemoryIndex" value="${index}">
+                    <div class="form-group">
+                        <label for="editTempMemoryRole">角色:</label>
+                        <select id="editTempMemoryRole" class="form-control">
+                            <option value="system" ${role === 'system' ? 'selected' : ''}>system</option>
+                            <option value="user" ${role === 'user' ? 'selected' : ''}>user</option>
+                            <option value="assistant" ${role === 'assistant' ? 'selected' : ''}>assistant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTempMemoryContent">内容:</label>
+                        <textarea id="editTempMemoryContent" rows="4" class="form-control">${content}</textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn secondary" id="cancelEditTempMemoryBtn">取消</button>
+                        <button type="submit" class="btn primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    // 添加到文档中
+    document.body.appendChild(dialog);
+    
+    // 绑定事件
+    const closeBtn = dialog.querySelector('.close-btn');
+    const cancelBtn = document.getElementById('cancelEditTempMemoryBtn');
+    const form = document.getElementById('editTempMemoryForm');
+    
+    const closeDialog = () => {
+        dialog.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', closeDialog);
+    
+    // 点击对话框背景关闭
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            closeDialog();
+        }
+    });
+    
+    // 表单提交事件
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const role = document.getElementById('editTempMemoryRole').value;
+        const content = document.getElementById('editTempMemoryContent').value;
+        
+        if (!content.trim()) {
+            window.uiModule.showToast('请输入内容', 'warning');
+            return;
+        }
+        
+        try {
+            // 对于builtin agent，我们无法直接编辑单个消息
+            // 所以我们删除旧项并添加新项
+            const confirmed = await window.uiModule.showConfirmDialog('编辑临时记忆需要删除当前项并添加新项，确定继续吗？');
+            if (!confirmed) return;
+            
+            // 删除当前项
+            items[index].remove();
+            
+            // 添加新项
+            await window.connectionModule.apiRequest('/api/agent/memory/temp', {
+                method: 'POST',
+                body: JSON.stringify({ content, role })
+            });
+            
+            window.uiModule.showToast('临时记忆已更新', 'success');
+            closeDialog();
+            refreshTempMemory(); // 刷新显示
+        } catch (error) {
+            window.uiModule.showToast(`更新临时记忆失败: ${error.message}`, 'error');
+        }
+    });
+}
+
 // 删除临时记忆项
 async function deleteTempMemoryItem(index) {
     const confirmed = await window.uiModule.showConfirmDialog('确定要删除这条临时记忆吗？');
@@ -578,15 +1042,96 @@ async function editMemoryBlock(blockId) {
     // 获取记忆块详情
     try {
         const block = await window.connectionModule.apiRequest(`/api/agent/memory/blocks/${blockId}`);
-        
-        // 显示编辑对话框（这里简化处理，实际应该有更完整的编辑界面）
-        const confirmed = await window.uiModule.showConfirmDialog(`编辑记忆块 "${block.title}"?`);
-        if (confirmed) {
-            window.uiModule.showToast('编辑功能待实现', 'info');
-        }
+        showEditMemoryBlockDialog(block);
     } catch (error) {
         window.uiModule.showToast(`获取记忆块详情失败: ${error.message}`, 'error');
     }
+}
+
+// 显示编辑记忆块对话框
+function showEditMemoryBlockDialog(block) {
+    // 创建对话框元素
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-dialog show';
+    dialog.id = 'editMemoryBlockDialog';
+    
+    dialog.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑记忆块</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editMemoryBlockForm">
+                    <input type="hidden" id="editBlockId" value="${block.id}">
+                    <div class="form-group">
+                        <label for="editMemoryTitle">标题:</label>
+                        <input type="text" id="editMemoryTitle" value="${block.title}" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="editMemoryDescription">描述:</label>
+                        <textarea id="editMemoryDescription" rows="2" class="form-control">${block.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editMemoryContent">内容 (每行一条):</label>
+                        <textarea id="editMemoryContent" rows="4" class="form-control">${block.content.join('\n')}</textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn secondary" id="cancelEditMemoryBtn">取消</button>
+                        <button type="submit" class="btn primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    // 添加到文档中
+    document.body.appendChild(dialog);
+    
+    // 绑定事件
+    const closeBtn = dialog.querySelector('.close-btn');
+    const cancelBtn = document.getElementById('cancelEditMemoryBtn');
+    const form = document.getElementById('editMemoryBlockForm');
+    
+    const closeDialog = () => {
+        dialog.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', closeDialog);
+    
+    // 点击对话框背景关闭
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            closeDialog();
+        }
+    });
+    
+    // 表单提交事件
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const blockId = document.getElementById('editBlockId').value;
+        const title = document.getElementById('editMemoryTitle').value;
+        const description = document.getElementById('editMemoryDescription').value;
+        const contentText = document.getElementById('editMemoryContent').value;
+        
+        // 将内容文本按行分割成数组
+        const content = contentText.split('\n').filter(line => line.trim() !== '');
+        
+        try {
+            await window.connectionModule.apiRequest(`/api/agent/memory/blocks/${blockId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ title, description, content })
+            });
+            
+            window.uiModule.showToast('记忆块已更新', 'success');
+            closeDialog();
+            refreshCoreMemory(); // 刷新显示
+        } catch (error) {
+            window.uiModule.showToast(`更新记忆块失败: ${error.message}`, 'error');
+        }
+    });
 }
 
 // 删除记忆块
@@ -695,9 +1240,13 @@ window.agentModule = {
     displayContext,
     displayAgentContext,
     rerenderContext,
+    refreshInitMemory,
+    displayInitMemory,
+    saveInitMemory,
     refreshTempMemory,
     displayTempMemory,
     deleteTempMemoryItem,
+    editTempMemoryItem,
     clearTempMemory,
     refreshCoreMemory,
     displayCoreMemory,

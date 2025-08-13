@@ -113,6 +113,11 @@ class MemoryManager:
         with open(self.init_memory_file, 'w', encoding='utf-8') as f:
             json.dump(self.init_memory, f, ensure_ascii=False, indent=2)
             
+    async def update_init_memory(self, new_memory: Dict[str, Any]):
+        """Update init memory with new values"""
+        self.init_memory.update(new_memory)
+        await self._save_init_memory()
+            
     async def _save_core_memory(self):
         """Save core memory to file"""
         with open(self.core_memory_file, 'w', encoding='utf-8') as f:

@@ -58,6 +58,13 @@ class MemoryCreateRequest(BaseModel):
     description: str
     content: List[str]
 
+class InitMemoryUpdateRequest(BaseModel):
+    memory: Dict[str, Any]
+
+class TempMemoryItem(BaseModel):
+    content: str
+    role: str = "system"
+
 # Agent message APIs
 @router.get("/messages", dependencies=[Depends(get_api_token)])
 async def get_agent_messages():
@@ -287,6 +294,52 @@ async def send_message_to_agent(message: MessageItem):
             raise HTTPException(status_code=500, detail=f"Error sending message: {str(e)}")
 
 # Agent memory APIs
+@router.get("/memory/init", dependencies=[Depends(get_api_token)])
+async def get_init_memory():
+    """Get initialization memory content"""
+    if agent_type == "builtin":
+        # Check if local_agent is initialized
+        if builtin_agent_module.local_agent is None:
+            # Try to initialize it
+            try:
+                await builtin_agent_module.initialize_builtin_agent()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to initialize builtin agent: {str(e)}")
+        
+        if builtin_agent_module.local_agent is None:
+            raise HTTPException(status_code=500, detail="Builtin agent not initialized")
+        
+        # Return init memory
+        return builtin_agent_module.local_agent.memory_manager.init_memory
+    else:
+        # For Letta agent, init memory concept doesn't directly apply
+        raise HTTPException(status_code=400, detail="Getting init memory not supported for Letta agent")
+
+@router.put("/memory/init", dependencies=[Depends(get_api_token)])
+async def update_init_memory(request: InitMemoryUpdateRequest):
+    """Update initialization memory content"""
+    if agent_type == "builtin":
+        # Check if local_agent is initialized
+        if builtin_agent_module.local_agent is None:
+            # Try to initialize it
+            try:
+                await builtin_agent_module.initialize_builtin_agent()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to initialize builtin agent: {str(e)}")
+        
+        if builtin_agent_module.local_agent is None:
+            raise HTTPException(status_code=500, detail="Builtin agent not initialized")
+        
+        # Update init memory
+        manager = builtin_agent_module.local_agent.memory_manager
+        manager.init_memory.update(request.memory)
+        await manager._save_init_memory()
+        
+        return {"status": "success", "message": "Initialization memory updated"}
+    else:
+        # For Letta agent, init memory concept doesn't directly apply
+        raise HTTPException(status_code=400, detail="Updating init memory not supported for Letta agent")
+
 @router.get("/memory/temp", dependencies=[Depends(get_api_token)])
 async def get_temp_memory():
     """Get all temporary memory content"""
@@ -544,6 +597,29 @@ async def delete_memory_block(block_id: str):
             return {"status": "success"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error deleting memory block: {str(e)}")
+
+@router.post("/memory/temp", dependencies=[Depends(get_api_token)])
+async def add_temp_memory_item(request: TempMemoryItem):
+    """Add an item to temporary memory"""
+    if agent_type == "builtin":
+        # Check if local_agent is initialized
+        if builtin_agent_module.local_agent is None:
+            # Try to initialize it
+            try:
+                await builtin_agent_module.initialize_builtin_agent()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to initialize builtin agent: {str(e)}")
+        
+        if builtin_agent_module.local_agent is None:
+            raise HTTPException(status_code=500, detail="Builtin agent not initialized")
+        
+        # Add item to temp memory
+        await builtin_agent_module.local_agent.memory_manager.add_temp_memory(request.content, request.role)
+        
+        return {"status": "success", "message": "Item added to temporary memory"}
+    else:
+        # For Letta agent, we don't have a direct way to add temp memory items
+        raise HTTPException(status_code=400, detail="Adding items to temporary memory not supported for Letta agent")
 
 @router.delete("/memory/temp", dependencies=[Depends(get_api_token)])
 async def clear_temp_memory():
