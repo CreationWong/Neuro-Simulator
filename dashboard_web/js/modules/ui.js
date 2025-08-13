@@ -203,6 +203,93 @@ function showAddMemoryBlockDialog() {
     }
 }
 
+// 显示添加临时记忆对话框
+function showAddTempMemoryDialog() {
+    // 创建对话框元素
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-dialog show';
+    dialog.id = 'addTempMemoryDialog';
+    
+    dialog.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加临时记忆</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addTempMemoryForm">
+                    <div class="form-group">
+                        <label for="tempMemoryRole">角色:</label>
+                        <select id="tempMemoryRole" class="form-control">
+                            <option value="system">system</option>
+                            <option value="user">user</option>
+                            <option value="assistant">assistant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tempMemoryContent">内容:</label>
+                        <textarea id="tempMemoryContent" rows="4" class="form-control"></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn secondary" id="cancelAddTempMemoryBtn">取消</button>
+                        <button type="submit" class="btn primary">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    // 添加到文档中
+    document.body.appendChild(dialog);
+    
+    // 绑定事件
+    const closeBtn = dialog.querySelector('.close-btn');
+    const cancelBtn = document.getElementById('cancelAddTempMemoryBtn');
+    const form = document.getElementById('addTempMemoryForm');
+    
+    const closeDialog = () => {
+        dialog.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', closeDialog);
+    
+    // 点击对话框背景关闭
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            closeDialog();
+        }
+    });
+    
+    // 表单提交事件
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const role = document.getElementById('tempMemoryRole').value;
+        const content = document.getElementById('tempMemoryContent').value;
+        
+        if (!content.trim()) {
+            window.uiModule.showToast('请输入内容', 'warning');
+            return;
+        }
+        
+        try {
+            await window.connectionModule.apiRequest('/api/agent/memory/temp', {
+                method: 'POST',
+                body: JSON.stringify({ content, role })
+            });
+            
+            window.uiModule.showToast('临时记忆已添加', 'success');
+            closeDialog();
+            if (window.agentModule && window.agentModule.refreshTempMemory) {
+                window.agentModule.refreshTempMemory(); // 刷新显示
+            }
+        } catch (error) {
+            window.uiModule.showToast(`添加临时记忆失败: ${error.message}`, 'error');
+        }
+    });
+}
+
 // 隐藏添加记忆块对话框
 function hideAddMemoryBlockDialog() {
     if (addMemoryBlockDialog) {
@@ -237,7 +324,9 @@ function initEventListeners() {
     if (restartStreamBtn) restartStreamBtn.addEventListener('click', window.streamModule.restartStream);
     
     // Agent 控制按钮
+    const refreshInitMemoryBtn = document.getElementById('refreshInitMemoryBtn');
     const refreshTempMemoryBtn = document.getElementById('refreshTempMemoryBtn');
+    const addTempMemoryBtn = document.getElementById('addTempMemoryBtn');
     const clearTempMemoryBtn = document.getElementById('clearTempMemoryBtn');
     const tempMemoryOutput = document.getElementById('tempMemoryOutput');
     const refreshCoreMemoryBtn = document.getElementById('refreshCoreMemoryBtn');
@@ -251,38 +340,104 @@ function initEventListeners() {
     const addMemoryBlockForm = document.getElementById('addMemoryBlockForm');
     const cancelAddMemoryBtn = document.getElementById('cancelAddMemoryBtn');
     
-    if (refreshTempMemoryBtn) refreshTempMemoryBtn.addEventListener('click', window.agentModule.refreshTempMemory);
-    if (clearTempMemoryBtn) clearTempMemoryBtn.addEventListener('click', window.agentModule.clearTempMemory);
-    if (refreshCoreMemoryBtn) refreshCoreMemoryBtn.addEventListener('click', window.agentModule.refreshCoreMemory);
-    if (addCoreMemoryBlockBtn) addCoreMemoryBlockBtn.addEventListener('click', showAddMemoryBlockDialog);
-    if (refreshToolsBtn) refreshToolsBtn.addEventListener('click', window.agentModule.refreshTools);
-    if (connectToolBtn) connectToolBtn.addEventListener('click', window.agentModule.connectTool);
+    if (refreshInitMemoryBtn) {
+        refreshInitMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshInitMemory) {
+                window.agentModule.refreshInitMemory();
+            }
+        });
+    }
+    if (refreshTempMemoryBtn) {
+        refreshTempMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshTempMemory) {
+                window.agentModule.refreshTempMemory();
+            }
+        });
+    }
+    if (clearTempMemoryBtn) {
+        clearTempMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.clearTempMemory) {
+                window.agentModule.clearTempMemory();
+            }
+        });
+    }
+    if (addTempMemoryBtn) {
+        addTempMemoryBtn.addEventListener('click', showAddTempMemoryDialog);
+    }
+    if (refreshCoreMemoryBtn) {
+        refreshCoreMemoryBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshCoreMemory) {
+                window.agentModule.refreshCoreMemory();
+            }
+        });
+    }
+    if (addCoreMemoryBlockBtn) {
+        addCoreMemoryBlockBtn.addEventListener('click', () => {
+            showAddMemoryBlockDialog();
+        });
+    }
+    if (refreshToolsBtn) {
+        refreshToolsBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.refreshTools) {
+                window.agentModule.refreshTools();
+            }
+        });
+    }
+    if (connectToolBtn) {
+        connectToolBtn.addEventListener('click', () => {
+            if (window.agentModule && window.agentModule.connectTool) {
+                window.agentModule.connectTool();
+            }
+        });
+    }
     
     // 配置管理表单
     const configForm = document.getElementById('configForm');
     const resetConfigBtn = document.getElementById('resetConfigBtn');
-    if (configForm) configForm.addEventListener('submit', window.configModule.saveConfig);
-    if (resetConfigBtn) resetConfigBtn.addEventListener('click', window.configModule.resetConfigForm);
+    
+    if (configForm) {
+        configForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (window.configModule && window.configModule.saveConfig) {
+                window.configModule.saveConfig(e);
+            }
+        });
+    }
+    if (resetConfigBtn) {
+        resetConfigBtn.addEventListener('click', () => {
+            if (window.configModule && window.configModule.resetConfigForm) {
+                window.configModule.resetConfigForm();
+            }
+        });
+    }
     
     // 标签页切换
     const navTabs = document.querySelectorAll('.nav-tab');
+    
     if (navTabs) {
         navTabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 switchTab(tab.dataset.tab);
                 
                 // 当切换到配置标签页时，自动加载配置
-                if (tab.dataset.tab === 'config' && window.connectionModule.isConnected) {
-                    window.configModule.getConfig().catch(error => {
-                        console.error('获取配置失败:', error);
-                        showToast(`获取配置失败: ${error.message}`, 'error');
-                    });
+                if (tab.dataset.tab === 'config' && window.connectionModule && window.connectionModule.isConnected) {
+                    if (window.configModule && window.configModule.getConfig) {
+                        window.configModule.getConfig().catch(error => {
+                            console.error('获取配置失败:', error);
+                            showToast(`获取配置失败: ${error.message}`, 'error');
+                        });
+                    }
                 }
                 
-                // 当切换到Agent标签页时，加载相关数据
-                if (tab.dataset.tab === 'agent' && window.connectionModule.isConnected) {
-                    // 默认显示Server日志标签页
-                    switchAgentTab('server-logs');
+                // 当切换到日志标签页时，加载Server日志
+                if (tab.dataset.tab === 'logs' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 这里可以添加加载Server日志的逻辑
+                }
+                
+                // 当切换到Agent管理标签页时，加载相关数据
+                if (tab.dataset.tab === 'agent-management' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 默认显示上下文标签页
+                    switchAgentTab('context');
                 }
             });
         });
@@ -290,37 +445,54 @@ function initEventListeners() {
     
     // Agent 标签页切换
     const agentTabBtns = document.querySelectorAll('.agent-tab-btn');
+    
     if (agentTabBtns) {
         agentTabBtns.forEach(tab => {
             tab.addEventListener('click', () => {
                 switchAgentTab(tab.dataset.agentTab);
                 
                 // 切换到不同Agent子标签页时加载对应数据
-                if (tab.dataset.agentTab === 'memory' && window.connectionModule.isConnected) {
-                    window.agentModule.refreshTempMemory();
-                    window.agentModule.refreshCoreMemory();
-                } else if (tab.dataset.agentTab === 'tools' && window.connectionModule.isConnected) {
-                    window.agentModule.refreshTools();
+                if (tab.dataset.agentTab === 'memory' && window.connectionModule && window.connectionModule.isConnected) {
+                    if (window.agentModule && window.agentModule.refreshInitMemory && window.agentModule.refreshTempMemory && window.agentModule.refreshCoreMemory) {
+                        window.agentModule.refreshInitMemory();
+                        window.agentModule.refreshTempMemory();
+                        window.agentModule.refreshCoreMemory();
+                    }
+                } else if (tab.dataset.agentTab === 'tools' && window.connectionModule && window.connectionModule.isConnected) {
+                    if (window.agentModule && window.agentModule.refreshTools) {
+                        window.agentModule.refreshTools();
+                    }
+                } else if (tab.dataset.agentTab === 'agent-logs' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 这里可以添加加载Agent日志的逻辑
+                } else if (tab.dataset.agentTab === 'context' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 这里可以添加加载上下文的逻辑
                 }
                 // 注意：对于日志和上下文标签页，我们不再清空内容，而是保持已有的内容
             });
         });
     }
     
-    // 当主标签页切换到Agent时，默认显示Server日志
-    const agentMainTab = document.querySelector('[data-tab="agent"]');
-    if (agentMainTab) {
-        agentMainTab.addEventListener('click', () => {
-            if (window.connectionModule.isConnected) {
-                // 切换到Server日志标签页
-                switchAgentTab('server-logs');
+    // 当主标签页切换到Agent管理时，默认显示上下文
+    const agentManagementTab = document.querySelector('[data-tab="agent-management"]');
+    
+    if (agentManagementTab) {
+        agentManagementTab.addEventListener('click', () => {
+            if (window.connectionModule && window.connectionModule.isConnected) {
+                // 切换到上下文标签页
+                switchAgentTab('context');
             }
         });
     }
     
     // 模态对话框事件
     if (addMemoryBlockForm) {
-        addMemoryBlockForm.addEventListener('submit', window.agentModule.addMemoryBlock);
+        addMemoryBlockForm.addEventListener('submit', function(e) {
+            if (window.agentModule && window.agentModule.addMemoryBlock) {
+                window.agentModule.addMemoryBlock(e);
+            } else {
+                console.error('window.agentModule.addMemoryBlock未定义');
+            }
+        });
     }
     
     if (cancelAddMemoryBtn) {
@@ -350,6 +522,56 @@ function initEventListeners() {
             }
         });
     }
+    
+    // 上下文显示模式切换
+    const contextViewMode = document.getElementById('contextViewMode');
+    const modeLabel = document.getElementById('modeLabel');
+    if (contextViewMode && modeLabel) {
+        contextViewMode.addEventListener('change', function() {
+            modeLabel.textContent = this.checked ? '原始模式' : '对话模式';
+            // 重新渲染上下文显示
+            if (window.connectionModule.isConnected) {
+                // 使用重新渲染函数
+                window.agentModule.rerenderContext();
+            } else {
+                // 如果未连接，仍然需要更新显示
+                window.agentModule.refreshContext();
+            }
+        });
+    }
+}
+
+// 显示断连对话框
+function showDisconnectDialog() {
+    // 使用确认对话框显示断连信息，但只显示确定按钮
+    showConfirmDialog('与后端的连接已断开，请重新连接。').then(() => {
+        // 用户点击确定后，对话框会自动关闭
+    });
+    
+    // 为了只显示确定按钮，我们需要修改对话框的HTML
+    setTimeout(() => {
+        const confirmDialog = document.getElementById('confirmDialog');
+        if (confirmDialog) {
+            const cancelButton = confirmDialog.querySelector('.confirm-cancel');
+            const okButton = confirmDialog.querySelector('.confirm-ok');
+            
+            // 隐藏取消按钮
+            if (cancelButton) {
+                cancelButton.style.display = 'none';
+            }
+            
+            // 修改确定按钮文本
+            if (okButton) {
+                okButton.textContent = '确定';
+            }
+            
+            // 修改消息显示
+            const messageEl = confirmDialog.querySelector('.confirm-message');
+            if (messageEl) {
+                messageEl.textContent = '与后端的连接已断开，请重新连接。';
+            }
+        }
+    }, 10);
 }
 
 // 导出函数供其他模块使用
@@ -359,6 +581,8 @@ window.uiModule = {
     showToast,
     showConfirmDialog,
     showAddMemoryBlockDialog,
+    showAddTempMemoryDialog,
     hideAddMemoryBlockDialog,
+    showDisconnectDialog,
     initEventListeners
 };

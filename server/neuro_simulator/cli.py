@@ -6,6 +6,7 @@ import sys
 import shutil
 from pathlib import Path
 
+
 def main():
     parser = argparse.ArgumentParser(description="Neuro-Simulator Server")
     parser.add_argument("-D", "--dir", help="Working directory containing config.yaml")
@@ -98,6 +99,49 @@ def main():
         except Exception as e:
             print(f"Warning: Could not copy media folder from package: {e}")
     
+    # Handle agent/memory directory and example JSON files
+    agent_memory_dir = work_dir / "agent" / "memory"
+    agent_memory_dir.mkdir(parents=True, exist_ok=True)
+    
+    # List of example JSON files to copy
+    example_memory_files = [
+        "context.json",
+        "core_memory.json",
+        "dialog_history.json",
+        "init_memory.json"
+    ]
+    
+    # Copy each example memory file if it doesn't exist
+    for filename in example_memory_files:
+        target_path = agent_memory_dir / filename
+        if not target_path.exists():
+            try:
+                # Try pkg_resources first (for installed packages)
+                try:
+                    import pkg_resources
+                    package_example_path = pkg_resources.resource_filename('neuro_simulator', f'agent/memory/{filename}')
+                    if os.path.exists(package_example_path):
+                        shutil.copy(package_example_path, target_path)
+                        print(f"Created {target_path} from package example")
+                    else:
+                        # Fallback to relative path (for development mode)
+                        dev_example_path = Path(__file__).parent / "agent" / "memory" / filename
+                        if dev_example_path.exists():
+                            shutil.copy(dev_example_path, target_path)
+                            print(f"Created {target_path} from development example")
+                        else:
+                            print(f"Warning: {filename} not found in package or development folder")
+                except Exception:
+                    # Fallback to relative path (for development mode)
+                    dev_example_path = Path(__file__).parent / "agent" / "memory" / filename
+                    if dev_example_path.exists():
+                        shutil.copy(dev_example_path, target_path)
+                        print(f"Created {target_path} from development example")
+                    else:
+                        print(f"Warning: {filename} not found in package or development folder")
+            except Exception as e:
+                print(f"Warning: Could not copy {filename} from package: {e}")
+    
     # Now check for required files and handle errors appropriately
     errors = []
     
@@ -127,6 +171,7 @@ def main():
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from neuro_simulator.main import run_server
         run_server(args.host, args.port)
+
 
 if __name__ == "__main__":
     main()

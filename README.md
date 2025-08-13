@@ -4,12 +4,29 @@
 
 *本临时README由AI自动生成*
 
-Neuro Simulator 通过调用 Letta（一个为 LLM 添加自主记忆功能的项目）以及其他 LLM 服务，模拟一场 Neuro-sama 的单人直播。它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的观看体验。
+> 最近正在引入内建Agent  
+> 
+> server和dashboard_web可能**频繁出现大幅变化**  
+> 
+> README很有可能**更新滞后**  
+> 
+> 至少现在就已经有缺失内容了，例如：
+>   - server日志端点已经调整至/ws/admin
+>   - 内建Agent在$working_dir/agent/memory下自动存放记忆和上下文  
+> 
+> 等稳定下来了一定补充完善😭
+
+Neuro Simulator 通过调用 Letta（一个为 LLM 添加自主记忆功能的项目）以及其他 LLM 服务，也可使用自带的有记忆 Agent，模拟一场 Neuro-sama 的单人直播。它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的 Twitch vedal987 频道观看体验。
 
 ## 特性
 
 ### 预览
-<img src="docs/medias/start.gif" width="500" /> 
+
+*这图是较旧版本的，现在小牛已经和现实中一样换新家了*
+
+演示视频：[哔哩哔哩](https://www.bilibili.com/video/BV1Aot4zTEwt)
+
+<img src="docs/medias/start.gif" width="500" />
 
 ### 服务端
 
@@ -48,14 +65,16 @@ Neuro-Simulator/
 ### 0. 准备外部服务
 
 为了运行本项目，你至少需要拥有这些外部服务的API资源：
-- Letta Cloud或自托管的Letta Server，以及在其中配置完毕的Agent，作为本项目的核心
+- ~~Letta Cloud或自托管的Letta Server，以及在其中配置完毕的Agent~~ 现在有内建 Agent 了，参见 `config.yaml`
   - 官方文档：https://docs.letta.com/
   - Agent配置示例：参见 `./docs/letta_agents_example/`
-- Gemini或兼容OpenAI API的LLM服务商，这一项除了被本项目的Chatbot调用外，也可在Letta中使用，具体参考Letta文档
+
+- Gemini或兼容OpenAI API的LLM服务商，这一项在Letta、内建 Agent 以及 Chatbot 中使用
   - Letta文档中关于自定义LLM的说明：
     https://docs.letta.com/connecting-model-providers/
   - 推荐使用SiliconFlow，规模9B以下模型不限量免费调用：
     https://cloud.siliconflow.cn/i/lnHouO6z
+
 - Azure语音服务API，作为本项目TTS的唯一来源
   - 注册免费层F0即可，每月额度0.5M字符：
     https://azure.microsoft.com/products/ai-services/ai-speech/
@@ -155,6 +174,7 @@ python -m http.server 8080
 
 - API 密钥（Letta、Gemini、OpenAI、Azure TTS）
 - 直播元数据（标题、分类、标签）
+- Agent 和内建 Agent 配置
 - Neuro 行为设置
 - 观众模拟设置
 - 性能设置

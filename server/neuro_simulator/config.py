@@ -106,17 +106,34 @@ class ConfigManager:
         self._update_callbacks = []
         self._initialized = True
 
+    def _get_config_file_path(self) -> str:
+        """获取配置文件路径"""
+        import sys
+        import argparse
+        
+        # 解析命令行参数以获取工作目录
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--dir', '-D', type=str, help='Working directory')
+        # 只解析已知参数，避免干扰其他模块的参数解析
+        args, _ = parser.parse_known_args()
+        
+        if args.dir:
+            # 如果指定了工作目录，使用该目录下的配置文件
+            config_path = os.path.join(args.dir, "config.yaml")
+        else:
+            # 默认使用 ~/.config/neuro-simulator 目录
+            config_path = os.path.join(os.path.expanduser("~"), ".config", "neuro-simulator", "config.yaml")
+            
+        return config_path
+
     def _load_config_from_yaml(self) -> dict:
-        # 首先检查当前工作目录
-        config_path = "config.yaml"
+        # 获取配置文件路径
+        config_path = self._get_config_file_path()
+        
+        # 检查配置文件是否存在
         if not os.path.exists(config_path):
-            # 如果当前目录没有配置文件，检查默认配置目录
-            default_config_path = os.path.join(os.path.expanduser("~"), ".config", "neuro-simulator", "config.yaml")
-            if os.path.exists(default_config_path):
-                config_path = default_config_path
-            else:
-                raise FileNotFoundError("config.yaml not found in current directory or default config directory. "
-                                      "Please create it from config.yaml.example.")
+            raise FileNotFoundError(f"Configuration file '{config_path}' not found. "
+                                  "Please create it from config.yaml.example.")
         
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
@@ -151,8 +168,16 @@ class ConfigManager:
     def save_settings(self):
         """Saves the current configuration to config.yaml while preserving comments and formatting."""
         try:
+            # 获取配置文件路径
+            config_file_path = self._get_config_file_path()
+            
+            # 检查配置文件目录是否存在，如果不存在则创建
+            config_dir = os.path.dirname(config_file_path)
+            if config_dir and not os.path.exists(config_dir):
+                os.makedirs(config_dir, exist_ok=True)
+            
             # 1. Read the existing config file as text to preserve comments and formatting
-            with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+            with open(config_file_path, 'r', encoding='utf-8') as f:
                 config_lines = f.readlines()
 
             # 2. Get the current settings from memory
@@ -168,12 +193,12 @@ class ConfigManager:
             updated_lines = self._update_config_lines(config_lines, config_to_save)
 
             # 6. Write the updated lines back to the file
-            with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
+            with open(config_file_path, 'w', encoding='utf-8') as f:
                 f.writelines(updated_lines)
                 
-            logging.info(f"Configuration saved to {CONFIG_FILE_PATH}")
+            logging.info(f"Configuration saved to {config_file_path}")
         except Exception as e:
-            logging.error(f"Failed to save configuration to {CONFIG_FILE_PATH}: {e}")
+            logging.error(f"Failed to save configuration to {config_file_path}: {e}")
 
     def _update_config_lines(self, lines, config_data):
         """Updates config lines with new values while preserving comments and formatting."""

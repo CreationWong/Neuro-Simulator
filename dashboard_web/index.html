@@ -74,10 +74,15 @@
                     <li class="nav-tab" data-tab="config">
                         <span>配置</span>
                     </li>
-                    <li class="nav-tab" data-tab="agent">
-                        <span>日志 & Agent</span>
+                    <li class="nav-tab" data-tab="logs">
+                        <span>日志</span>
                     </li>
-                    
+                    <li class="nav-tab" id="agentManagementTab" style="display: none;" data-tab="agent-management">
+                        <span>Agent管理</span>
+                    </li>
+                    <li class="nav-tab" id="chatbotManagementTab" style="display: none;" data-tab="chatbot-management">
+                        <span>ChatBot管理</span>
+                    </li>
                 </ul>
             </nav>
 
@@ -249,39 +254,51 @@
                     </div>
                 </section>
 
-                <!-- Agent 标签页 -->
-                <section id="agent-tab" class="tab-content">
+                <!-- 日志标签页 -->
+                <section id="logs-tab" class="tab-content">
+                    <div class="card">
+                        <h2>Server日志</h2>
+                        <div id="serverLogsOutput" class="messages-output"></div>
+                    </div>
+                </section>
+
+                <!-- Agent管理标签页 -->
+                <section id="agent-management-tab" class="tab-content">
                     <div class="card">
                         <div class="agent-tabs">
-                            <button class="agent-tab-btn active" data-agent-tab="server-logs">Server日志</button>
-                            <button class="agent-tab-btn" data-agent-tab="agent-logs">Agent日志</button>
-                            <button class="agent-tab-btn" data-agent-tab="context">对话上下文</button>
+                            <button class="agent-tab-btn active" data-agent-tab="context">对话上下文</button>
                             <button class="agent-tab-btn" data-agent-tab="memory">记忆</button>
                             <button class="agent-tab-btn" data-agent-tab="tools">工具</button>
-                        </div>
-                        
-                        <!-- Server日志 Tab -->
-                        <div class="agent-tab-content active" id="server-logs-agent-tab">
-                            <div id="serverLogsOutput" class="messages-output"></div>
-                        </div>
-                        
-                        <!-- Agent日志 Tab -->
-                        <div class="agent-tab-content" id="agent-logs-agent-tab">
-                            <div id="agentLogsOutput" class="messages-output"></div>
+                            <button class="agent-tab-btn" data-agent-tab="agent-logs">Agent日志</button>
                         </div>
                         
                         <!-- 对话上下文 Tab -->
-                        <div class="agent-tab-content" id="context-agent-tab">
-                            
+                        <div class="agent-tab-content active" id="context-agent-tab">
+                            <div class="agent-controls">
+                                <label class="switch">
+                                    <input type="checkbox" id="contextViewMode">
+                                    <span class="slider"></span>
+                                </label>
+                                <span>切换显示模式：<span id="modeLabel">对话模式</span></span>
+                            </div>
                             <div id="contextOutput" class="memory-output"></div>
                         </div>
                         
                         <!-- 记忆 Tab -->
                         <div class="agent-tab-content" id="memory-agent-tab">
                             <div class="memory-section">
+                                <h3>初始化记忆 (Init Memory)</h3>
+                                <div class="agent-controls">
+                                    <button id="refreshInitMemoryBtn" class="btn secondary">刷新</button>
+                                </div>
+                                <div id="initMemoryOutput" class="memory-output"></div>
+                            </div>
+                            
+                            <div class="memory-section">
                                 <h3>临时记忆 (Temp Memory)</h3>
                                 <div class="agent-controls">
                                     <button id="refreshTempMemoryBtn" class="btn secondary">刷新</button>
+                                    <button id="addTempMemoryBtn" class="btn primary">添加</button>
                                     <button id="clearTempMemoryBtn" class="btn danger">清空</button>
                                 </div>
                                 <div id="tempMemoryOutput" class="memory-output"></div>
@@ -317,6 +334,19 @@
                                 <button id="connectToolBtn" class="btn primary">连接工具</button>
                             </div>
                         </div>
+                        
+                        <!-- Agent日志 Tab -->
+                        <div class="agent-tab-content" id="agent-logs-agent-tab">
+                            <div id="agentLogsOutput" class="messages-output"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ChatBot管理标签页 -->
+                <section id="chatbot-management-tab" class="tab-content">
+                    <div class="card">
+                        <h2>ChatBot管理</h2>
+                        <p>此功能尚未实现。</p>
                     </div>
                 </section>
 
@@ -334,6 +364,7 @@
     <script src="js/modules/stream.js"></script>
     <script src="js/modules/config.js"></script>
     <script src="js/modules/agent.js"></script>
+    <script src="js/modules/chatbot.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

@@ -18,6 +18,19 @@
   --twitch-border-color: #D3D3D3;
   --twitch-hover-bg: #EFEFF1;
   --twitch-button-bg: #EFEFF1;
+  --twitch-button-hover-bg: #DADADA;
+  --twitch-button-primary-bg: #9147FF;
+  --twitch-button-primary-hover-bg: #773DC7;
+  --twitch-button-danger-bg: #EF5959;
+  --twitch-button-danger-hover-bg: #D94545;
+  --twitch-button-warning-bg: #FF9E4D;
+  --twitch-button-warning-hover-bg: #FF8A2D;
+  --twitch-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --twitch-success: #4CAF50;
+  --twitch-warning: #FFC107;
+  --twitch-error: #F44336;
+  --twitch-info: #2196F3;
+  --twitch-debug: #9E9E9E;
   --twitch-button-text-color: #0E0E10;
   --twitch-button-hover-bg: #DFDFE1;
   --twitch-primary-button-bg: var(--twitch-purple);
@@ -43,6 +56,68 @@
   --toast-warning-bg: #fff3cd;
   --toast-warning-border: #ffeeba;
   --toast-warning-color: #856404;
+}
+
+/* --- 详细信息样式 --- */
+.memory-details {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: var(--twitch-hover-bg);
+  border-radius: 4px;
+}
+
+.memory-details pre {
+  margin: 0;
+  padding: 10px;
+  background-color: var(--twitch-chat-bg);
+  border-radius: 3px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+/* --- 上下文显示优化样式 --- */
+.context-section {
+  margin-bottom: 15px;
+}
+
+.context-section:last-child {
+  margin-bottom: 0;
+}
+
+.context-section > div:first-child {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.context-section ul {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.context-section li {
+  margin-bottom: 8px;
+}
+
+.prompt-preview, .llm-response-preview {
+  background-color: var(--twitch-chat-bg);
+  border-radius: 3px;
+  padding: 10px;
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.expand-prompt-btn, .expand-llm-response-btn {
+  margin-top: 5px;
 }
 
 /* --- 全局基础样式 --- */

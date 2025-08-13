@@ -84,6 +84,12 @@ class LiveStreamManager:
         print("正在启动新的直播周期...")
         self._stream_start_global_time = time.time()
         
+        # 清除旧的上下文历史
+        from .builtin_agent import local_agent
+        if local_agent is not None:
+            await local_agent.memory_manager.reset_context()
+            print("旧的上下文历史已清除。")
+        
         self._current_phase = self.StreamPhase.INITIALIZING
         print(f"进入阶段: {self.StreamPhase.INITIALIZING}. 广播 'play_welcome_video' 事件。")
         await self.event_queue.put({
