@@ -143,10 +143,6 @@ class MemoryManager:
         }
         self.context_history.append(entry)
         
-        # Keep only last 20 context entries (10 rounds)
-        if len(self.context_history) > 20:
-            self.context_history = self.context_history[-20:]
-            
         await self._save_context()
         
     async def add_detailed_context_entry(self, input_messages: List[Dict[str, str]], 
@@ -185,18 +181,12 @@ class MemoryManager:
         }
         self.context_history.append(entry)
         
-        # Keep only last 20 context entries
-        if len(self.context_history) > 20:
-            self.context_history = self.context_history[-20:]
-            
         await self._save_context()
         return entry["id"]
         
-    async def get_recent_context(self, rounds: int = 5) -> List[Dict[str, Any]]:
-        """Get recent context (default: last 5 rounds, 10 entries)"""
-        # Each round consists of user message and assistant response
-        entries_needed = rounds * 2
-        return self.context_history[-entries_needed:] if self.context_history else []
+    async def get_recent_context(self, entries: int = 10) -> List[Dict[str, Any]]:
+        """Get recent context entries"""
+        return self.context_history[-entries:] if self.context_history else []
         
     async def get_detailed_context_history(self) -> List[Dict[str, Any]]:
         """Get the full detailed context history"""
@@ -206,9 +196,15 @@ class MemoryManager:
         """Get the last response from the agent"""
         for entry in reversed(self.context_history):
             if entry.get("role") == "assistant":
-                return entry.get("content")
+                content = entry.get("content")
+                # Skip placeholder responses
+                if content and content != "Processing started":
+                    return content
             elif entry.get("type") == "llm_interaction":
-                return entry.get("final_response")
+                final_response = entry.get("final_response")
+                # Skip placeholder responses
+                if final_response and final_response != "Processing started" and final_response != "Prompt sent to LLM" and final_response != "LLM response received":
+                    return final_response
         return None
         
     async def reset_context(self):
@@ -259,26 +255,6 @@ class MemoryManager:
                 for item in block["content"]:
                     context_parts.append(f"  - {item}")
                     
-        # Add context (recent conversation history)
-        context_parts.append("\n=== CONTEXT (Recent Conversation) ===")
-        recent_context = await self.get_recent_context(5)
-        for i, entry in enumerate(recent_context):
-            # Handle entries with and without 'role' field
-            if "role" in entry:
-                role_display = "User" if entry["role"] == "user" else "Assistant"
-                content = entry.get('content', entry.get('final_response', 'Unknown entry'))
-                context_parts.append(f"{i+1}. [{role_display}] {content}")
-            elif "type" in entry and entry["type"] == "llm_interaction":
-                # For detailed LLM interaction entries with role: assistant
-                if entry.get("role") == "assistant":
-                    context_parts.append(f"{i+1}. [Assistant] {entry.get('final_response', 'Processing step')}")
-                else:
-                    # For other llm_interaction entries without role
-                    context_parts.append(f"{i+1}. [System] {entry.get('final_response', 'Processing step')}")
-            else:
-                # Default fallback
-                context_parts.append(f"{i+1}. [System] {entry.get('content', 'Unknown entry')}")
-            
         # Add temp memory (only for temporary state, not dialog history)
         if self.temp_memory:
             context_parts.append("\n=== TEMP MEMORY (Processing State) ===")

@@ -149,12 +149,34 @@ Always think about whether you need to use tools before responding.
 
 IMPORTANT GUIDELINES:
 - Be creative and engaging in your responses
-- Avoid repeating the same phrases or ideas from your last response: "{last_response}" (if available)
 - Keep responses concise and conversational
 - Maintain your character's personality
+- Pay close attention to the conversation history in the context to understand the flow of the dialogue
+- Respond to the most recent user messages while considering the overall context of the conversation
 
-User messages:
+=== YOUR SPEAK HISTORY ===
 """
+
+        # Add assistant's recent responses to the prompt
+        # Get the recent context and extract speak results from llm_interaction entries
+        recent_context = await self.memory_manager.get_recent_context(100)  # Get more entries to filter
+        assistant_responses = []
+        
+        # Filter for llm_interaction entries with role: "assistant" and extract speak results
+        for entry in reversed(recent_context):  # Reverse to get newest first
+            if entry.get("type") == "llm_interaction" and entry.get("role") == "assistant":
+                tool_executions = entry.get("tool_executions", [])
+                for tool_execution in tool_executions:
+                    if tool_execution.get("name") == "speak":
+                        result = tool_execution.get("result")
+                        if result:
+                            assistant_responses.append(result)
+                    
+        # Add up to 64 most recent assistant responses
+        for i, response in enumerate(assistant_responses[:64]):
+            prompt += f"{i+1}. {response}\n"
+            
+        prompt += f"\nUser messages to respond to:\n"
         
         for msg in messages:
             prompt += f"{msg['username']}: {msg['text']}\n"
@@ -273,9 +295,10 @@ User messages:
             else:
                 agent_logger.warning(f"Failed to parse tool call from incomplete JSON block: {json_buffer}")
         
-        # If we have a final response, add it to context
-        if processing_result["final_response"]:
-            await self.memory_manager.add_context_entry("assistant", processing_result["final_response"])
+        # If we have a final response, we don't need to add it to context here
+        # because add_detailed_context_entry will add a short entry for us
+        # if processing_result["final_response"]:
+        #     await self.memory_manager.add_context_entry("assistant", processing_result["final_response"])
             
         # Update the detailed context entry with final LLM interaction details
         await self.memory_manager.add_detailed_context_entry(
