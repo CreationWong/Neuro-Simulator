@@ -15,6 +15,13 @@
 >   - 内建Agent在$working_dir/agent/memory下自动存放记忆和上下文  
 > 
 > 等稳定下来了一定补充完善😭
+>
+> 短期内TODO List：
+>   - 内建Agent的更好的Tool管理，希望可以在$working_dir/agent/tools下放置和自动加载自定义工具
+>   - SuperChat发送功能，计划逻辑是在下一轮的输入中用SC内容代替一定数量的Chat内容，可能一半左右？
+>   - 加载远程开场视频，打算做成在Server端的config内填入视频链接，然后自身读取+发送到客户端
+>   - 真正的独立Filter，首先让小牛变得更加混沌，然后用另一个小模型审查输出
+>   - 更多可用于Letta和内建Agent的工具，比如搜索（bing API不能用了，悲）、缩放立绘，以及大家都说很重要的旋转（
 
 Neuro Simulator 通过调用 Letta（一个为 LLM 添加自主记忆功能的项目）以及其他 LLM 服务，也可使用自带的有记忆 Agent，模拟一场 Neuro-sama 的单人直播。它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的 Twitch vedal987 频道观看体验。
 
