@@ -124,4 +124,4 @@ npm run preview
 - 确认 `WebSocket` 连接状态
 - 验证配置设置是否正确 
 
-*作为看这篇💩文档的奖励，可以直接使用我部署的 https://live.jiahui.cafe 连接到你的服务端，但是不保证始终能用，并且不能修改neuro_start.mp4*
+*作为看这篇💩文档的奖励，可以直接使用我部署的 https://neuro.jiahui.cafe 连接到你的服务端，但是不保证始终能用，并且不能修改neuro_start.mp4*

@@ -161,4 +161,4 @@ server:
 4. 如果使用 `HTTPS` 部署控制面板，请确保后端也使用 `HTTPS`
 5. 检查浏览器控制台获取错误信息
 
-*作为看这篇💩文档的奖励，可以直接使用我部署的 https://dashboard.live.jiahui.cafe 连接到你的服务端，但是不保证始终能用，而且请配置好server的 `CORS`*
+*作为看这篇💩文档的奖励，可以直接使用我部署的 https://dashboard.neuro.jiahui.cafe 连接到你的服务端，但是不保证始终能用，而且请配置好server的 `CORS`*
