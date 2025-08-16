@@ -39,21 +39,19 @@ stream_metadata:
   # 直播标签 - 用于描述直播内容的标签列表
   stream_tags: ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"]
 
-# Agent Type Selection
-# Choose which agent to use for Neuro-sama's brain.
-# - "letta": Use a remote agent hosted on the Letta platform. (Requires letta_token and neuro_agent_id)
-# - "builtin": Use the local, built-in agent. (Requires separate LLM provider configuration below)
+# --- Agent 类型设置 ---
+# 选择一个用来模拟Neuro的Agent提供方
+# - "letta": 使用Letta作为Agent，需要在上方配置Letta API相关信息
+# - "builtin": 使用内建Agent，请在下方填写配置
 agent_type: "builtin"
 
-# Built-in Agent Settings
-# These settings are ONLY used if agent_type is "builtin".
+# --- 内建Agent设置 ---
+# 仅当agent_type设置为"builtin"时生效
 agent:
-  # LLM provider for the agent's core logic. Supported: "gemini", "openai"
+  # Agent的API服务商，支持"gemini"和"openai"，API Key配置使用顶部填写的值
   agent_provider: "gemini"
-  # The specific model to use for the agent.
-  # Example for Gemini: "gemini-1.5-pro-latest", "gemini-1.5-flash-latest"
-  # Example for OpenAI: "gpt-4o", "gpt-3.5-turbo"
-  agent_model: "gemini-1.5-flash-latest"
+  # Agent使用的模型，切换gemini/openai时记得更改
+  agent_model: "gemini-2.5-flash-lite"
 
 # --- Neuro 行为与节奏控制 ---
 neuro_behavior:
@@ -76,7 +74,7 @@ audience_simulation:
   gemini_model: "gemma-3-27b-it"
   
   # OpenAI 模型 - 使用 OpenAI 服务时的具体模型名称
-  # 使用 SiliconFlow 等第三方服务时可以尝试 THUDM/GLM-4-9B-0414 等模型
+  # 推荐使用SiliconFlow，9B以下模型免费不限量调用（注意TPM限制）
   openai_model: "THUDM/GLM-4-9B-0414"
   
   # LLM 温度 - 控制 AI 生成内容的随机性，值越高越随机（0-2之间）

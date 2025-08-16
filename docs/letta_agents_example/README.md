@@ -2,7 +2,7 @@
 
 *本临时README由AI自动生成*
 
-这是作者使用的 Letta agent 模板，用于 Neuro Simulator 项目。
+这是作者使用的 Letta agent 模板，用于 Neuro Simulator 项目
 
 ## Letta Cloud
 

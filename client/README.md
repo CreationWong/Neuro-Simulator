@@ -2,7 +2,7 @@
 
 *本临时README由AI自动生成*
 
-这是 Neuro Simulator 的客户端，采用 Twitch 风格的界面设计，为用户提供沉浸式的虚拟主播观看体验。
+这是 Neuro Simulator 的客户端，采用 Twitch 风格的界面设计，为用户提供沉浸式的虚拟主播观看体验
 
 ## 目录结构
 
@@ -34,9 +34,9 @@ frontend_twitch/
 
 ### 直接使用（无需二次开发）
 
-~~若无需二次开发，可以直接从 `Releases` 下载编译好的文件（仅支持Win/Linux）。~~
+~~若无需二次开发，可以直接从 `Releases` 下载编译好的文件（仅支持Win/Linux）~~
 
-暂未制作Releases，请克隆项目并按下面的方式运行开发版/构建客户端。
+暂未制作Releases，请克隆项目并按下面的方式运行开发版/构建客户端
 
 ### 二次开发
 
@@ -54,7 +54,7 @@ npm run dev
 # 或者使用Tauri开发模式
 npm run tauri dev
 ```
-开发服务器默认运行在 `http://localhost:5173`。
+开发服务器默认运行在 `http://localhost:5173`
 
 ### 构建生产版本
 
@@ -63,7 +63,7 @@ npm run build
 # 或者使用Tauri构建
 npm run tauri build
 ```
-构建后的文件将输出到 `dist/` 目录。
+构建后的文件将输出到 `dist/` 目录
 
 ### 预览生产构建
 
@@ -115,7 +115,7 @@ npm run preview
 - 用户头像
 - 重连尝试次数
 
-设置参数使用浏览器的 `LocalStorage` 进行持久存储。
+设置参数使用浏览器的 `LocalStorage` 进行持久存储
 
 ## 故障排除
 
