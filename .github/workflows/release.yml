@@ -13,12 +13,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/server-v')
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required to create a GitHub Release
-      id-token: write # Required for Trusted Publishing
+      contents: write
+      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5.0.0
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF_NAME#server-v}" >> $GITHUB_OUTPUT
 
       - name: Set up Python
         uses: actions/setup-python@v5.6.0
@@ -43,7 +47,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: "Release ${{ github.ref_name }}"
+          release_name: "Server v${{ steps.get_version.outputs.VERSION }}"
           generate_release_notes: true
 
   release-client:
@@ -53,9 +57,16 @@ jobs:
       matrix:
         platform: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5.0.0
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF_NAME#client-v}" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4.4.0
@@ -85,21 +96,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
-      - name: Build Tauri App and Create/Update Release
-        uses: tauri-apps/tauri-action@v0.5.22
+      - name: Build Tauri App
+        uses: tauri-apps/tauri-action@v0
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Client ${{ github.ref_name }}"
-          releaseBody: "Automated release for Client ${{ github.ref_name }}. The static web app for self-hosting is in `web-app.zip`."
-          releaseDraft: false
-          prerelease: false
           projectPath: ./client
 
-      - name: Upload web app to release
+      - name: Update GitHub Release
         if: matrix.platform == 'ubuntu-latest'
         uses: softprops/action-gh-release@v2.3.2
         with:
-          files: ./web.zip
+          tag_name: ${{ github.ref_name }}
+          name: "Client v${{ steps.get_version.outputs.VERSION }}"
+          generate_release_notes: true
+          files: |
+            ./web.zip
+            client/src-tauri/target/release/bundle/msi/*.msi
+            client/src-tauri/target/release/bundle/appimage/*.AppImage
+            client/src-tauri/target/release/bundle/deb/*.deb
+          body: "The static web app for self-hosting is in `web.zip`."
