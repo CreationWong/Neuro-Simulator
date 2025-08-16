@@ -57,7 +57,13 @@ def main():
     # 2. Ensure required assets and configs exist
     copy_resource('neuro_simulator', 'core/config.yaml.example', work_dir / 'config.yaml.example')
     copy_resource('neuro_simulator', 'assets', work_dir / 'assets', is_dir=True)
-    agent_memory_dir = work_dir / "agent" / "memory"
+    # Ensure agent directory and its contents exist
+    agent_dir = work_dir / "agent"
+    agent_dir.mkdir(parents=True, exist_ok=True)
+    copy_resource('neuro_simulator', 'agent/prompt_template.txt', agent_dir / 'prompt_template.txt')
+
+    # Ensure agent memory directory and its contents exist
+    agent_memory_dir = agent_dir / "memory"
     agent_memory_dir.mkdir(parents=True, exist_ok=True)
     for filename in ["context.json", "core_memory.json", "dialog_history.json", "init_memory.json"]:
         copy_resource('neuro_simulator', f'agent/memory/{filename}', agent_memory_dir / filename)

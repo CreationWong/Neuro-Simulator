@@ -8,6 +8,7 @@ import json
 import logging
 import re
 import sys
+from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -94,28 +95,20 @@ class Agent:
                     if tool.get("name") == "speak" and tool.get("result"):
                         assistant_responses.append(tool["result"])
 
-        # Create LLM prompt
-        prompt_parts = [
-            f"You are {self.memory_manager.init_memory.get('name', 'Neuro-Sama')}, an AI VTuber.",
-            f"Your personality: {self.memory_manager.init_memory.get('personality', 'Friendly and curious')}",
-            "\n=== CONTEXT ===", context,
-            "\n=== AVAILABLE TOOLS ===", tool_descriptions,
-            "\n=== YOUR RECENT SPEAK HISTORY (for context) ==="
-        ]
-        for response in assistant_responses[:5]: # Get last 5 responses
-            prompt_parts.append(f"- {response}")
+        # Create LLM prompt from template
+        template_path = Path(self.memory_manager.memory_dir).parent / "prompt_template.txt"
+        with open(template_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
 
-        prompt_parts.extend([
-            "\n=== INSTRUCTIONS ===",
-            "Process the user messages and respond. Use the 'speak' tool to talk to the user.",
-            "You are fully responsible for managing your own memory using the available tools.",
-            "\nUser messages to respond to:",
-        ])
+        recent_speak_history_text = "\n".join([f"- {response}" for response in assistant_responses[:5]]) if assistant_responses else "You haven't said anything yet."
+        user_messages_text = "\n".join([f"{msg['username']}: {msg['text']}" for msg in messages])
 
-        for msg in messages:
-            prompt_parts.append(f"{msg['username']}: {msg['text']}")
-        prompt_parts.append("\nYour response (use tools as needed):")
-        prompt = "\n".join(prompt_parts)
+        prompt = prompt_template.format(
+            full_context=context,
+            tool_descriptions=tool_descriptions,
+            recent_speak_history=recent_speak_history_text,
+            user_messages=user_messages_text
+        )
         
         await self.memory_manager.add_detailed_context_entry(
             input_messages=messages, prompt=prompt, llm_response="", tool_executions=[],
