@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'server-v*.*.*'
+      - 'client-v*.*.*'
+
+jobs:
+  release-server:
+    name: Release Server to PyPI
+    if: startsWith(github.ref, 'refs/tags/server-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create a GitHub Release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Build package
+        run: python -m build
+        working-directory: ./server
+
+      - name: Publish to PyPI
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/* --user __token__ --password ${{ env.PYPI_API_TOKEN }}
+        working-directory: ./server
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: "Release ${{ github.ref_name }}"
+          generate_release_notes: true
+
+  release-client:
+    name: Release Client
+    if: startsWith(github.ref, 'refs/tags/client-v')
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: ./client
+
+      - name: Build static web app
+        if: matrix.platform == 'ubuntu-latest'
+        run: npm run build
+        working-directory: ./client
+
+      - name: Archive static web app
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          cd client
+          zip -r ../web.zip ./dist
+          cd ..
+        shell: bash
+
+      - name: Build Tauri App and Create/Update Release
+        uses: tauri-apps/tauri-action@v0
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Client ${{ github.ref_name }}"
+          releaseBody: "Automated release for Client ${{ github.ref_name }}. The static web app for self-hosting is in `web-app.zip`."
+          releaseDraft: false
+          prerelease: false
+          projectPath: ./client
+
+      - name: Upload web app to release
+        if: matrix.platform == 'ubuntu-latest'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./web.zip
