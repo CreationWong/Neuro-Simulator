@@ -1,177 +1,88 @@
 #!/usr/bin/env python3
+"""Command-line interface for the Neuro-Simulator Server."""
 
 import argparse
+import logging
 import os
-import sys
 import shutil
+import sys
 from pathlib import Path
 
+def copy_resource(package_name: str, resource_path: str, destination_path: Path, is_dir: bool = False):
+    """A helper function to copy a resource from the package to the working directory."""
+    if destination_path.exists():
+        return
+
+    try:
+        import pkg_resources
+        source_path_str = pkg_resources.resource_filename(package_name, resource_path)
+        source_path = Path(source_path_str)
+    except (ModuleNotFoundError, KeyError):
+        source_path = Path(__file__).parent / resource_path
+
+    if source_path.exists():
+        try:
+            if is_dir:
+                shutil.copytree(source_path, destination_path)
+            else:
+                shutil.copy(source_path, destination_path)
+            logging.info(f"Created '{destination_path}' from package resource.")
+        except Exception as e:
+            logging.warning(f"Could not copy resource '{resource_path}'. Error: {e}")
+    else:
+        logging.warning(f"Resource '{resource_path}' not found in package or development folder.")
 
 def main():
+    """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="Neuro-Simulator Server")
-    parser.add_argument("-D", "--dir", help="Working directory containing config.yaml")
+    parser.add_argument("-D", "--dir", help="Working directory for config and data")
     parser.add_argument("-H", "--host", help="Host to bind the server to")
     parser.add_argument("-P", "--port", type=int, help="Port to bind the server to")
     
     args = parser.parse_args()
     
-    # Set working directory
+    # 1. Set working directory
     if args.dir:
         work_dir = Path(args.dir).resolve()
-        # If the directory doesn't exist (and it's not the default), raise an error
         if not work_dir.exists():
-            print(f"Error: Working directory '{work_dir}' does not exist. Please create it manually.")
+            logging.error(f"Working directory '{work_dir}' does not exist. Please create it first.")
             sys.exit(1)
     else:
         work_dir = Path.home() / ".config" / "neuro-simulator"
         work_dir.mkdir(parents=True, exist_ok=True)
     
-    # Change to working directory
     os.chdir(work_dir)
-    
-    # Handle config.yaml.example
-    settings_example_path = work_dir / "config.yaml.example"
-    settings_path = work_dir / "config.yaml"
-    
-    # Copy config.yaml.example from package if it doesn't exist
-    if not settings_example_path.exists():
-        try:
-            # Try pkg_resources first (for installed packages)
-            try:
-                import pkg_resources
-                example_path = pkg_resources.resource_filename('neuro_simulator', 'config.yaml.example')
-                if os.path.exists(example_path):
-                    shutil.copy(example_path, settings_example_path)
-                    print(f"Created {settings_example_path} from package example")
-                else:
-                    # Fallback to relative path (for development mode)
-                    dev_example_path = Path(__file__).parent / "config.yaml.example"
-                    if dev_example_path.exists():
-                        shutil.copy(dev_example_path, settings_example_path)
-                        print(f"Created {settings_example_path} from development example")
-                    else:
-                        print("Warning: config.yaml.example not found in package or development folder")
-            except Exception:
-                # Fallback to relative path (for development mode)
-                dev_example_path = Path(__file__).parent / "config.yaml.example"
-                if dev_example_path.exists():
-                    shutil.copy(dev_example_path, settings_example_path)
-                    print(f"Created {settings_example_path} from development example")
-                else:
-                    print("Warning: config.yaml.example not found in package or development folder")
-        except Exception as e:
-            print(f"Warning: Could not copy config.yaml.example from package: {e}")
-    
-    # Handle media folder
-    media_dir = work_dir / "media"
-    video_path = media_dir / "neuro_start.mp4"
-    
-    # Copy media folder from package if it doesn't exist or is invalid
-    if not media_dir.exists() or not video_path.exists():
-        # If media dir exists but video doesn't, remove the incomplete media dir
-        if media_dir.exists():
-            shutil.rmtree(media_dir)
-            
-        try:
-            # Try pkg_resources first (for installed packages)
-            try:
-                import pkg_resources
-                package_media_path = pkg_resources.resource_filename('neuro_simulator', 'media')
-                if os.path.exists(package_media_path):
-                    shutil.copytree(package_media_path, media_dir)
-                    print(f"Created {media_dir} from package media")
-                else:
-                    # Fallback to relative path (for development mode)
-                    dev_media_path = Path(__file__).parent / "media"
-                    if dev_media_path.exists():
-                        shutil.copytree(dev_media_path, media_dir)
-                        print(f"Created {media_dir} from development media")
-                    else:
-                        print("Warning: media folder not found in package or development folder")
-            except Exception:
-                # Fallback to relative path (for development mode)
-                dev_media_path = Path(__file__).parent / "media"
-                if dev_media_path.exists():
-                    shutil.copytree(dev_media_path, media_dir)
-                    print(f"Created {media_dir} from development media")
-                else:
-                    print("Warning: media folder not found in package or development folder")
-        except Exception as e:
-            print(f"Warning: Could not copy media folder from package: {e}")
-    
-    # Handle agent/memory directory and example JSON files
+    logging.info(f"Using working directory: {work_dir}")
+
+    # 2. Ensure required assets and configs exist
+    copy_resource('neuro_simulator', 'core/config.yaml.example', work_dir / 'config.yaml.example')
+    copy_resource('neuro_simulator', 'assets', work_dir / 'assets', is_dir=True)
     agent_memory_dir = work_dir / "agent" / "memory"
     agent_memory_dir.mkdir(parents=True, exist_ok=True)
-    
-    # List of example JSON files to copy
-    example_memory_files = [
-        "context.json",
-        "core_memory.json",
-        "dialog_history.json",
-        "init_memory.json"
-    ]
-    
-    # Copy each example memory file if it doesn't exist
-    for filename in example_memory_files:
-        target_path = agent_memory_dir / filename
-        if not target_path.exists():
-            try:
-                # Try pkg_resources first (for installed packages)
-                try:
-                    import pkg_resources
-                    package_example_path = pkg_resources.resource_filename('neuro_simulator', f'agent/memory/{filename}')
-                    if os.path.exists(package_example_path):
-                        shutil.copy(package_example_path, target_path)
-                        print(f"Created {target_path} from package example")
-                    else:
-                        # Fallback to relative path (for development mode)
-                        dev_example_path = Path(__file__).parent / "agent" / "memory" / filename
-                        if dev_example_path.exists():
-                            shutil.copy(dev_example_path, target_path)
-                            print(f"Created {target_path} from development example")
-                        else:
-                            print(f"Warning: {filename} not found in package or development folder")
-                except Exception:
-                    # Fallback to relative path (for development mode)
-                    dev_example_path = Path(__file__).parent / "agent" / "memory" / filename
-                    if dev_example_path.exists():
-                        shutil.copy(dev_example_path, target_path)
-                        print(f"Created {target_path} from development example")
-                    else:
-                        print(f"Warning: {filename} not found in package or development folder")
-            except Exception as e:
-                print(f"Warning: Could not copy {filename} from package: {e}")
-    
-    # Now check for required files and handle errors appropriately
+    for filename in ["context.json", "core_memory.json", "dialog_history.json", "init_memory.json"]:
+        copy_resource('neuro_simulator', f'agent/memory/{filename}', agent_memory_dir / filename)
+
+    # 3. Validate essential files
     errors = []
-    
-    # Check for config.yaml (required for running)
-    if not settings_path.exists():
-        if settings_example_path.exists():
-            errors.append(f"Error: {settings_path} not found. Please copy {settings_example_path} to {settings_path} and configure it.")
-        else:
-            errors.append(f"Error: Neither {settings_path} nor {settings_example_path} found. Please ensure proper configuration.")
-    
-    # Check for required media files (required for running)
-    if not media_dir.exists() or not video_path.exists():
-        errors.append(f"Error: Required media files not found in {media_dir}.")
-    
-    # If there are any errors, print them and exit
+    if not (work_dir / "config.yaml").exists():
+        errors.append(f"'config.yaml' not found in '{work_dir}'. Please copy 'config.yaml.example' to 'config.yaml' and configure it.")
+    if not (work_dir / "assets" / "neuro_start.mp4").exists():
+        errors.append(f"Required file 'neuro_start.mp4' not found in '{work_dir / 'assets'}'.")
+
     if errors:
         for error in errors:
-            print(error)
+            logging.error(error)
         sys.exit(1)
-    
-    # Import and run the main application
-    try:
-        from neuro_simulator.main import run_server
-        run_server(args.host, args.port)
-    except ImportError:
-        # Fallback for development mode
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        from neuro_simulator.main import run_server
-        run_server(args.host, args.port)
 
+    # 4. Import and run the server
+    try:
+        from neuro_simulator.core.application import run_server
+        logging.info("Starting Neuro-Simulator server...")
+        # The full application logger will take over from here
+        run_server(args.host, args.port)
+    except ImportError as e:
+        logging.error(f"Could not import the application. Make sure the package is installed correctly. Details: {e}", exc_info=True)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,1 @@
-# agent/memory/__init__.py
-"""
-Memory module for the Neuro Simulator Agent
-"""
+# neuro_simulator.agent.memory package

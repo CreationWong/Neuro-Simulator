@@ -1,30 +1,37 @@
-# agent/llm.py
+# neuro_simulator/agent/llm.py
 """
-LLM client for the Neuro Simulator Agent
+LLM client for the Neuro Simulator's built-in agent.
 """
 
+import asyncio
+import logging
+from pathlib import Path
 from typing import Optional
-import os
-import sys
-
-# Add project root to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from google import genai
 from google.genai import types
 from openai import AsyncOpenAI
-from ..config import config_manager
+
+from ..core.config import config_manager
+
+# Use a logger with a shortened, more readable name
+logger = logging.getLogger(__name__.replace("neuro_simulator", "agent", 1))
 
 class LLMClient:
-    """A completely independent LLM client for the built-in agent."""
+    """A completely independent LLM client for the built-in agent, now with lazy initialization."""
     
     def __init__(self):
         self.client = None
         self.model_name = None
-        self._initialize_client()
-        
-    def _initialize_client(self):
-        """Initializes the LLM client based on the 'agent' section of the config."""
+        self._generate_func = None
+        self._initialized = False
+
+    async def _ensure_initialized(self):
+        """Initializes the client on first use."""
+        if self._initialized:
+            return
+
+        logger.info("First use of built-in agent's LLMClient, performing initialization...")
         settings = config_manager.settings
         provider = settings.agent.agent_provider.lower()
         
@@ -33,7 +40,6 @@ class LLMClient:
             if not api_key:
                 raise ValueError("GEMINI_API_KEY is not set in configuration for the agent.")
             
-            # Use the new client-based API as per the latest documentation
             self.client = genai.Client(api_key=api_key)
             self.model_name = settings.agent.agent_model
             self._generate_func = self._generate_gemini
@@ -52,53 +58,50 @@ class LLMClient:
         else:
             raise ValueError(f"Unsupported agent provider in config: {settings.agent.agent_provider}")
             
-        print(f"Agent LLM client initialized. Provider: {provider.upper()}, Model: {self.model_name}")
+        self._initialized = True
+        logger.info(f"Agent LLM client initialized. Provider: {provider.upper()}, Model: {self.model_name}")
 
     async def _generate_gemini(self, prompt: str, max_tokens: int) -> str:
-        """Generates text using the Gemini model with the new SDK."""
-        import asyncio
-        
+        """Generates text using the Gemini model."""
         generation_config = types.GenerateContentConfig(
             max_output_tokens=max_tokens,
-            # temperature can be added later if needed from config
         )
-        
         try:
-            # The new client's generate_content is synchronous, run it in a thread
             response = await asyncio.to_thread(
                 self.client.models.generate_content,
                 model=self.model_name,
                 contents=prompt,
                 config=generation_config
             )
-            return response.text if response and response.text else ""
+            return response.text if response and hasattr(response, 'text') else ""
         except Exception as e:
-            print(f"Error in _generate_gemini: {e}")
+            logger.error(f"Error in _generate_gemini: {e}", exc_info=True)
             return ""
 
     async def _generate_openai(self, prompt: str, max_tokens: int) -> str:
+        """Generates text using the OpenAI model."""
         try:
             response = await self.client.chat.completions.create(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_tokens,
-                # temperature can be added to config if needed
             )
             if response.choices and response.choices[0].message and response.choices[0].message.content:
                 return response.choices[0].message.content.strip()
             return ""
         except Exception as e:
-            print(f"Error in _generate_openai: {e}")
+            logger.error(f"Error in _generate_openai: {e}", exc_info=True)
             return ""
         
     async def generate(self, prompt: str, max_tokens: int = 1000) -> str:
-        """Generate text using the configured LLM."""
-        if not self.client:
-            raise RuntimeError("LLM Client is not initialized.")
+        """Generate text using the configured LLM, ensuring client is initialized."""
+        await self._ensure_initialized()
+
+        if not self.client or not self._generate_func:
+            raise RuntimeError("LLM Client could not be initialized.")
         try:
             result = await self._generate_func(prompt, max_tokens)
-            # Ensure we always return a string, even if the result is None
             return result if result is not None else ""
         except Exception as e:
-            print(f"Error generating text with Agent LLM: {e}")
+            logger.error(f"Error generating text with Agent LLM: {e}", exc_info=True)
             return "My brain is not working, tell Vedal to check the logs."

@@ -1,11 +1,14 @@
-# agent/tools/core.py
+# neuro_simulator/agent/tools/core.py
 """
 Core tools for the Neuro Simulator Agent
 """
 
+import logging
+from pathlib import Path
 from typing import Dict, List, Any, Optional
-import os
-import sys
+
+# Use a logger with a shortened, more readable name
+logger = logging.getLogger(__name__.replace("neuro_simulator", "agent", 1))
 
 class ToolManager:
     """Manages all tools available to the agent"""
@@ -17,7 +20,6 @@ class ToolManager:
         
     def _register_tools(self):
         """Register all available tools"""
-        # Memory management tools
         self.tools["get_core_memory_blocks"] = self._get_core_memory_blocks
         self.tools["get_core_memory_block"] = self._get_core_memory_block
         self.tools["create_core_memory_block"] = self._create_core_memory_block
@@ -26,8 +28,6 @@ class ToolManager:
         self.tools["add_to_core_memory_block"] = self._add_to_core_memory_block
         self.tools["remove_from_core_memory_block"] = self._remove_from_core_memory_block
         self.tools["add_temp_memory"] = self._add_temp_memory
-        
-        # Output tool
         self.tools["speak"] = self._speak
         
     def get_tool_descriptions(self) -> str:
@@ -67,46 +67,36 @@ class ToolManager:
             
     # Tool implementations
     async def _get_core_memory_blocks(self) -> Dict[str, Any]:
-        """Get all core memory blocks"""
         return await self.memory_manager.get_core_memory_blocks()
         
     async def _get_core_memory_block(self, block_id: str) -> Optional[Dict[str, Any]]:
-        """Get a specific core memory block"""
         return await self.memory_manager.get_core_memory_block(block_id)
         
     async def _create_core_memory_block(self, title: str, description: str, content: List[str]) -> str:
-        """Create a new core memory block with a generated ID"""
         block_id = await self.memory_manager.create_core_memory_block(title, description, content)
         return f"Created core memory block '{block_id}' with title '{title}'"
         
     async def _update_core_memory_block(self, block_id: str, title: str = None, description: str = None, content: List[str] = None) -> str:
-        """Update a core memory block"""
         await self.memory_manager.update_core_memory_block(block_id, title, description, content)
         return f"Updated core memory block '{block_id}'"
         
     async def _delete_core_memory_block(self, block_id: str) -> str:
-        """Delete a core memory block"""
         await self.memory_manager.delete_core_memory_block(block_id)
         return f"Deleted core memory block '{block_id}'"
         
     async def _add_to_core_memory_block(self, block_id: str, item: str) -> str:
-        """Add an item to a core memory block"""
         await self.memory_manager.add_to_core_memory_block(block_id, item)
         return f"Added item to core memory block '{block_id}'"
         
     async def _remove_from_core_memory_block(self, block_id: str, index: int) -> str:
-        """Remove an item from a core memory block by index"""
         await self.memory_manager.remove_from_core_memory_block(block_id, index)
         return f"Removed item from core memory block '{block_id}' at index {index}"
         
     async def _add_temp_memory(self, content: str, role: str = "user") -> str:
-        """Add an item to temp memory"""
         await self.memory_manager.add_temp_memory(content, role)
         return f"Added item to temp memory with role '{role}'"
         
     async def _speak(self, text: str) -> str:
         """Output text - this is how the agent communicates with users"""
-        print(f"Agent says: {text}")
-        # Note: Context is now managed in the process_messages method
-        # This tool only outputs the text, not stores it in memory
+        logger.info(f"Agent says: {text}")
         return text
