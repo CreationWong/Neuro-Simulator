@@ -16,8 +16,8 @@ export class VideoPlayer {
     }
 
     /**
-     * 显示欢迎视频叠加层并确保其播放。
-     * @param initialProgress 可选，视频的初始播放进度（秒）。
+     * 显示欢迎视频叠加层并从指定进度开始播放。
+     * @param initialProgress 视频的初始播放进度（秒）。
      */
     public showAndPlayVideo(initialProgress: number = 0): void {
         if (!startupVideoOverlay || !startupVideo) {
@@ -25,44 +25,46 @@ export class VideoPlayer {
             return;
         }
 
-        startupVideoOverlay.classList.remove('hidden'); 
-        
-        // --- *** 修改点在这里 *** ---
-        // 将视频的 z-index 设置为 10，低于立绘的 z-index (15)
-        startupVideoOverlay.style.zIndex = '10'; 
-        
-        startupVideo.currentTime = initialProgress; 
-        
-        // 检查静音状态
+        startupVideoOverlay.classList.remove('hidden');
+        startupVideoOverlay.style.zIndex = '10';
+
         const app = singletonManager.getAppInitializer();
         const muteButton = app.getMuteButton();
         startupVideo.muted = muteButton.getIsMuted();
-        
-        startupVideo.play().then(() => {
-            console.log(`Startup video started from ${initialProgress.toFixed(2)}s.`);
-        }).catch(e => {
-            console.warn("Startup video autoplay prevented or failed:", e);
-        });
+
+        // 直接调用 play()，这是最强的播放指令
+        const playPromise = startupVideo.play();
+
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                // 播放成功开始后，再尝试设置时间点
+                if (isFinite(startupVideo.duration) && initialProgress > 0.1 && initialProgress < startupVideo.duration) {
+                    startupVideo.currentTime = initialProgress;
+                    console.log(`Playback started, then seeked to: ${initialProgress.toFixed(2)}s.`);
+                }
+            }).catch(error => {
+                console.warn("Video play failed. This might be due to browser autoplay restrictions.", error);
+            });
+        }
     }
 
     /**
-     * 暂停视频播放。
+     * 暂停并静音视频。
      */
-    public pauseVideo(): void {
+    public pauseAndMute(): void {
         if (startupVideo) {
             startupVideo.pause();
-            console.log("Startup video paused.");
+            startupVideo.muted = true;
+            console.log("Startup video paused and muted.");
         }
     }
 
     /**
      * 隐藏欢迎视频叠加层。
      */
-    public hideVideo(): void {
+    public hide(): void {
         if (startupVideoOverlay) {
             startupVideoOverlay.classList.add('hidden');
-            // 可以选择性地将 z-index 恢复到更低的值
-            // startupVideoOverlay.style.zIndex = '5';
             console.log("Startup video overlay hidden.");
         }
     }

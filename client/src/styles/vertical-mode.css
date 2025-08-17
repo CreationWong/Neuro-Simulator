@@ -32,7 +32,7 @@
 
 /* Hide specified elements in vertical mode */
 .vertical-mode .nav-links-main,
-.vertical-mode button[aria-label="Prime 优惠"],
+.vertical-mode button[aria-label="Prime"],
 .vertical-mode button[aria-label="打开通知"],
 .vertical-mode button[aria-label="悄悄话"],
 .vertical-mode button[aria-label="购买呼币"],

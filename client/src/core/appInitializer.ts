@@ -166,11 +166,12 @@ export class AppInitializer {
         this.currentPhase = 'offline';
         this.hideStreamContent();
         this.audioPlayer.stopAllAudio();
-        this.videoPlayer.hideVideo();
+        this.videoPlayer.hide();
         this.neuroAvatar.setStage('hidden', true);
         hideNeuroCaption();
         this.streamTimer.stop();
         this.streamTimer.reset();
+        this.chatDisplay.clearChat(); // Clears the chat history
         // 根据需求，输入框和发送按钮应始终保持可用
         // this.userInput.setInputDisabled(true);
         this.liveIndicator.hide();
@@ -199,24 +200,30 @@ export class AppInitializer {
         }
 
         switch (message.type) {
+            case 'offline':
+                this.goOffline();
+                break;
             case 'update_stream_metadata':
                 this.streamInfoDisplay.update(message as StreamMetadataMessage);
                 break;
             case 'play_welcome_video':
                 this.currentPhase = 'initializing';
-                this.videoPlayer.showAndPlayVideo(message.progress);
+                this.videoPlayer.showAndPlayVideo(parseFloat(message.progress as any));
                 // 根据需求，输入框和发送按钮应始终保持可用
                 // this.userInput.setInputDisabled(true);
                 break;
             case 'start_avatar_intro':
                 this.currentPhase = 'avatar_intro';
-                this.neuroAvatar.startIntroAnimation(() => { this.videoPlayer.hideVideo(); });
+                this.videoPlayer.pauseAndMute();
+                this.neuroAvatar.startIntroAnimation(() => { 
+                    this.videoPlayer.hide(); 
+                });
                 // 根据需求，输入框和发送按钮应始终保持可用
                 // this.userInput.setInputDisabled(true);
                 break;
             case 'enter_live_phase':
                 this.currentPhase = 'live';
-                this.videoPlayer.hideVideo();
+                this.videoPlayer.hide();
                 this.neuroAvatar.setStage('step2', true); 
                 // 根据需求，输入框和发送按钮应始终保持可用
                 // this.userInput.setInputDisabled((message as any).is_speaking ?? false);
