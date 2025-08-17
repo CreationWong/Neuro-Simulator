@@ -2,6 +2,9 @@
 import asyncio
 import logging
 
+from ..services.stream import live_stream_manager
+from .websocket import connection_manager
+
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
 
 class ProcessManager:
@@ -28,7 +31,6 @@ class ProcessManager:
 
         logger.info("Starting core stream processes...")
         from ..core.application import generate_audience_chat_task, neuro_response_cycle, broadcast_events_task
-        from ..services.stream import live_stream_manager
         from ..utils.queue import clear_all_queues
         from ..core.agent_factory import create_agent
         
@@ -45,10 +47,14 @@ class ProcessManager:
         self._is_running = True
         logger.info(f"Core processes started: {len(self._tasks)} tasks.")
 
-    def stop_live_processes(self):
+    async def stop_live_processes(self):
         """Stops and cleans up all running background tasks."""
         if not self.is_running:
             return
+        
+        logger.info("Broadcasting offline message before stopping tasks...")
+        await connection_manager.broadcast({"type": "offline"})
+        await asyncio.sleep(0.1) # Give a brief moment for the message to be sent
             
         logger.info(f"Stopping {len(self._tasks)} core tasks...")
         for task in self._tasks:
@@ -58,7 +64,6 @@ class ProcessManager:
         self._tasks.clear()
         self._is_running = False
         
-        from ..services.stream import live_stream_manager
         live_stream_manager.reset_stream_state()
         
         logger.info("All core tasks have been stopped.")

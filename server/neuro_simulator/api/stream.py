@@ -33,7 +33,7 @@ async def start_stream():
 async def stop_stream():
     """Stops the live stream processes."""
     if process_manager.is_running:
-        process_manager.stop_live_processes()
+        await process_manager.stop_live_processes()
         return {"status": "success", "message": "Stream stopped"}
     else:
         return {"status": "info", "message": "Stream is not running"}
@@ -41,7 +41,7 @@ async def stop_stream():
 @router.post("/restart", dependencies=[Depends(get_api_token)])
 async def restart_stream():
     """Restarts the live stream processes."""
-    process_manager.stop_live_processes()
+    await process_manager.stop_live_processes()
     await asyncio.sleep(1) # Give time for tasks to cancel
     process_manager.start_live_processes()
     return {"status": "success", "message": "Stream restarted"}
