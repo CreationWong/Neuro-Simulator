@@ -32,9 +32,9 @@
           <a class="nav-link" href="#">
             <p>浏览</p>
           </a>
-          <a class="nav-link" href="#">
-            <p data-tooltip="更多选择"><svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path d="M10 18a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0-6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM8 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"></path></svg></p>
-          </a>
+          <button class="nav-icon-button" data-tooltip="更多选择">
+            <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path d="M10 18a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0-6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM8 4a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"></path></svg>
+          </button>
         </div>
       </div>
 
@@ -60,7 +60,7 @@
         <button class="nav-icon-button" aria-label="购买呼币" data-tooltip="购买呼币">
           <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path fill-rule="evenodd" d="m3 12 7-10 7 10-7 6-7-6zm2.678-.338L10 5.487l4.322 6.173-.85.728L10 11l-3.473 1.39-.849-.729z" clip-rule="evenodd"></path></svg>
         </button>
-        <button class="nav-icon-button" aria-label="免费体验无广告观赏" data-tooltip="Turbo">
+        <button class="twitch-button" aria-label="免费体验无广告观赏" data-tooltip="Turbo">
           <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation"><path d="M10.114 9.622 11 7 7.175 9.323a.382.382 0 0 0 .013.65l.698.405L7 13l3.825-2.323a.382.382 0 0 0-.012-.65l-.699-.405z"></path><path fill-rule="evenodd" d="M18 7h-2V4H2v12h14v-3h2V7zm-4-1v3h2v2h-2v3H4V6h10z" clip-rule="evenodd"></path></svg>
           <span>免费体验无广告观赏</span>
         </button>
@@ -90,10 +90,10 @@
               <!-- 这里将显示聊天消息 -->
             </div>
           </div>
-          <button id="show-chat-button" class="video-overlay-chat-button" aria-label="展开聊天">
+          <button id="show-chat-button" class="twitch-button dark icon-button" aria-label="展开聊天">
               <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M16 16V4h2v12h-2zM6 9l2.501-2.5-1.5-1.5-5 5 5 5 1.5-1.5-2.5-2.5h8V9H6z"></path></svg>
           </button>
-          <button id="mute-button" class="mute-button" aria-label="取消静音（m）">
+          <button id="mute-button" class="twitch-button dark icon-button" aria-label="取消静音（m）">
             <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation">
               <path d="m5 7 4.146-4.146a.5.5 0 0 1 .854.353v13.586a.5.5 0 0 1-.854.353L5 13H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1zm7 1.414L13.414 7l1.623 1.623L16.66 7l1.414 1.414-1.623 1.623 1.623 1.623-1.414 1.414-1.623-1.623-1.623 1.623L12 11.66l1.623-1.623L12 8.414z"></path>
             </svg>
@@ -223,12 +223,14 @@
             </div>
             <div class="chat-input-buttons-container">
               <div class="chat-buttons-left">
-                <div class="chat-points-display">
+                <button class="chat-toolbar-text-button" aria-label="呼币">
                   <svg width="20" height="20" viewBox="0 0 20 20"><path fill-rule="evenodd" d="m3 12 7-10 7 10-7 6-7-6zm2.678-.338L10 5.487l4.322 6.173-.85.728L10 11l-3.473 1.39-.849-.729z" clip-rule="evenodd"></path></svg>
                   <span class="points-value">0</span>
+                </button>
+                <button class="chat-toolbar-text-button" aria-label="频道点数">
                   <img class="channel-points-icon" src="/channel_points.png" alt="频道点数">
                   <span class="points-value">0</span>
-                </div>
+                </button>
               </div>
               <div class="chat-buttons-right">
                 <button class="chat-toolbar-button" aria-label="聊天设置">
@@ -246,7 +248,11 @@
       <div class="modal-content">
         <header class="modal-header">
           <h2>设置</h2>
-          <button id="settings-close-button" class="modal-close-button">&times;</button>
+          <button id="settings-close-button" class="twitch-button icon-button">
+  <svg width="20" height="20" viewBox="0 0 20 20" focusable="false" aria-hidden="true" role="presentation">
+    <path d="M8.5 10 4 5.5 5.5 4 10 8.5 14.5 4 16 5.5 11.5 10l4.5 4.5-1.5 1.5-4.5-4.5L5.5 16 4 14.5 8.5 10z"></path>
+  </svg>
+</button>
         </header>
         <main class="modal-body">
           <div class="setting-item">
@@ -272,7 +278,7 @@
           </div>
         </main>
         <footer class="modal-footer">
-          <button id="settings-save-button" class="twitch-button subscribe-button">保存并重连</button>
+          <button id="settings-save-button" class="twitch-button subscribe-button"><span>保存并重连</span></button>
         </footer>
       </div>
     </div>

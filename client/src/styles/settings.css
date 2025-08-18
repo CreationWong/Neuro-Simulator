@@ -44,15 +44,7 @@
   margin: 0;
   font-size: 1.25rem;
 }
-.modal-close-button {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--twitch-secondary-text-color);
-  padding: 0;
-}
+
 .modal-body {
   padding: 1.5rem;
   display: flex;

@@ -27,6 +27,14 @@
   min-height: 0;
   position: relative;
 }
+
+/* 定位 mute-button 到左下角 */
+#mute-button {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 60;
+}
 #stream-display-area {
   position: relative;
   background-color: #000;
@@ -120,8 +128,8 @@
   z-index: 60;
   background-color: rgba(0, 0, 0, 0.6);
   border: none;
-  border-radius: 100px;
-  padding: 0.5rem;
+  border-radius: 50%;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -131,6 +139,9 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
 }
 #show-chat-button:hover { background-color: rgba(0, 0, 0, 0.8); }
 #show-chat-button svg {
@@ -144,36 +155,7 @@ body.chat-collapsed #show-chat-button {
   pointer-events: auto;
 }
 
-/* 静音按钮样式 */
-.mute-button {
-  position: absolute;
-  bottom: 1rem;
-  left: 1rem;
-  z-index: 100;
-  background-color: rgba(0, 0, 0, 0.6);
-  border: none;
-  border-radius: 100px;
-  padding: 0.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  transition: background-color 0.2s, opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
 
-.mute-button:hover {
-  background-color: rgba(0, 0, 0, 0.8);
-}
-
-.mute-button svg {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
-}
 
 /* Twitch 风格聊天覆盖层样式 */
 #twitch-chat-overlay {

@@ -50,11 +50,14 @@
   justify-content: center;
   background: none;
   border: none;
-  border-radius: 100px;
+  border-radius: 50%;
+  padding: 0;
   cursor: pointer;
-  padding: 0.5rem;
   color: var(--twitch-text-color);
-  transition: var(--fast-transition), transform 0.3s ease-in-out;
+  transition: background-color 0.2s;
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
 }
 .chat-toggle-button:hover {
   background-color: var(--twitch-hover-bg);
@@ -187,27 +190,7 @@
 .chat-input-element::placeholder {
   color: var(--twitch-secondary-text-color);
 }
-.chat-toolbar-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  border-radius: 100px;
-  cursor: pointer;
-  padding: 0.4rem;
-  color: var(--twitch-text-color);
-  transition: var(--fast-transition);
-}
-.chat-toolbar-button:hover {
-  background-color: var(--twitch-hover-bg);
-}
-.chat-toolbar-button .chat-badge-icon,
-.chat-toolbar-button svg {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
-}
+
 .chat-input-buttons-container {
   display: flex;
   justify-content: space-between;
