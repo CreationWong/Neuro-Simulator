@@ -26,6 +26,10 @@
   --twitch-dark-button-bg: #333333;
   --twitch-dark-button-hover-bg: #444444;
   --twitch-dark-button-text-color: #FFFFFF;
+  /* SC背景颜色 */
+  --sc-pink-bg-color: #f68795;
+  --sc-purple-bg-color: #b97ad5;
+
 }
 
 /* --- 全局字体定义 --- */
@@ -46,6 +50,13 @@
 @font-face {
   font-family: 'Noto Sans SC';
   src: url('/fonts/noto-sans-sc.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Causten';
+  src: url('/fonts/causten.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
 }

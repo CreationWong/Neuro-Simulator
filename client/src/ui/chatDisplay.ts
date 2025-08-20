@@ -5,6 +5,7 @@ import { ChatMessage } from '../types/common'; // 导入聊天消息的类型
 // 获取 HTML 元素
 const chatMessagesContainer = document.getElementById('chat-messages') as HTMLDivElement;
 const twitchChatOverlay = document.getElementById('twitch-chat-overlay') as HTMLDivElement;
+const highlightMessageOverlay = document.getElementById('highlight-message-overlay') as HTMLDivElement;
 
 // 定义您的用户名，这应该与后端配置的 MY_USERNAME 一致，或者从某个配置中读取
 const MY_USERNAME = "One_of_Swarm"; 
@@ -129,4 +130,48 @@ export class ChatDisplay {
         ];
         return colors[Math.floor(Math.random() * colors.length)];
     }
+}
+
+export function showSuperChatOverlay(username: string, message: string, sc_type: 'bits' | 'points'): void {
+    if (!highlightMessageOverlay) return;
+
+    const imageUrl = sc_type === 'bits' ? '/sc_purple.png' : '/sc_pink.png';
+
+    // 1. Create the inner HTML with a dedicated <img> tag for the background
+    highlightMessageOverlay.innerHTML = `
+        <img src="${imageUrl}" class="sc-background-image" alt="Super Chat background">
+        <div class="sc-content">
+            <div class="sc-user">${username}</div>
+            <div class="sc-message">${message}</div>
+        </div>
+    `;
+
+    // 2. Dynamically set text color based on sc_type
+    const messageElement = highlightMessageOverlay.querySelector('.sc-message') as HTMLDivElement;
+    if (messageElement) {
+        messageElement.style.color = sc_type === 'bits' 
+            ? 'var(--sc-purple-bg-color)' 
+            : 'var(--sc-pink-bg-color)';
+    }
+
+    // 3. Start the animation sequence
+    // First, remove .hidden to make the element part of the layout
+    highlightMessageOverlay.classList.remove('hidden');
+
+    // Force a browser reflow to ensure the initial state is painted before the animation starts.
+    void highlightMessageOverlay.offsetHeight;
+
+    // Now, add the class that triggers the transition.
+    highlightMessageOverlay.classList.add('is-visible');
+
+    // 4. Set timer to hide the element
+    setTimeout(() => {
+        highlightMessageOverlay.classList.remove('is-visible'); // Trigger slide-out
+
+        // 5. After animation, hide it completely for performance
+        setTimeout(() => {
+            highlightMessageOverlay.classList.add('hidden');
+        }, 1000); // Must match the transition duration in CSS
+
+    }, 9000); // 8s hold time + 1s slide-in time
 }

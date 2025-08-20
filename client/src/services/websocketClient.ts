@@ -1,5 +1,6 @@
 // src/services/websocketClient.ts
 import { WebSocketMessage } from '../types/common';
+import { showSuperChatOverlay } from '../ui/chatDisplay';
 
 // --- MODIFIED: Added maxReconnectAttempts to options ---
 export interface WebSocketClientOptions {
@@ -58,6 +59,9 @@ export class WebSocketClient {
         this.ws.onmessage = (event: MessageEvent) => {
             try {
                 const message: WebSocketMessage = JSON.parse(event.data);
+                if (message.type === 'processing_superchat') {
+                    showSuperChatOverlay(message.data.username, message.data.text, message.data.sc_type);
+                }
                 this.options.onMessage?.(message);
             } catch (error) {
                 console.error(`Error parsing message from ${this.options.url}:`, error, event.data);
@@ -130,4 +134,4 @@ export class WebSocketClient {
     public getUrl(): string {
         return this.options.url;
     }
-}   
+}

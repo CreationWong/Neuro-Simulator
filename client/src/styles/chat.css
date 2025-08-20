@@ -224,3 +224,84 @@
   background-color: #B0B0B0;
   cursor: not-allowed;
 }
+
+/* Super Chat Button Selected State */
+.chat-toolbar-text-button.selected {
+  background-color: var(--twitch-purple-light);
+  border: 1px solid var(--twitch-purple);
+  box-shadow: 0 0 5px var(--twitch-purple-light);
+}
+
+/* --- Highlight Message Overlay --- */
+
+#highlight-message-overlay {
+  /* --- Layout & Positioning --- */
+  position: absolute;
+  left: 41%;
+  transform: translateX(-50%) translateY(-200%); /* Initial state: off-screen */
+  
+  /* --- Sizing --- */
+  width: 24vw;
+  height: auto; /* Height is determined by the image's aspect ratio */
+
+  z-index: 100;
+
+  /* --- Animation --- */
+  transition: transform 1s;
+}
+
+#highlight-message-overlay.is-visible {
+  transform: translateX(-50%) translateY(0); /* Final state: on-screen */
+  transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1); /* ease-out for entry */
+}
+
+.sc-background-image {
+  /* This image defines the container's shape */
+  width: 100%;
+  height: auto;
+  display: block; /* Behaves like a standard block element */
+  border-radius: 20px;
+}
+
+.sc-content {
+  /* This content is absolutely positioned to overlay on top of the image */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  
+  /* Flexbox is removed to allow absolute positioning of children */
+
+  color: white;
+  font-family: 'Causten';
+}
+
+/* 
+*  在这里独立调整用户名的位置和大小
+*/
+.sc-user {
+  position: absolute;
+  top: 20%;
+  left: 40%;
+  transform: translateX(-50%);
+  font-size: 2cqi;
+  text-align: left;
+}
+
+/* 
+*  在这里独立调整消息文本的位置和大小
+*/
+.sc-message {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%);
+  width: 90%; /* 限制文本宽度以自动换行 */
+  font-size: 2cqi;
+  text-align: center;
+}
+
+
+

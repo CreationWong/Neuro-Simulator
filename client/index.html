@@ -89,6 +89,7 @@
             <div id="twitch-chat-overlay" class="messages-display">
               <!-- 这里将显示聊天消息 -->
             </div>
+            <div id="highlight-message-overlay" class="hidden"></div>
           </div>
           <button id="show-chat-button" class="twitch-button dark icon-button" aria-label="展开聊天">
               <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" role="presentation"><path d="M16 16V4h2v12h-2zM6 9l2.501-2.5-1.5-1.5-5 5 5 5 1.5-1.5-2.5-2.5h8V9H6z"></path></svg>
@@ -223,11 +224,11 @@
             </div>
             <div class="chat-input-buttons-container">
               <div class="chat-buttons-left">
-                <button class="chat-toolbar-text-button" aria-label="呼币">
+                <button id="sc-bits-button" class="chat-toolbar-text-button" aria-label="呼币">
                   <svg width="20" height="20" viewBox="0 0 20 20"><path fill-rule="evenodd" d="m3 12 7-10 7 10-7 6-7-6zm2.678-.338L10 5.487l4.322 6.173-.85.728L10 11l-3.473 1.39-.849-.729z" clip-rule="evenodd"></path></svg>
                   <span class="points-value">0</span>
                 </button>
-                <button class="chat-toolbar-text-button" aria-label="频道点数">
+                <button id="sc-points-button" class="chat-toolbar-text-button" aria-label="频道点数">
                   <img class="channel-points-icon" src="/channel_points.png" alt="频道点数">
                   <span class="points-value">0</span>
                 </button>

@@ -6,7 +6,7 @@ import { VideoPlayer } from '../stream/videoPlayer';
 import { NeuroAvatar } from '../stream/neuroAvatar';
 import { ChatDisplay } from '../ui/chatDisplay';
 import { showNeuroCaption, hideNeuroCaption } from '../ui/neuroCaption';
-import { UserInput } from '../ui/userInput';
+import { UserInput, MessagePayload } from '../ui/userInput';
 import { LayoutManager } from './layoutManager';
 import { StreamTimer } from '../ui/streamTimer';
 import { ChatSidebar } from '../ui/chatSidebar';
@@ -66,7 +66,7 @@ export class AppInitializer {
         this.neuroAvatar = new NeuroAvatar();
         this.chatDisplay = new ChatDisplay();
         this.userInput = new UserInput();
-        this.userInput.onSendMessage((messageText: string) => this.sendUserMessage(messageText));
+        this.userInput.onSendMessage((payload: MessagePayload) => this.sendUserMessage(payload));
         this.chatSidebar = new ChatSidebar();
         this.liveIndicator = new LiveIndicator();
         this.streamInfoDisplay = new StreamInfoDisplay();
@@ -260,23 +260,12 @@ export class AppInitializer {
         }
     }
     
-    private sendUserMessage(messageText: string): void {
-        const message: UserInputMessage = {
-            type: "user_message",
-            message: messageText,
-            username: this.currentSettings.username
+    private sendUserMessage(payload: MessagePayload): void {
+        const message = {
+            username: this.currentSettings.username,
+            ...payload
         };
-        this.wsClient.send(message); 
-        
-        // 不再立即将消息添加到聊天窗口，而是等待服务端的确认
-        // 这样可以避免消息重复显示，并能反映消息是否成功发送到服务端
-        // const localChatMessage: ChatMessage = {
-        //     type: "chat_message",
-        //     username: this.currentSettings.username,
-        //     text: messageText,
-        //     is_user_message: true
-        // };
-        // this.chatDisplay.appendChatMessage(localChatMessage);
+        this.wsClient.send(message);
     }
 
     private showStreamContent(): void {
