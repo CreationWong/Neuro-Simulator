@@ -17,6 +17,8 @@ from starlette.websockets import WebSocketState
 # --- Core Imports ---
 from .config import config_manager, AppSettings
 from ..core.agent_factory import create_agent
+from ..services.letta import LettaAgent
+from ..services.builtin import BuiltinAgentWrapper
 
 # --- API Routers ---
 from ..api.agent import router as agent_router
@@ -130,16 +132,40 @@ async def neuro_response_cycle():
 
     while True:
         try:
-            if is_first_response:
-                add_to_neuro_input_queue({"username": "System", "text": config_manager.settings.neuro_behavior.initial_greeting})
-                is_first_response = False
-            elif is_neuro_input_queue_empty():
-                await asyncio.sleep(1)
-                continue
+            selected_chats = []
+            # Superchat logic
+            if app_state.superchat_queue and (time.time() - app_state.last_superchat_time > 10):
+                sc = app_state.superchat_queue.popleft()
+                app_state.last_superchat_time = time.time()
+                await connection_manager.broadcast({"type": "processing_superchat", "data": sc})
+
+                # Agent-specific payload generation for superchats
+                if isinstance(agent, LettaAgent):
+                    selected_chats = [
+                        {"role": "system", "content": "=== RANDOM 10 MSG IN CHATROOM ===\nNO MSG FETCH DUE TO UNPROCESSED HIGHLIGHTED MESSAGE"},
+                        {"role": "system", "content": f"=== HIGHLIGHTED MESSAGE ===\n{sc['username']}: {sc['text']}"}
+                    ]
+                else: # For BuiltinAgent and any other future agents
+                    selected_chats = [{'username': sc['username'], 'text': sc['text']}]
+
+                # Clear the regular input queue to prevent immediate follow-up with normal chats
+                get_all_neuro_input_chats()
+            else:
+                if is_first_response:
+                    add_to_neuro_input_queue({"username": "System", "text": config_manager.settings.neuro_behavior.initial_greeting})
+                    is_first_response = False
+                elif is_neuro_input_queue_empty():
+                    await asyncio.sleep(1)
+                    continue
+                
+                current_queue_snapshot = get_all_neuro_input_chats()
+                if not current_queue_snapshot:
+                    continue
+                sample_size = min(config_manager.settings.neuro_behavior.input_chat_sample_size, len(current_queue_snapshot))
+                selected_chats = random.sample(current_queue_snapshot, sample_size)
             
-            current_queue_snapshot = get_all_neuro_input_chats()
-            sample_size = min(config_manager.settings.neuro_behavior.input_chat_sample_size, len(current_queue_snapshot))
-            selected_chats = random.sample(current_queue_snapshot, sample_size)
+            if not selected_chats:
+                continue
             
             response_result = await asyncio.wait_for(agent.process_messages(selected_chats), timeout=20.0)
             
@@ -208,7 +234,7 @@ async def startup_event():
     logger.info("FastAPI application has started.")
 
 @app.on_event("shutdown")
-async def shutdown_event():
+def shutdown_event():
     """Actions to perform on application shutdown."""
     if process_manager.is_running:
         process_manager.stop_live_processes()
@@ -232,11 +258,20 @@ async def websocket_stream_endpoint(websocket: WebSocket):
             raw_data = await websocket.receive_text()
             data = json.loads(raw_data)
             if data.get("type") == "user_message":
-                user_message = {"username": data.get("username", "User"), "text": data.get("message", "").strip()}
+                user_message = {"username": data.get("username", "User"), "text": data.get("text", "").strip()}
                 if user_message["text"]:
                     add_to_audience_buffer(user_message)
                     add_to_neuro_input_queue(user_message)
                     await connection_manager.broadcast({"type": "chat_message", **user_message, "is_user_message": True})
+            elif data.get("type") == "superchat":
+                sc_message = {
+                    "username": data.get("username", "User"),
+                    "text": data.get("text", "").strip(),
+                    "sc_type": data.get("sc_type", "bits")
+                }
+                if sc_message["text"]:
+                    app_state.superchat_queue.append(sc_message)
+
     except WebSocketDisconnect:
         pass
     finally:

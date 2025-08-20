@@ -6,6 +6,7 @@ from collections import deque
 from pathlib import Path
 
 from ..core.config import config_manager
+from ..utils.state import app_state
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
 
@@ -17,7 +18,8 @@ def clear_all_queues():
     """Clears all chat queues."""
     audience_chat_buffer.clear()
     neuro_input_queue.clear()
-    logger.info("All chat queues have been cleared.")
+    app_state.superchat_queue.clear()
+    logger.info("All chat queues (including superchats) have been cleared.")
 
 def add_to_audience_buffer(chat_item: dict):
     """Adds a chat item to the audience buffer."""

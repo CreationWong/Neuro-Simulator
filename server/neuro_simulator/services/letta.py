@@ -74,8 +74,38 @@ class LettaAgent(BaseAgent):
             logger.warning(f"Failed to reset Letta Agent message history: {e}")
 
     async def process_messages(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
-        if messages:
-            injected_chat_lines = [f"{chat['username']}: {chat['text']}" for chat in messages]
+        # Check if this is a superchat message based on the specific structure
+        # from neuro_response_cycle
+        is_superchat = (
+            len(messages) == 2 and
+            messages[0].get("role") == "system" and
+            messages[1].get("role") == "system" and
+            "HIGHLIGHTED MESSAGE" in messages[1].get("content", "")
+        )
+
+        if is_superchat:
+            try:
+                # Extract username and text from the superchat message
+                # Format is "=== HIGHLIGHTED MESSAGE ===\n{username}: {text}"
+                content_lines = messages[1]["content"].split('\n', 1)
+                user_and_text = content_lines[1]
+                parts = user_and_text.split(':', 1)
+                sc_username = parts[0].strip()
+                sc_text = parts[1].strip()
+                injected_chat_lines = [f"{sc_username}: {sc_text}"]
+                injected_chat_text = (
+                    "Here is a highlighted message from my Twitch chat:\n---\n" +
+                    "\n".join(injected_chat_lines) +
+                    "\n---\nNow, as the streamer Neuro-Sama, please continue the conversation naturally."
+                )
+                logger.info(f"Processing highlighted message for Letta: {injected_chat_lines[0]}")
+            except (IndexError, AttributeError) as e:
+                logger.error(f"Failed to parse superchat for Letta, falling back. Error: {e}")
+                # Fallback to default empty prompt if parsing fails
+                injected_chat_text = "My chat is quiet right now. As Neuro-Sama, what should I say to engage them?"
+
+        elif messages:
+            injected_chat_lines = [f"{chat['username']}: {chat['text']}" for chat in messages if 'username' in chat and 'text' in chat]
             injected_chat_text = (
                 "Here are some recent messages from my Twitch chat:\n---\n" +
                 "\n".join(injected_chat_lines) + 
