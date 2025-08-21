@@ -34,6 +34,7 @@ export class AppInitializer {
     private settingsModal: SettingsModal;
     private currentSettings: AppSettings;
     private muteButton: MuteButton;
+    private resizeObserver: ResizeObserver | null = null;
 
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
@@ -57,7 +58,7 @@ export class AppInitializer {
             autoReconnect: true,
             maxReconnectAttempts: this.currentSettings.reconnectAttempts,
             onMessage: universalMessageHandler,
-            onOpen: () => this.updateUiWithSettings(),
+            onOpen: () => this.goOnline(),
             onDisconnect: () => this.goOffline(),
         });
 
@@ -81,7 +82,7 @@ export class AppInitializer {
         this.isStarted = true;
 
         this.layoutManager.start();
-        this.goOffline();
+        this.goOffline(); // Start in offline state
         
         this.updateUiWithSettings();
         
@@ -103,17 +104,13 @@ export class AppInitializer {
     }
 
     private setupMuteButton(): void {
-        // 获取HTML中已存在的按钮元素
         const muteButtonElement = this.muteButton.create();
         if (muteButtonElement) {
-            this.muteButton.show(); // 始终显示按钮
-            
-            // 添加全局点击监听器来解除静音
+            this.muteButton.show();
             const handleGlobalClick = () => {
                 this.muteButton.unmute();
                 document.removeEventListener('click', handleGlobalClick);
             };
-            
             document.addEventListener('click', handleGlobalClick);
         }
     }
@@ -142,28 +139,70 @@ export class AppInitializer {
         
         setTimeout(() => {
             if(this.wsClient.getUrl()) {
-                    this.wsClient.connect();
+                this.wsClient.connect();
             } else {
                 console.warn("Cannot connect: Backend URL is empty after update.");
             }
         }, 500);
     }
 
-    /**
-     * 根据当前的`this.currentSettings`更新UI元素，主要是头像
-     */
     private updateUiWithSettings(): void {
-        // --- 核心修复点 ---
-        // 只选择类为 .user-avatar-img 的图片，不再错误地包含 .channel-points-icon
         const userAvatars = document.querySelectorAll('.user-avatar-img') as NodeListOf<HTMLImageElement>;
         userAvatars.forEach(img => img.src = this.currentSettings.avatarDataUrl);
-        
         console.log(`UI updated with username: ${this.currentSettings.username} and avatar.`);
+    }
+
+    private adjustOfflineLayout = () => {
+        if (this.currentPhase !== 'offline') return;
+
+        const videoPlayer = document.querySelector('.offline-video-player') as HTMLElement;
+        const infoCard = document.querySelector('.offline-info-card') as HTMLElement;
+
+        if (videoPlayer && infoCard) {
+            const videoHeight = videoPlayer.offsetHeight;
+            if (videoHeight > 0) {
+                infoCard.style.height = `${videoHeight}px`;
+                infoCard.style.width = `${videoHeight}px`;
+            }
+        }
+    }
+
+    private goOnline(): void {
+        console.log("Entering ONLINE state.");
+        this.updateUiWithSettings();
+
+        // Stop observing and clear styles
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+        const infoCard = document.querySelector('.offline-info-card') as HTMLElement;
+        if (infoCard) {
+            infoCard.style.height = '';
+            infoCard.style.width = '';
+        }
+
+        document.getElementById('offline-content-container')?.classList.add('hidden');
+        document.getElementById('stream-display-viewport')?.classList.remove('hidden');
+        document.querySelector('.stream-info-details-row')?.classList.remove('hidden'); // Show details row
+        document.getElementById('chat-sidebar')?.classList.remove('hidden');
+
+        this.showStreamContent();
+        this.chatDisplay.clearChat();
+        this.liveIndicator.show();
+        this.wakeLockManager.requestWakeLock();
     }
 
     private goOffline(): void {
         console.log("Entering OFFLINE state.");
         this.currentPhase = 'offline';
+
+        // Show offline banner and hide online elements
+        document.getElementById('offline-content-container')?.classList.remove('hidden');
+        document.getElementById('stream-display-viewport')?.classList.add('hidden');
+        document.querySelector('.stream-info-details-row')?.classList.add('hidden'); // Hide details row
+        document.getElementById('chat-sidebar')?.classList.add('hidden');
+
         this.hideStreamContent();
         this.audioPlayer.stopAllAudio();
         this.videoPlayer.hide();
@@ -171,28 +210,32 @@ export class AppInitializer {
         hideNeuroCaption();
         this.streamTimer.stop();
         this.streamTimer.reset();
-        this.chatDisplay.clearChat(); // Clears the chat history
-        // 根据需求，输入框和发送按钮应始终保持可用
-        // this.userInput.setInputDisabled(true);
+        this.chatDisplay.clearChat();
         this.liveIndicator.hide();
         this.wakeLockManager.releaseWakeLock();
         
-        // 离线时重新显示按钮并添加全局点击监听器
         this.muteButton.show();
         const handleGlobalClick = () => {
             this.muteButton.unmute();
             document.removeEventListener('click', handleGlobalClick);
         };
         document.addEventListener('click', handleGlobalClick);
+
+        // Adjust layout and set up observer
+        setTimeout(() => {
+            this.adjustOfflineLayout();
+            const videoPlayer = document.querySelector('.offline-video-player');
+            if (videoPlayer && !this.resizeObserver) {
+                this.resizeObserver = new ResizeObserver(this.adjustOfflineLayout);
+                this.resizeObserver.observe(videoPlayer);
+            }
+        }, 0);
     }
 
     private handleWebSocketMessage(message: WebSocketMessage): void {
         if (this.currentPhase === 'offline' && ['play_welcome_video', 'start_avatar_intro', 'enter_live_phase'].includes(message.type)) {
             console.log("Connection successful, transitioning from OFFLINE to active state.");
-            this.showStreamContent();
-            this.chatDisplay.clearChat();
-            this.liveIndicator.show();
-            this.wakeLockManager.requestWakeLock();
+            this.goOnline(); // Use the new goOnline method
         }
 
         if (message.elapsed_time_sec !== undefined) {
@@ -209,8 +252,6 @@ export class AppInitializer {
             case 'play_welcome_video':
                 this.currentPhase = 'initializing';
                 this.videoPlayer.showAndPlayVideo(parseFloat(message.progress as any));
-                // 根据需求，输入框和发送按钮应始终保持可用
-                // this.userInput.setInputDisabled(true);
                 break;
             case 'start_avatar_intro':
                 this.currentPhase = 'avatar_intro';
@@ -218,21 +259,13 @@ export class AppInitializer {
                 this.neuroAvatar.startIntroAnimation(() => { 
                     this.videoPlayer.hide(); 
                 });
-                // 根据需求，输入框和发送按钮应始终保持可用
-                // this.userInput.setInputDisabled(true);
                 break;
             case 'enter_live_phase':
                 this.currentPhase = 'live';
                 this.videoPlayer.hide();
                 this.neuroAvatar.setStage('step2', true); 
-                // 根据需求，输入框和发送按钮应始终保持可用
-                // this.userInput.setInputDisabled((message as any).is_speaking ?? false);
                 break;
             case 'neuro_is_speaking':
-                // 根据需求，输入框和发送按钮应始终保持可用
-                /* if (this.currentPhase === 'live') {
-                    this.userInput.setInputDisabled((message as any).speaking);
-                } */
                 break;
             case 'neuro_speech_segment':
                 const segment = message as NeuroSpeechSegmentMessage;
