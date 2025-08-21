@@ -16,6 +16,7 @@ import { WakeLockManager } from '../utils/wakeLockManager';
 import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, StreamMetadataMessage } from '../types/common';
 import { SettingsModal, AppSettings } from '../ui/settingsModal';
 import { MuteButton } from '../ui/muteButton';
+import { getLatestReplayVideo, buildBilibiliIframeUrl } from '../services/bilibiliService';
 
 export class AppInitializer {
     private wsClient: WebSocketClient;
@@ -77,10 +78,12 @@ export class AppInitializer {
         this.setupSettingsModalTrigger();
         this.setupMuteButton();
 
+        // Store the original src as a fallback, then try to update it.
         const offlinePlayer = document.querySelector('.offline-video-player') as HTMLIFrameElement;
         if (offlinePlayer) {
             this.offlinePlayerSrc = offlinePlayer.src;
         }
+        this.updateOfflinePlayerSrc();
     }
 
     public start(): void {
@@ -170,6 +173,26 @@ export class AppInitializer {
                 infoCard.style.height = `${videoHeight}px`;
                 infoCard.style.width = `${videoHeight}px`;
             }
+        }
+    }
+
+    private async updateOfflinePlayerSrc(): Promise<void> {
+        console.log('Attempting to fetch the latest replay video...');
+        const videoInfo = await getLatestReplayVideo();
+        if (videoInfo) {
+            const newSrc = buildBilibiliIframeUrl(videoInfo);
+            this.offlinePlayerSrc = newSrc;
+            console.log('Successfully updated offline player src to:', newSrc);
+
+            // If we are already in the offline phase, update the iframe src immediately
+            if (this.currentPhase === 'offline') {
+                const offlinePlayer = document.querySelector('.offline-video-player') as HTMLIFrameElement;
+                if (offlinePlayer) {
+                    offlinePlayer.src = this.offlinePlayerSrc;
+                }
+            }
+        } else {
+            console.log('Failed to fetch latest replay video, using default fallback.');
         }
     }
 

@@ -117,6 +117,28 @@ npm run preview
 
 设置参数使用浏览器的 `LocalStorage` 进行持久存储
 
+## 哔哩哔哩直播回放
+
+客户端现在支持从哔哩哔哩动态拉取最新的直播回放视频。由于B站的API存在跨域（CORS）问题，需要通过代理来访问。
+
+- **Tauri 桌面端**: 客户端已内置反向代理，无需额外配置。
+- **Vite 开发服务器**: 在 `vite.config.ts` 中已经配置了代理，开发时可直接使用。
+- **Web 部署**: 如果您将此项目构建为静态网站并部署到自己的服务器，则需要手动配置反向代理。
+
+以下是一个 Nginx 的反向代理配置示例：
+
+```nginx
+location /bilibili-api/ {
+    rewrite ^/bilibili-api/(.*)$ /$1 break;
+    proxy_pass https://api.bilibili.com/;
+    proxy_set_header Host api.bilibili.com;
+    proxy_set_header Referer https://www.bilibili.com/;
+    proxy_set_header Origin https://www.bilibili.com;
+    # 如果遇到412错误，可以尝试移除或修改User-Agent
+    proxy_set_header User-Agent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
+}
+```
+
 ## 故障排除
 
 - 确保后端服务正在运行且可访问
