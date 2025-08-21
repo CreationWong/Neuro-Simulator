@@ -35,6 +35,7 @@ export class AppInitializer {
     private currentSettings: AppSettings;
     private muteButton: MuteButton;
     private resizeObserver: ResizeObserver | null = null;
+    private offlinePlayerSrc: string | null = null;
 
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
@@ -75,6 +76,11 @@ export class AppInitializer {
         
         this.setupSettingsModalTrigger();
         this.setupMuteButton();
+
+        const offlinePlayer = document.querySelector('.offline-video-player') as HTMLIFrameElement;
+        if (offlinePlayer) {
+            this.offlinePlayerSrc = offlinePlayer.src;
+        }
     }
 
     public start(): void {
@@ -171,6 +177,11 @@ export class AppInitializer {
         console.log("Entering ONLINE state.");
         this.updateUiWithSettings();
 
+        const offlinePlayer = document.querySelector('.offline-video-player') as HTMLIFrameElement;
+        if (offlinePlayer) {
+            offlinePlayer.src = 'about:blank';
+        }
+
         // Stop observing and clear styles
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
@@ -196,6 +207,11 @@ export class AppInitializer {
     private goOffline(): void {
         console.log("Entering OFFLINE state.");
         this.currentPhase = 'offline';
+
+        const offlinePlayer = document.querySelector('.offline-video-player') as HTMLIFrameElement;
+        if (offlinePlayer && this.offlinePlayerSrc) {
+            offlinePlayer.src = this.offlinePlayerSrc;
+        }
 
         // Show offline banner and hide online elements
         document.getElementById('offline-content-container')?.classList.remove('hidden');
