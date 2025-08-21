@@ -13,7 +13,7 @@ import { ChatSidebar } from '../ui/chatSidebar';
 import { LiveIndicator } from '../ui/liveIndicator';
 import { StreamInfoDisplay } from '../ui/streamInfoDisplay';
 import { WakeLockManager } from '../utils/wakeLockManager';
-import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, UserInputMessage, StreamMetadataMessage } from '../types/common';
+import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, StreamMetadataMessage } from '../types/common';
 import { SettingsModal, AppSettings } from '../ui/settingsModal';
 import { MuteButton } from '../ui/muteButton';
 
