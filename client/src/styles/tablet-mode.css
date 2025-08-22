@@ -1,0 +1,21 @@
+/* src/styles/tablet-mode.css */
+
+/* Default state (Desktop): Show the full button, hide the icon-only version. */
+.turbo-button-icon {
+    display: none;
+}
+
+.turbo-button-full {
+    display: inline-flex; /* Or whatever its default display is */
+}
+
+/* Tablet Breakpoint: Applies when screen width is 992px or less. */
+@media (max-width: 992px) {
+    .turbo-button-full {
+        display: none;
+    }
+
+    .turbo-button-icon {
+        display: inline-flex; /* Show the icon button */
+    }
+}

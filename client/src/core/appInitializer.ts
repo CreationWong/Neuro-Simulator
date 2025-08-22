@@ -164,15 +164,29 @@ export class AppInitializer {
     private adjustOfflineLayout = () => {
         if (this.currentPhase !== 'offline') return;
 
+        const container = document.getElementById('offline-content-container') as HTMLElement;
         const videoPlayer = document.querySelector('.offline-video-player') as HTMLElement;
         const infoCard = document.querySelector('.offline-info-card') as HTMLElement;
+        const isVertical = document.body.classList.contains('vertical-mode');
 
-        if (videoPlayer && infoCard) {
+        if (!container || !videoPlayer || !infoCard) return;
+
+        if (isVertical) {
+            // VERTICAL MODE: Stack elements, card width matches video width
+            container.style.flexWrap = 'wrap';
+            infoCard.style.width = videoPlayer.offsetWidth + 'px';
+            infoCard.style.height = 'auto';
+            infoCard.style.flex = '0 0 auto'; // Do not grow or shrink, use explicit width
+        } else {
+            // HORIZONTAL MODE: Keep side-by-side, shrink when needed
+            container.style.flexWrap = 'nowrap';
             const videoHeight = videoPlayer.offsetHeight;
             if (videoHeight > 0) {
                 infoCard.style.height = `${videoHeight}px`;
                 infoCard.style.width = `${videoHeight}px`;
             }
+            // Flex properties for horizontal shrinking, but DO NOT GROW.
+            infoCard.style.flex = '0 1 auto';
         }
     }
 
@@ -210,6 +224,8 @@ export class AppInitializer {
             this.resizeObserver.disconnect();
             this.resizeObserver = null;
         }
+        window.removeEventListener('resize', this.adjustOfflineLayout); // Clean up listener
+
         const infoCard = document.querySelector('.offline-info-card') as HTMLElement;
         if (infoCard) {
             infoCard.style.height = '';
@@ -260,13 +276,14 @@ export class AppInitializer {
         };
         document.addEventListener('click', handleGlobalClick);
 
-        // Adjust layout and set up observer
+        // Adjust layout and set up observers
         setTimeout(() => {
             this.adjustOfflineLayout();
             const videoPlayer = document.querySelector('.offline-video-player');
             if (videoPlayer && !this.resizeObserver) {
                 this.resizeObserver = new ResizeObserver(this.adjustOfflineLayout);
                 this.resizeObserver.observe(videoPlayer);
+                window.addEventListener('resize', this.adjustOfflineLayout); // Also listen to window resize
             }
         }, 0);
     }

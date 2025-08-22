@@ -71,11 +71,5 @@
 
 
 
-/* Adjust offline info card in vertical mode */
-.vertical-mode .offline-info-card {
-  width: 100%;
-  height: auto;
-  aspect-ratio: unset;
-  padding: 1rem;
-}
+
 

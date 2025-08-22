@@ -26,13 +26,13 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start; /* Left-align children */
-    /* justify-content is removed to allow flex-grow to work */
     background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 0;
     color: #0e0e10;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     box-sizing: border-box;
+    flex: 0 1 270px; /* Do not grow, allow shrinking */
 }
 
 .offline-status-section {
@@ -85,8 +85,9 @@
 }
 
 .offline-video-player {
-    width: 100%;
-    max-width: 640px; /* 调整视频播放器宽度 */
     aspect-ratio: 16 / 9;
+    flex: 0 1 480px; /* Do not grow, allow shrinking */
+    min-width: 300px; /* Prevent from becoming too small */
+    max-width: 640px; /* Keep the max width */
 }
 
