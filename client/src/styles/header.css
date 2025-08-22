@@ -68,6 +68,7 @@
 
 .search-container {
   display: flex;
+  align-items: center; /* Vertically center items */
   width: 100%;
   max-width: 400px;
   border: 1px solid var(--twitch-border-color);
@@ -76,7 +77,8 @@
   background-color: var(--twitch-button-bg);
 }
 .search-input {
-  flex-grow: 1;
+  flex: 1 1 0; /* Allow growing and shrinking */
+  min-width: 50px; /* Prevent extreme collapse */
   padding: 0.5rem 0.75rem;
   border: none;
   background-color: transparent;
@@ -85,6 +87,18 @@
   outline: none;
 }
 .search-input::placeholder { color: var(--twitch-secondary-text-color); }
+
+.search-button {
+  flex-shrink: 0; /* Prevent the button from shrinking */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem; /* Add some padding for spacing */
+}
+
+.search-button svg {
+  fill: var(--twitch-text-color);
+}
 
 .top-nav-right { gap: 0.75rem; }
 

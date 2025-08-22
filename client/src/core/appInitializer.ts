@@ -167,18 +167,20 @@ export class AppInitializer {
         const container = document.getElementById('offline-content-container') as HTMLElement;
         const videoPlayer = document.querySelector('.offline-video-player') as HTMLElement;
         const infoCard = document.querySelector('.offline-info-card') as HTMLElement;
-        const isVertical = document.body.classList.contains('vertical-mode');
 
         if (!container || !videoPlayer || !infoCard) return;
 
-        if (isVertical) {
-            // VERTICAL MODE: Stack elements, card width matches video width
+        // Check window width to determine layout mode
+        const isMobile = window.innerWidth <= 767;
+
+        if (isMobile) {
+            // MOBILE MODE: Stack elements, card width matches video width
             container.style.flexWrap = 'wrap';
             infoCard.style.width = videoPlayer.offsetWidth + 'px';
             infoCard.style.height = 'auto';
             infoCard.style.flex = '0 0 auto'; // Do not grow or shrink, use explicit width
         } else {
-            // HORIZONTAL MODE: Keep side-by-side, shrink when needed
+            // DESKTOP/TABLET MODE: Keep side-by-side, shrink when needed
             container.style.flexWrap = 'nowrap';
             const videoHeight = videoPlayer.offsetHeight;
             if (videoHeight > 0) {

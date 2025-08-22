@@ -86,8 +86,8 @@
 
 .offline-video-player {
     aspect-ratio: 16 / 9;
-    flex: 0 1 480px; /* Do not grow, allow shrinking */
+    flex: 0 1 576px; /* Do not grow, allow shrinking */
     min-width: 300px; /* Prevent from becoming too small */
-    max-width: 640px; /* Keep the max width */
+    max-width: 576px; /* Keep the max width */
 }
 
