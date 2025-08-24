@@ -167,7 +167,7 @@ async def neuro_response_cycle():
             if not selected_chats:
                 continue
             
-            response_result = await asyncio.wait_for(agent.process_messages(selected_chats), timeout=20.0)
+            response_result = await asyncio.wait_for(agent.process_and_respond(selected_chats), timeout=20.0)
             
             response_text = response_result.get("final_response", "").strip()
             if not response_text:

@@ -37,8 +37,8 @@ class BuiltinAgentWrapper(BaseAgent):
     async def reset_memory(self):
         await self.agent_instance.reset_all_memory()
 
-    async def process_messages(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
-        return await self.agent_instance.process_messages(messages)
+    async def process_and_respond(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        return await self.agent_instance.process_and_respond(messages)
 
     # Memory Block Management
     async def get_memory_blocks(self) -> List[Dict[str, Any]]:
@@ -84,4 +84,4 @@ class BuiltinAgentWrapper(BaseAgent):
 
     # Context/Message History
     async def get_message_history(self, limit: int = 20) -> List[Dict[str, Any]]:
-        return await self.agent_instance.memory_manager.get_recent_context(limit)
+        return await self.agent_instance.memory_manager.get_recent_chat(limit)

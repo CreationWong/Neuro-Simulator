@@ -60,12 +60,13 @@ def main():
     # Ensure agent directory and its contents exist
     agent_dir = work_dir / "agent"
     agent_dir.mkdir(parents=True, exist_ok=True)
-    copy_resource('neuro_simulator', 'agent/prompt_template.txt', agent_dir / 'prompt_template.txt')
+    copy_resource('neuro_simulator', 'agent/neuro_prompt.txt', agent_dir / 'neuro_prompt.txt')
+    copy_resource('neuro_simulator', 'agent/memory_prompt.txt', agent_dir / 'memory_prompt.txt')
 
     # Ensure agent memory directory and its contents exist
     agent_memory_dir = agent_dir / "memory"
     agent_memory_dir.mkdir(parents=True, exist_ok=True)
-    for filename in ["context.json", "core_memory.json", "dialog_history.json", "init_memory.json"]:
+    for filename in ["chat_history.json", "core_memory.json", "init_memory.json"]:
         copy_resource('neuro_simulator', f'agent/memory/{filename}', agent_memory_dir / filename)
 
     # 3. Validate essential files

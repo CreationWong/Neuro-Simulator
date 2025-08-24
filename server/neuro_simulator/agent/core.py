@@ -1,22 +1,19 @@
 # neuro_simulator/agent/core.py
 """
 Core module for the Neuro Simulator's built-in agent.
+Implements a dual-LLM "Actor/Thinker" architecture for responsive interaction
+and asynchronous memory consolidation.
 """
 
 import asyncio
 import json
 import logging
 import re
-import sys
 from pathlib import Path
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-# Updated imports for the new structure
 from ..utils.logging import QueueLogHandler, agent_log_queue
 from ..utils.websocket import connection_manager
-
-# --- Agent-specific imports ---
 from .llm import LLMClient
 from .memory.manager import MemoryManager
 from .tools.core import ToolManager
@@ -32,7 +29,6 @@ def configure_agent_logging():
         agent_logger.handlers.clear()
     
     agent_queue_handler = QueueLogHandler(agent_log_queue)
-    # Use the same format as the server for consistency
     formatter = logging.Formatter('%(asctime)s - [%(name)-24s] - %(levelname)-8s - %(message)s', datefmt='%H:%M:%S')
     agent_queue_handler.setFormatter(formatter)
     agent_logger.addHandler(agent_queue_handler)
@@ -42,14 +38,25 @@ def configure_agent_logging():
 configure_agent_logging()
 
 class Agent:
-    """Main Agent class that integrates LLM, memory, and tools. This is the concrete implementation."""
+    """
+    Main Agent class implementing the Actor/Thinker model.
+    - The "Neuro" part (Actor) handles real-time interaction.
+    - The "Memory" part (Thinker) handles background memory consolidation.
+    """
     
     def __init__(self, working_dir: str = None):
         self.memory_manager = MemoryManager(working_dir)
         self.tool_manager = ToolManager(self.memory_manager)
-        self.llm_client = LLMClient()
+        
+        # Dual LLM clients
+        self.neuro_llm = LLMClient()
+        self.memory_llm = LLMClient()
+        
         self._initialized = False
-        agent_logger.info("Agent instance created.")
+        self.turn_counter = 0
+        self.reflection_threshold = 3  # Trigger reflection every 3 turns
+        
+        agent_logger.info("Agent instance created with dual-LLM architecture.")
         agent_logger.debug(f"Agent working directory: {working_dir}")
         
     async def initialize(self):
@@ -63,139 +70,162 @@ class Agent:
     async def reset_all_memory(self):
         """Reset all agent memory types."""
         await self.memory_manager.reset_temp_memory()
-        await self.memory_manager.reset_context()
+        await self.memory_manager.reset_chat_history()
         agent_logger.info("All agent memory has been reset.")
-        
-    async def process_messages(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
-        """Process incoming messages and generate a response with tool usage."""
-        await self.initialize()
-        agent_logger.info(f"Processing {len(messages)} messages.")
 
-        for msg in messages:
-            content = f"{msg['username']}: {msg['text']}"
-            await self.memory_manager.add_context_entry("user", content)
-        
-        context_messages = await self.memory_manager.get_recent_context()
-        await connection_manager.broadcast({"type": "agent_context", "action": "update", "messages": context_messages})
-        
-        processing_entry_id = await self.memory_manager.add_detailed_context_entry(
-            input_messages=messages, prompt="Processing started", llm_response="",
-            tool_executions=[], final_response="Processing started"
-        )
-            
-        context = await self.memory_manager.get_full_context()
-        tool_descriptions = self.tool_manager.get_tool_descriptions()
-        
-        # --- CORRECTED HISTORY GATHERING ---
-        recent_history = await self.memory_manager.get_detailed_context_history()
-        assistant_responses = []
-        for entry in reversed(recent_history):
-            if entry.get("type") == "llm_interaction":
-                for tool in entry.get("tool_executions", []):
-                    if tool.get("name") == "speak" and tool.get("result"):
-                        assistant_responses.append(tool["result"])
-
-        # Create LLM prompt from template
-        template_path = Path(self.memory_manager.memory_dir).parent / "prompt_template.txt"
+    async def _build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
+        """Builds the prompt for the Neuro (Actor) LLM."""
+        template_path = Path(self.memory_manager.memory_dir).parent / "neuro_prompt.txt"
         with open(template_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
 
-        recent_speak_history_text = "\n".join([f"- {response}" for response in assistant_responses[:5]]) if assistant_responses else "You haven't said anything yet."
-        user_messages_text = "\n".join([f"{msg['username']}: {msg['text']}" for msg in messages])
+        # Gather context
+        tool_descriptions = self.tool_manager.get_tool_descriptions()
+        
+        # Format Core Memory from blocks
+        core_memory_blocks = await self.memory_manager.get_core_memory_blocks()
+        core_memory_parts = []
+        if core_memory_blocks:
+            for block_id, block in core_memory_blocks.items():
+                core_memory_parts.append(f"\nBlock: {block.get('title', '')} ({block_id})")
+                core_memory_parts.append(f"Description: {block.get('description', '')}")
+                content_items = block.get("content", [])
+                if content_items:
+                    core_memory_parts.append("Content:")
+                    for item in content_items:
+                        core_memory_parts.append(f"  - {item}")
+        core_memory_text = "\n".join(core_memory_parts) if core_memory_parts else "Not set."
 
-        prompt = prompt_template.format(
-            full_context=context,
+        # Format Temp Memory
+        temp_memory_items = self.memory_manager.temp_memory
+        temp_memory_text = "\n".join(
+            [f"[{item.get('role', 'system')}] {item.get('content', '')}" for item in temp_memory_items]
+        ) if temp_memory_items else "Empty."
+
+        recent_history = await self.memory_manager.get_recent_chat(entries=10)
+        
+        user_messages_text = "\n".join([f"{msg['username']}: {msg['text']}" for msg in messages])
+        recent_history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_history])
+
+        return prompt_template.format(
             tool_descriptions=tool_descriptions,
-            recent_speak_history=recent_speak_history_text,
+            core_memory=core_memory_text,
+            temp_memory=temp_memory_text,
+            recent_history=recent_history_text,
             user_messages=user_messages_text
         )
-        
-        await self.memory_manager.add_detailed_context_entry(
-            input_messages=messages, prompt=prompt, llm_response="", tool_executions=[],
-            final_response="Prompt sent to LLM", entry_id=processing_entry_id
-        )
-        
-        response_text = await self.llm_client.generate(prompt)
-        agent_logger.debug(f"LLM raw response: {response_text[:100] if response_text else 'None'}...")
-        
-        await self.memory_manager.add_detailed_context_entry(
-            input_messages=messages, prompt=prompt, llm_response=response_text, tool_executions=[],
-            final_response="LLM response received", entry_id=processing_entry_id
-        )
-        
-        processing_result = {
-            "input_messages": messages, "llm_response": response_text,
-            "tool_executions": [], "final_response": ""
-        }
-        
-        if response_text:
-            tool_calls = self._parse_tool_calls(response_text)
-            for tool_call in tool_calls:
-                agent_logger.info(f"Executing tool: {tool_call['name']}")
-                await self._execute_parsed_tool(tool_call, processing_result)
 
-        await self.memory_manager.add_detailed_context_entry(
-            input_messages=messages, prompt=prompt, llm_response=response_text,
-            tool_executions=processing_result["tool_executions"],
-            final_response=processing_result["final_response"], entry_id=processing_entry_id
-        )
-            
-        final_context = await self.memory_manager.get_recent_context()
-        await connection_manager.broadcast({"type": "agent_context", "action": "update", "messages": final_context})
-            
-        agent_logger.info("Message processing completed.")
-        return processing_result
+    async def _build_memory_prompt(self, conversation_history: List[Dict[str, str]]) -> str:
+        """Builds the prompt for the Memory (Thinker) LLM."""
+        template_path = Path(self.memory_manager.memory_dir).parent / "memory_prompt.txt"
+        with open(template_path, 'r', encoding='utf-8') as f:
+            prompt_template = f.read()
         
-    async def _execute_parsed_tool(self, tool_call: Dict[str, Any], processing_result: Dict[str, Any]):
-        """Execute a parsed tool call and update processing result."""
+        history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in conversation_history])
+        
+        return prompt_template.format(conversation_history=history_text)
+
+    def _parse_tool_calls(self, response_text: str) -> List[Dict[str, Any]]:
+        """Parses LLM response for JSON tool calls."""
         try:
-            tool_result = await self.execute_tool(tool_call["name"], tool_call["params"])
-            tool_call["result"] = tool_result
-            if tool_call["name"] == "speak":
-                processing_result["final_response"] = tool_call["params"].get("text", "")
-            processing_result["tool_executions"].append(tool_call)
-        except Exception as e:
-            tool_call["error"] = str(e)
-            processing_result["tool_executions"].append(tool_call)
-            agent_logger.error(f"Error executing tool {tool_call['name']}: {e}")
+            # The LLM is prompted to return a JSON array of tool calls.
+            # Find the JSON block, which might be wrapped in markdown.
+            match = re.search(r'''```json\s*([\s\S]*?)\s*```|(\[[\s\S]*\])''', response_text)
+            if not match:
+                agent_logger.warning(f"No valid JSON tool call block found in response: {response_text}")
+                return []
+
+            json_str = match.group(1) or match.group(2)
+            tool_calls = json.loads(json_str)
             
-    def _parse_tool_calls(self, text: str) -> List[Dict[str, Any]]:
-        """Parse tool calls using ast.literal_eval for robustness."""
-        import ast
-        calls = []
-        text = text.strip()
-        if text.startswith("speak(") and text.endswith(")"):
+            if isinstance(tool_calls, list):
+                return tool_calls
+            return []
+        except json.JSONDecodeError as e:
+            agent_logger.error(f"Failed to decode JSON from LLM response: {e}\nResponse text: {response_text}")
+            return []
+        except Exception as e:
+            agent_logger.error(f"An unexpected error occurred while parsing tool calls: {e}")
+            return []
+
+    async def _execute_tool_calls(self, tool_calls: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Executes a list of parsed tool calls."""
+        execution_results = []
+        final_response = ""
+        for tool_call in tool_calls:
+            tool_name = tool_call.get("name")
+            params = tool_call.get("params", {})
+            if not tool_name:
+                continue
+
+            agent_logger.info(f"Executing tool: {tool_name} with params: {params}")
             try:
-                # Extract the content inside speak(...)
-                # e.g., "text='Hello, I'm here'"
-                inner_content = text[len("speak("):-1].strip()
-
-                # Ensure it's a text=... call
-                if not inner_content.startswith("text="):
-                    return []
-                
-                # Get the quoted string part
-                quoted_string = inner_content[len("text="):
-].strip()
-
-                # Use ast.literal_eval to safely parse the Python string literal
-                parsed_text = ast.literal_eval(quoted_string)
-                
-                if isinstance(parsed_text, str):
-                    calls.append({
-                        "name": "speak",
-                        "params": {"text": parsed_text}
-                    })
-
-            except (ValueError, SyntaxError, TypeError) as e:
-                agent_logger.warning(f"Could not parse tool call using ast.literal_eval: {text}. Error: {e}")
-
-        return calls
+                result = await self.tool_manager.execute_tool(tool_name, params)
+                execution_results.append({"name": tool_name, "params": params, "result": result})
+                if tool_name == "speak":
+                    final_response = params.get("text", "")
+            except Exception as e:
+                agent_logger.error(f"Error executing tool {tool_name}: {e}")
+                execution_results.append({"name": tool_name, "params": params, "error": str(e)})
         
-    async def execute_tool(self, tool_name: str, params: Dict[str, Any]) -> Any:
-        """Execute a registered tool."""
+        return {"tool_executions": execution_results, "final_response": final_response}
+
+    async def process_and_respond(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        """
+        The main entry point for the "Neuro" (Actor) flow.
+        Handles real-time interaction and triggers background reflection.
+        """
         await self.initialize()
-        agent_logger.debug(f"Executing tool: {tool_name} with params: {params}")
-        result = await self.tool_manager.execute_tool(tool_name, params)
-        agent_logger.debug(f"Tool execution result: {result}")
-        return result
+        agent_logger.info(f"Processing {len(messages)} messages in Actor flow.")
+
+        # Add user messages to context
+        for msg in messages:
+            await self.memory_manager.add_chat_entry("user", f"{msg['username']}: {msg['text']}")
+
+        # Build prompt and get response from Neuro LLM
+        prompt = await self._build_neuro_prompt(messages)
+        response_text = await self.neuro_llm.generate(prompt)
+        agent_logger.debug(f"Neuro LLM raw response: {response_text[:150] if response_text else 'None'}...")
+
+        # Parse and execute tools
+        tool_calls = self._parse_tool_calls(response_text)
+        processing_result = await self._execute_tool_calls(tool_calls)
+
+        # Add agent's response to context
+        if processing_result["final_response"]:
+            await self.memory_manager.add_chat_entry("assistant", processing_result["final_response"])
+
+        # Update dashboard/UI
+        final_context = await self.memory_manager.get_recent_chat()
+        await connection_manager.broadcast({"type": "agent_context", "action": "update", "messages": final_context})
+
+        # Handle reflection trigger
+        self.turn_counter += 1
+        if self.turn_counter >= self.reflection_threshold:
+            agent_logger.info(f"Reflection threshold reached ({self.turn_counter}/{self.reflection_threshold}). Scheduling background reflection.")
+            history_for_reflection = await self.memory_manager.get_recent_chat(entries=self.reflection_threshold * 2) # Get a bit more context
+            asyncio.create_task(self.reflect_on_context(history_for_reflection))
+            self.turn_counter = 0
+
+        agent_logger.info("Actor flow completed.")
+        return processing_result
+
+    async def reflect_on_context(self, conversation_history: List[Dict[str, str]]):
+        """
+        The main entry point for the "Memory" (Thinker) flow.
+        Runs in the background to consolidate memories.
+        """
+        agent_logger.info("Thinker flow started: Reflecting on recent context.")
+        
+        prompt = await self._build_memory_prompt(conversation_history)
+        response_text = await self.memory_llm.generate(prompt)
+        agent_logger.debug(f"Memory LLM raw response: {response_text[:150] if response_text else 'None'}...")
+
+        tool_calls = self._parse_tool_calls(response_text)
+        if not tool_calls:
+            agent_logger.info("Thinker flow: No memory operations were suggested by the LLM.")
+            return
+
+        agent_logger.info(f"Thinker flow: Executing {len(tool_calls)} memory operations.")
+        await self._execute_tool_calls(tool_calls)
+        agent_logger.info("Thinker flow completed, memory has been updated.")

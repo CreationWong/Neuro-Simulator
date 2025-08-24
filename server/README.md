@@ -32,7 +32,7 @@ neuro_simulator/
 │   ├── memory/          # 记忆管理模块
 │   │   ├── __init__.py
 │   │   ├── manager.py   # 记忆管理器
-│   │   ├── context.json # 上下文记忆文件
+│   │   ├── chat_history.json # 上下文记忆文件
 │   │   ├── core_memory.json # 核心记忆文件
 │   │   ├── init_memory.json # 初始化记忆文件
 │   │   └── temp_memory.json # 临时记忆文件
@@ -72,7 +72,7 @@ working_dir_example/     # 工作目录结构，请将这个目录重命名和�
 ├── config.yaml.example  # 自动生成的配置文件模板，必须手动重命名和填写
 └── agent/               # Agent相关文件夹
     └── memory/          # Agent记忆文件夹
-        ├── context.json     # 上下文记忆文件
+        ├── chat_history.json     # 上下文记忆文件
         ├── core_memory.json # 核心记忆文件
         ├── init_memory.json # 初始化记忆文件
         └── temp_memory.json # 临时记忆文件

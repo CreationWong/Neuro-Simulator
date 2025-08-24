@@ -31,12 +31,12 @@ class MemoryManager:
         
         self.init_memory_file = os.path.join(self.memory_dir, "init_memory.json")
         self.core_memory_file = os.path.join(self.memory_dir, "core_memory.json")
-        self.context_file = os.path.join(self.memory_dir, "context.json")
+        self.chat_history_file = os.path.join(self.memory_dir, "chat_history.json")
         self.temp_memory_file = os.path.join(self.memory_dir, "temp_memory.json")
         
         self.init_memory: Dict[str, Any] = {}
         self.core_memory: Dict[str, Any] = {}
-        self.context_history: List[Dict[str, Any]] = []
+        self.chat_history: List[Dict[str, Any]] = []
         self.temp_memory: List[Dict[str, Any]] = []
         
     async def initialize(self):
@@ -61,12 +61,12 @@ class MemoryManager:
             self.core_memory = {"blocks": {}}
             await self._save_core_memory()
             
-        # Load context history
-        if os.path.exists(self.context_file):
-            with open(self.context_file, 'r', encoding='utf-8') as f:
-                self.context_history = json.load(f)
+        # Load chat history
+        if os.path.exists(self.chat_history_file):
+            with open(self.chat_history_file, 'r', encoding='utf-8') as f:
+                self.chat_history = json.load(f)
         else:
-            self.context_history = []
+            self.chat_history = []
             
         # Load temp memory
         if os.path.exists(self.temp_memory_file):
@@ -89,20 +89,20 @@ class MemoryManager:
         with open(self.core_memory_file, 'w', encoding='utf-8') as f:
             json.dump(self.core_memory, f, ensure_ascii=False, indent=2)
             
-    async def _save_context(self):
-        with open(self.context_file, 'w', encoding='utf-8') as f:
-            json.dump(self.context_history, f, ensure_ascii=False, indent=2)
+    async def _save_chat_history(self):
+        with open(self.chat_history_file, 'w', encoding='utf-8') as f:
+            json.dump(self.chat_history, f, ensure_ascii=False, indent=2)
             
     async def _save_temp_memory(self):
         with open(self.temp_memory_file, 'w', encoding='utf-8') as f:
             json.dump(self.temp_memory, f, ensure_ascii=False, indent=2)
             
-    async def add_context_entry(self, role: str, content: str):
+    async def add_chat_entry(self, role: str, content: str):
         entry = {"id": generate_id(), "role": role, "content": content, "timestamp": datetime.now().isoformat()}
-        self.context_history.append(entry)
-        await self._save_context()
+        self.chat_history.append(entry)
+        await self._save_chat_history()
         
-    async def add_detailed_context_entry(self, input_messages: List[Dict[str, str]], 
+    async def add_detailed_chat_entry(self, input_messages: List[Dict[str, str]], 
                                          prompt: str, llm_response: str, 
                                          tool_executions: List[Dict[str, Any]], 
                                          final_response: str, entry_id: str = None):
@@ -112,25 +112,25 @@ class MemoryManager:
             "timestamp": datetime.now().isoformat()
         }
         if entry_id:
-            for entry in self.context_history:
+            for entry in self.chat_history:
                 if entry.get("id") == entry_id:
                     entry.update(update_data)
-                    await self._save_context()
+                    await self._save_chat_history()
                     return entry_id
         
         new_entry = {"id": entry_id or generate_id(), "type": "llm_interaction", "role": "assistant", **update_data}
-        self.context_history.append(new_entry)
-        await self._save_context()
+        self.chat_history.append(new_entry)
+        await self._save_chat_history()
         return new_entry["id"]
         
-    async def get_recent_context(self, entries: int = 10) -> List[Dict[str, Any]]:
-        return self.context_history[-entries:]
+    async def get_recent_chat(self, entries: int = 10) -> List[Dict[str, Any]]:
+        return self.chat_history[-entries:]
         
-    async def get_detailed_context_history(self) -> List[Dict[str, Any]]:
-        return self.context_history
+    async def get_detailed_chat_history(self) -> List[Dict[str, Any]]:
+        return self.chat_history
         
     async def get_last_agent_response(self) -> Optional[str]:
-        for entry in reversed(self.context_history):
+        for entry in reversed(self.chat_history):
             if entry.get("type") == "llm_interaction":
                 final_response = entry.get("final_response", "")
                 if final_response and final_response not in ["Processing started", "Prompt sent to LLM", "LLM response received"]:
@@ -141,9 +141,9 @@ class MemoryManager:
                     return content
         return None
         
-    async def reset_context(self):
-        self.context_history = []
-        await self._save_context()
+    async def reset_chat_history(self):
+        self.chat_history = []
+        await self._save_chat_history()
         
     async def reset_temp_memory(self):
         """Reset temp memory to a default empty state."""
