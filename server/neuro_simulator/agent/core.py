@@ -29,7 +29,7 @@ def configure_agent_logging():
         agent_logger.handlers.clear()
     
     agent_queue_handler = QueueLogHandler(agent_log_queue)
-    formatter = logging.Formatter('%(asctime)s - [%(name)-24s] - %(levelname)-8s - %(message)s', datefmt='%H:%M:%S')
+    formatter = logging.Formatter('%(asctime)s - [%(name)-32s] - %(levelname)-8s - %(message)s', datefmt='%H:%M:%S')
     agent_queue_handler.setFormatter(formatter)
     agent_logger.addHandler(agent_queue_handler)
     agent_logger.propagate = False
@@ -197,7 +197,10 @@ class Agent:
 
         # Update dashboard/UI
         final_context = await self.memory_manager.get_recent_chat()
+        # Broadcast to stream clients
         await connection_manager.broadcast({"type": "agent_context", "action": "update", "messages": final_context})
+        # Broadcast to admin clients (Dashboard)
+        await connection_manager.broadcast_to_admins({"type": "agent_context", "action": "update", "messages": final_context})
 
         # Handle reflection trigger
         self.turn_counter += 1

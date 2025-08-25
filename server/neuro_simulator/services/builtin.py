@@ -50,13 +50,25 @@ class BuiltinAgentWrapper(BaseAgent):
 
     async def create_memory_block(self, title: str, description: str, content: List[str]) -> Dict[str, str]:
         block_id = await self.agent_instance.memory_manager.create_core_memory_block(title, description, content)
+        # Broadcast core_memory_updated event
+        updated_blocks = await self.get_memory_blocks()
+        from ..utils.websocket import connection_manager
+        await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
         return {"block_id": block_id}
 
     async def update_memory_block(self, block_id: str, title: Optional[str], description: Optional[str], content: Optional[List[str]]):
         await self.agent_instance.memory_manager.update_core_memory_block(block_id, title, description, content)
+        # Broadcast core_memory_updated event
+        updated_blocks = await self.get_memory_blocks()
+        from ..utils.websocket import connection_manager
+        await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
 
     async def delete_memory_block(self, block_id: str):
         await self.agent_instance.memory_manager.delete_core_memory_block(block_id)
+        # Broadcast core_memory_updated event
+        updated_blocks = await self.get_memory_blocks()
+        from ..utils.websocket import connection_manager
+        await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
 
     # Init Memory Management
     async def get_init_memory(self) -> Dict[str, Any]:
@@ -64,6 +76,10 @@ class BuiltinAgentWrapper(BaseAgent):
 
     async def update_init_memory(self, memory: Dict[str, Any]):
         await self.agent_instance.memory_manager.update_init_memory(memory)
+        # Broadcast init_memory_updated event
+        updated_init_mem = await self.get_init_memory()
+        from ..utils.websocket import connection_manager
+        await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
 
     # Temp Memory Management
     async def get_temp_memory(self) -> List[Dict[str, Any]]:
@@ -71,16 +87,30 @@ class BuiltinAgentWrapper(BaseAgent):
 
     async def add_temp_memory(self, content: str, role: str):
         await self.agent_instance.memory_manager.add_temp_memory(content, role)
+        # Broadcast temp_memory_updated event
+        updated_temp_mem = await self.get_temp_memory()
+        from ..utils.websocket import connection_manager
+        await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
 
     async def clear_temp_memory(self):
         await self.agent_instance.memory_manager.reset_temp_memory()
+        # Broadcast temp_memory_updated event
+        updated_temp_mem = await self.get_temp_memory()
+        from ..utils.websocket import connection_manager
+        await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
 
     # Tool Management
     async def get_available_tools(self) -> str:
         return self.agent_instance.tool_manager.get_tool_descriptions()
 
     async def execute_tool(self, tool_name: str, params: Dict[str, Any]) -> Any:
-        return await self.agent_instance.execute_tool(tool_name, params)
+        result = await self.agent_instance.execute_tool(tool_name, params)
+        # If the tool was add_temp_memory, broadcast temp_memory_updated event
+        if tool_name == "add_temp_memory":
+            updated_temp_mem = await self.get_temp_memory()
+            from ..utils.websocket import connection_manager
+            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+        return result
 
     # Context/Message History
     async def get_message_history(self, limit: int = 20) -> List[Dict[str, Any]]:

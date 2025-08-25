@@ -21,8 +21,6 @@ from ..services.letta import LettaAgent
 from ..services.builtin import BuiltinAgentWrapper
 
 # --- API Routers ---
-from ..api.agent import router as agent_router
-from ..api.stream import router as stream_router
 from ..api.system import router as system_router
 
 # --- Services and Utilities ---
@@ -60,8 +58,6 @@ app.add_middleware(
     expose_headers=["X-API-Token"],
 )
 
-app.include_router(agent_router)
-app.include_router(stream_router)
 app.include_router(system_router)
 
 # --- Background Task Definitions ---
@@ -280,7 +276,10 @@ async def websocket_stream_endpoint(websocket: WebSocket):
 @app.websocket("/ws/admin")
 async def websocket_admin_endpoint(websocket: WebSocket):
     await websocket.accept()
+    # Add the new admin client to a dedicated list
+    connection_manager.admin_connections.append(websocket)
     try:
+        # Send initial state
         for log_entry in list(server_log_queue): await websocket.send_json({"type": "server_log", "data": log_entry})
         for log_entry in list(agent_log_queue): await websocket.send_json({"type": "agent_log", "data": log_entry})
         
@@ -288,14 +287,173 @@ async def websocket_admin_endpoint(websocket: WebSocket):
         initial_context = await agent.get_message_history()
         await websocket.send_json({"type": "agent_context", "action": "update", "messages": initial_context})
         
+        # Main loop for receiving messages from the client and pushing log updates
         while websocket.client_state == WebSocketState.CONNECTED:
+            # Check for incoming messages
+            try:
+                raw_data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+                data = json.loads(raw_data)
+                await handle_admin_ws_message(websocket, data)
+            except asyncio.TimeoutError:
+                pass # No message received, continue to push logs
+
+            # Push log updates
             if server_log_queue: await websocket.send_json({"type": "server_log", "data": server_log_queue.popleft()})
             if agent_log_queue: await websocket.send_json({"type": "agent_log", "data": agent_log_queue.popleft()})
             await asyncio.sleep(0.1)
+            
     except WebSocketDisconnect:
         pass
     finally:
+        connection_manager.admin_connections.remove(websocket)
         logger.info("Admin WebSocket client disconnected.")
+
+async def handle_admin_ws_message(websocket: WebSocket, data: dict):
+    """Handles incoming messages from the admin WebSocket."""
+    action = data.get("action")
+    payload = data.get("payload", {})
+    request_id = data.get("request_id")
+    
+    agent = await create_agent()
+    response = {"type": "response", "request_id": request_id, "payload": {}}
+
+    try:
+        # Core Memory Actions
+        if action == "get_core_memory_blocks":
+            blocks = await agent.get_memory_blocks()
+            response["payload"] = blocks
+        
+        elif action == "create_core_memory_block":
+            block_id = await agent.create_memory_block(**payload)
+            response["payload"] = {"status": "success", "block_id": block_id}
+            # Broadcast the update to all admins
+            updated_blocks = await agent.get_memory_blocks()
+            from ..utils.websocket import connection_manager
+            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
+
+        elif action == "update_core_memory_block":
+            await agent.update_memory_block(**payload)
+            response["payload"] = {"status": "success"}
+            # Broadcast the update to all admins
+            updated_blocks = await agent.get_memory_blocks()
+            from ..utils.websocket import connection_manager
+            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
+
+        elif action == "delete_core_memory_block":
+            await agent.delete_memory_block(**payload)
+            response["payload"] = {"status": "success"}
+            # Broadcast the update to all admins
+            updated_blocks = await agent.get_memory_blocks()
+            from ..utils.websocket import connection_manager
+            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
+
+        # Temp Memory Actions
+        elif action == "get_temp_memory":
+            temp_mem = await agent.get_temp_memory()
+            response["payload"] = temp_mem
+
+        elif action == "add_temp_memory":
+            await agent.add_temp_memory(**payload)
+            response["payload"] = {"status": "success"}
+            updated_temp_mem = await agent.get_temp_memory()
+            from ..utils.websocket import connection_manager
+            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+
+        elif action == "clear_temp_memory":
+            await agent.clear_temp_memory()
+            response["payload"] = {"status": "success"}
+            updated_temp_mem = await agent.get_temp_memory()
+            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+
+        # Init Memory Actions
+        elif action == "get_init_memory":
+            init_mem = await agent.get_init_memory()
+            response["payload"] = init_mem
+
+        elif action == "update_init_memory":
+            await agent.update_init_memory(**payload)
+            response["payload"] = {"status": "success"}
+            updated_init_mem = await agent.get_init_memory()
+            from ..utils.websocket import connection_manager
+            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+
+        # Tool Actions
+        elif action == "get_tools":
+            tools = await agent.get_available_tools()
+            response["payload"] = {"tools": tools}
+
+        elif action == "execute_tool":
+            result = await agent.execute_tool(**payload)
+            response["payload"] = {"result": result}
+
+        # Stream Control Actions
+        elif action == "start_stream":
+            if not process_manager.is_running:
+                process_manager.start_live_processes()
+            response["payload"] = {"status": "success", "message": "Stream started"}
+
+        elif action == "stop_stream":
+            if process_manager.is_running:
+                await process_manager.stop_live_processes()
+            response["payload"] = {"status": "success", "message": "Stream stopped"}
+
+        elif action == "restart_stream":
+            await process_manager.stop_live_processes()
+            await asyncio.sleep(1)
+            process_manager.start_live_processes()
+            response["payload"] = {"status": "success", "message": "Stream restarted"}
+
+        elif action == "get_stream_status":
+            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+            response["payload"] = status
+
+        # Config Management Actions
+        elif action == "get_configs":
+            from ..api.system import filter_config_for_frontend
+            configs = filter_config_for_frontend(config_manager.settings)
+            response["payload"] = configs
+
+        elif action == "update_configs":
+            from ..api.system import filter_config_for_frontend
+            await config_manager.update_settings(payload)
+            updated_configs = filter_config_for_frontend(config_manager.settings)
+            response["payload"] = updated_configs
+            await connection_manager.broadcast_to_admins({"type": "config_updated", "payload": updated_configs})
+
+        elif action == "reload_configs":
+            await config_manager.update_settings({})
+            response["payload"] = {"status": "success", "message": "Configuration reloaded"}
+            from ..api.system import filter_config_for_frontend
+            updated_configs = filter_config_for_frontend(config_manager.settings)
+            await connection_manager.broadcast_to_admins({"type": "config_updated", "payload": updated_configs})
+
+        # Other Agent Actions
+        elif action == "get_agent_context":
+            context = await agent.get_message_history()
+            response["payload"] = context
+
+        elif action == "reset_agent_memory":
+            await agent.reset_memory()
+            response["payload"] = {"status": "success"}
+            # Broadcast updates for all memory types
+            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": await agent.get_memory_blocks()})
+            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": await agent.get_temp_memory()})
+            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": await agent.get_init_memory()})
+            await connection_manager.broadcast_to_admins({"type": "agent_context", "action": "update", "messages": await agent.get_message_history()})
+
+        else:
+            response["payload"] = {"status": "error", "message": f"Unknown action: {action}"}
+
+        # Send the direct response to the requesting client
+        if request_id:
+            await websocket.send_json(response)
+
+    except Exception as e:
+        logger.error(f"Error handling admin WS message (action: {action}): {e}", exc_info=True)
+        if request_id:
+            response["payload"] = {"status": "error", "message": str(e)}
+            await websocket.send_json(response)
+
 
 # --- Server Entrypoint ---
 

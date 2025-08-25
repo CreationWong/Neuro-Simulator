@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
 class WebSocketManager:
     """Manages all active WebSocket connections and provides broadcasting capabilities."""
     def __init__(self):
-        self.active_connections: deque[WebSocket] = deque()
+        self.active_connections: list[WebSocket] = []
+        self.admin_connections: list[WebSocket] = []
         logger.info("WebSocketManager initialized.")
 
     async def connect(self, websocket: WebSocket):
@@ -37,19 +38,15 @@ class WebSocketManager:
                 self.disconnect(websocket)
 
     async def broadcast(self, message: dict):
-        disconnected_sockets = []
-        for connection in list(self.active_connections):
-            if connection.client_state == WebSocketState.CONNECTED:
-                try:
-                    await connection.send_json(message)
-                except Exception as e:
-                    logger.warning(f"Could not broadcast message to client {connection}, it may have disconnected: {e}")
-                    disconnected_sockets.append(connection)
-            else:
-                disconnected_sockets.append(connection)
-        
-        for disconnected_socket in disconnected_sockets:
-            self.disconnect(disconnected_socket)
+        for connection in self.active_connections:
+            await connection.send_json(message)
+
+    async def broadcast_to_admins(self, message: dict):
+        for connection in self.admin_connections:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                logger.error(f"Failed to send message to admin connection: {e}")
 
 # Global singleton instance
 connection_manager = WebSocketManager()

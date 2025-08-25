@@ -154,7 +154,6 @@ neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
 - `/api/configs/*` - 配置管理接口（获取/更新/重载配置）
   - `api_keys` `server` 等敏感配置项无法从接口获取和修改
 - `/api/logs` - 日志获取接口
-- `/api/tts/synthesize` - TTS 合成接口
 - `/api/system/health` - 健康检查接口
 - `/ws/stream` - 客户端使用的直播接口
 - `/ws/admin` - 日志和内建 Agent的 Context 流接口
