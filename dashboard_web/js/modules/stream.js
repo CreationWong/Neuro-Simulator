@@ -6,106 +6,71 @@ const startStreamBtn = document.getElementById('startStreamBtn');
 const stopStreamBtn = document.getElementById('stopStreamBtn');
 const restartStreamBtn = document.getElementById('restartStreamBtn');
 
-// 更新直播状态
+// 更新直播状态 (通过WebSocket事件驱动，不再主动轮询)
 async function updateStreamStatus() {
-    // 检查连接模块是否存在
-    if (!window.connectionModule) {
-        return;
-    }
-    
-    try {
-        const status = await window.connectionModule.apiRequest('/api/stream/status');
-        const streamStatus = document.getElementById('streamStatus');
-        if (streamStatus) {
-            streamStatus.textContent = status.is_running ? '运行中' : '已停止';
-            streamStatus.style.color = status.is_running ? '#4CAF50' : '#F44336';
-        }
-    } catch (error) {
-        const streamStatus = document.getElementById('streamStatus');
-        if (streamStatus) {
-            streamStatus.textContent = '无法获取状态';
-            streamStatus.style.color = '#F44336';
-        }
-        
-        // 只有网络错误才更新连接状态
-        if (error.message.includes('Failed to fetch')) {
-            // 断开连接
-            window.connectionModule.disconnectNotified = true;
-            // 更新连接状态为断开
-            window.connectionModule.updateConnectionStatus(false, '连接已断开');
-            // 显示断连对话框
-            if (window.uiModule && window.uiModule.showDisconnectDialog) {
-                window.uiModule.showDisconnectDialog();
-            }
-            // 切换到连接页面
-            if (window.uiModule && window.uiModule.switchTab) {
-                window.uiModule.switchTab('connection');
-            }
-        }
-    }
+    // 此函数已不再需要，因为状态由后端主动推送
+    // 保留空函数以避免其他地方调用时报错
+    console.log("Stream status update is now event-driven via WebSocket.");
 }
 
-// 开始直播
+// 开始直播 (通过WebSocket)
 async function startStream() {
     const confirmed = await window.uiModule.showConfirmDialog('确定要开始直播吗？');
     if (!confirmed) {
         return;
     }
     
-    // 检查连接模块是否存在
-    if (!window.connectionModule) {
-        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
+    if (!window.connectionModule.isConnected) {
+        window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
     
     try {
-        const response = await window.connectionModule.apiRequest('/api/stream/start', { method: 'POST' });
+        const response = await window.connectionModule.sendAdminWsMessage('start_stream');
         window.uiModule.showToast(response.message, 'success');
-        updateStreamStatus();
+        // 状态更新将由后端推送的 stream_status 事件处理
     } catch (error) {
         window.uiModule.showToast(`操作失败: ${error.message}`, 'error');
     }
 }
 
-// 停止直播
+// 停止直播 (通过WebSocket)
 async function stopStream() {
     const confirmed = await window.uiModule.showConfirmDialog('确定要停止直播吗？');
     if (!confirmed) {
         return;
     }
     
-    // 检查连接模块是否存在
-    if (!window.connectionModule) {
-        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
+    if (!window.connectionModule.isConnected) {
+        window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
     
     try {
-        const response = await window.connectionModule.apiRequest('/api/stream/stop', { method: 'POST' });
+        const response = await window.connectionModule.sendAdminWsMessage('stop_stream');
         window.uiModule.showToast(response.message, 'success');
-        updateStreamStatus();
+        // 状态更新将由后端推送的 stream_status 事件处理
     } catch (error) {
         window.uiModule.showToast(`操作失败: ${error.message}`, 'error');
     }
 }
 
-// 重启直播
+// 重启直播 (通过WebSocket)
 async function restartStream() {
     const confirmed = await window.uiModule.showConfirmDialog('确定要重启直播吗？这将停止并重新启动直播进程。');
     if (!confirmed) {
         return;
     }
     
-    // 检查连接模块是否存在
-    if (!window.connectionModule) {
-        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
+    if (!window.connectionModule.isConnected) {
+        window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
     
     try {
-        const response = await window.connectionModule.apiRequest('/api/stream/restart', { method: 'POST' });
+        const response = await window.connectionModule.sendAdminWsMessage('restart_stream');
         window.uiModule.showToast(response.message, 'success');
-        updateStreamStatus();
+        // 状态更新将由后端推送的 stream_status 事件处理
     } catch (error) {
         window.uiModule.showToast(`操作失败: ${error.message}`, 'error');
     }

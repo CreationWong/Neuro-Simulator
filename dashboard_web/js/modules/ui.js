@@ -274,15 +274,17 @@ function showAddTempMemoryDialog() {
         }
         
         try {
-            await window.connectionModule.apiRequest('/api/agent/memory/temp', {
-                method: 'POST',
-                body: JSON.stringify({ content, role })
-            });
-            
-            window.uiModule.showToast('临时记忆已添加', 'success');
-            closeDialog();
-            if (window.agentModule && window.agentModule.refreshTempMemory) {
-                window.agentModule.refreshTempMemory(); // 刷新显示
+            if (window.connectionModule && window.connectionModule.sendAdminWsMessage) {
+                await window.connectionModule.sendAdminWsMessage('add_temp_memory', { content, role });
+                
+                window.uiModule.showToast('临时记忆已添加', 'success');
+                closeDialog();
+                if (window.agentModule && window.agentModule.refreshTempMemory) {
+                    window.agentModule.refreshTempMemory(); // 刷新显示
+                }
+            } else {
+                console.error('window.connectionModule.sendAdminWsMessage is not available');
+                window.uiModule.showToast('未连接到后端', 'error');
             }
         } catch (error) {
             window.uiModule.showToast(`添加临时记忆失败: ${error.message}`, 'error');
@@ -304,14 +306,24 @@ function initEventListeners() {
     if (connectionForm) {
         connectionForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            window.connectionModule.connectToBackend();
+            if (window.connectionModule && window.connectionModule.connectToBackend) {
+                window.connectionModule.connectToBackend();
+            } else {
+                console.error('window.connectionModule.connectToBackend is not available');
+            }
         });
     }
     
     // 断开连接按钮
     const disconnectBtn = document.getElementById('disconnectBtn');
     if (disconnectBtn) {
-        disconnectBtn.addEventListener('click', window.connectionModule.disconnectFromBackend);
+        disconnectBtn.addEventListener('click', () => {
+            if (window.connectionModule && window.connectionModule.disconnectFromBackend) {
+                window.connectionModule.disconnectFromBackend();
+            } else {
+                console.error('window.connectionModule.disconnectFromBackend is not available');
+            }
+        });
     }
     
     // 直播控制按钮
@@ -319,9 +331,27 @@ function initEventListeners() {
     const stopStreamBtn = document.getElementById('stopStreamBtn');
     const restartStreamBtn = document.getElementById('restartStreamBtn');
     
-    if (startStreamBtn) startStreamBtn.addEventListener('click', window.streamModule.startStream);
-    if (stopStreamBtn) stopStreamBtn.addEventListener('click', window.streamModule.stopStream);
-    if (restartStreamBtn) restartStreamBtn.addEventListener('click', window.streamModule.restartStream);
+    if (startStreamBtn) startStreamBtn.addEventListener('click', () => {
+        if (window.streamModule && window.streamModule.startStream) {
+            window.streamModule.startStream();
+        } else {
+            console.error('window.streamModule.startStream is not available');
+        }
+    });
+    if (stopStreamBtn) stopStreamBtn.addEventListener('click', () => {
+        if (window.streamModule && window.streamModule.stopStream) {
+            window.streamModule.stopStream();
+        } else {
+            console.error('window.streamModule.stopStream is not available');
+        }
+    });
+    if (restartStreamBtn) restartStreamBtn.addEventListener('click', () => {
+        if (window.streamModule && window.streamModule.restartStream) {
+            window.streamModule.restartStream();
+        } else {
+            console.error('window.streamModule.restartStream is not available');
+        }
+    });
     
     // Agent 控制按钮
     const refreshInitMemoryBtn = document.getElementById('refreshInitMemoryBtn');
@@ -344,6 +374,8 @@ function initEventListeners() {
         refreshInitMemoryBtn.addEventListener('click', () => {
             if (window.agentModule && window.agentModule.refreshInitMemory) {
                 window.agentModule.refreshInitMemory();
+            } else {
+                console.error('window.agentModule.refreshInitMemory is not available');
             }
         });
     }
@@ -351,6 +383,8 @@ function initEventListeners() {
         refreshTempMemoryBtn.addEventListener('click', () => {
             if (window.agentModule && window.agentModule.refreshTempMemory) {
                 window.agentModule.refreshTempMemory();
+            } else {
+                console.error('window.agentModule.refreshTempMemory is not available');
             }
         });
     }
@@ -358,6 +392,8 @@ function initEventListeners() {
         clearTempMemoryBtn.addEventListener('click', () => {
             if (window.agentModule && window.agentModule.clearTempMemory) {
                 window.agentModule.clearTempMemory();
+            } else {
+                console.error('window.agentModule.clearTempMemory is not available');
             }
         });
     }
@@ -368,6 +404,8 @@ function initEventListeners() {
         refreshCoreMemoryBtn.addEventListener('click', () => {
             if (window.agentModule && window.agentModule.refreshCoreMemory) {
                 window.agentModule.refreshCoreMemory();
+            } else {
+                console.error('window.agentModule.refreshCoreMemory is not available');
             }
         });
     }
@@ -380,6 +418,8 @@ function initEventListeners() {
         refreshToolsBtn.addEventListener('click', () => {
             if (window.agentModule && window.agentModule.refreshTools) {
                 window.agentModule.refreshTools();
+            } else {
+                console.error('window.agentModule.refreshTools is not available');
             }
         });
     }
@@ -387,6 +427,8 @@ function initEventListeners() {
         connectToolBtn.addEventListener('click', () => {
             if (window.agentModule && window.agentModule.connectTool) {
                 window.agentModule.connectTool();
+            } else {
+                console.error('window.agentModule.connectTool is not available');
             }
         });
     }
@@ -400,6 +442,8 @@ function initEventListeners() {
             e.preventDefault();
             if (window.configModule && window.configModule.saveConfig) {
                 window.configModule.saveConfig(e);
+            } else {
+                console.error('window.configModule.saveConfig is not available');
             }
         });
     }
@@ -407,6 +451,8 @@ function initEventListeners() {
         resetConfigBtn.addEventListener('click', () => {
             if (window.configModule && window.configModule.resetConfigForm) {
                 window.configModule.resetConfigForm();
+            } else {
+                console.error('window.configModule.resetConfigForm is not available');
             }
         });
     }
@@ -436,8 +482,12 @@ function initEventListeners() {
                 
                 // 当切换到Agent管理标签页时，加载相关数据
                 if (tab.dataset.tab === 'agent-management' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 默认显示上下文标签页
+                    // 默认显示对话标签页
                     switchAgentTab('context');
+                    // 加载初始上下文数据
+                    if (window.agentModule && window.agentModule.refreshContext) {
+                        window.agentModule.refreshContext();
+                    }
                 }
             });
         });
@@ -453,33 +503,42 @@ function initEventListeners() {
                 
                 // 切换到不同Agent子标签页时加载对应数据
                 if (tab.dataset.agentTab === 'memory' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 加载初始记忆数据
                     if (window.agentModule && window.agentModule.refreshInitMemory && window.agentModule.refreshTempMemory && window.agentModule.refreshCoreMemory) {
                         window.agentModule.refreshInitMemory();
                         window.agentModule.refreshTempMemory();
                         window.agentModule.refreshCoreMemory();
                     }
                 } else if (tab.dataset.agentTab === 'tools' && window.connectionModule && window.connectionModule.isConnected) {
+                    // 加载初始工具数据
                     if (window.agentModule && window.agentModule.refreshTools) {
                         window.agentModule.refreshTools();
                     }
                 } else if (tab.dataset.agentTab === 'agent-logs' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 这里可以添加加载Agent日志的逻辑
+                    // 日志是流式更新的，这里可以加载历史日志（如果后端支持）
+                    // 暂时留空，因为日志主要靠实时推送
                 } else if (tab.dataset.agentTab === 'context' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 这里可以添加加载上下文的逻辑
+                    // 加载初始上下文数据
+                    if (window.agentModule && window.agentModule.refreshContext) {
+                        window.agentModule.refreshContext();
+                    }
                 }
-                // 注意：对于日志和上下文标签页，我们不再清空内容，而是保持已有的内容
             });
         });
     }
     
-    // 当主标签页切换到Agent管理时，默认显示上下文
+    // 当主标签页切换到Agent管理时，默认显示对话
     const agentManagementTab = document.querySelector('[data-tab="agent-management"]');
     
     if (agentManagementTab) {
         agentManagementTab.addEventListener('click', () => {
             if (window.connectionModule && window.connectionModule.isConnected) {
-                // 切换到上下文标签页
+                // 切换到对话标签页
                 switchAgentTab('context');
+                // 加载初始上下文数据
+                if (window.agentModule && window.agentModule.refreshContext) {
+                    window.agentModule.refreshContext();
+                }
             }
         });
     }
@@ -490,7 +549,7 @@ function initEventListeners() {
             if (window.agentModule && window.agentModule.addMemoryBlock) {
                 window.agentModule.addMemoryBlock(e);
             } else {
-                console.error('window.agentModule.addMemoryBlock未定义');
+                console.error('window.agentModule.addMemoryBlock is not available');
             }
         });
     }
@@ -530,12 +589,16 @@ function initEventListeners() {
         contextViewMode.addEventListener('change', function() {
             modeLabel.textContent = this.checked ? '原始模式' : '对话模式';
             // 重新渲染上下文显示
-            if (window.connectionModule.isConnected) {
+            if (window.connectionModule && window.connectionModule.isConnected) {
                 // 使用重新渲染函数
-                window.agentModule.rerenderContext();
+                if (window.agentModule && window.agentModule.rerenderContext) {
+                    window.agentModule.rerenderContext();
+                }
             } else {
                 // 如果未连接，仍然需要更新显示
-                window.agentModule.refreshContext();
+                if (window.agentModule && window.agentModule.refreshContext) {
+                    window.agentModule.refreshContext();
+                }
             }
         });
     }

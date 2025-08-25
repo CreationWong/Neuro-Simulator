@@ -18,14 +18,19 @@ const connectToolBtn = document.getElementById('connectToolBtn');
 
 // Agent 相关功能
 
-// 刷新上下文
+// 刷新上下文 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
 async function refreshContext() {
     if (!window.connectionModule.isConnected) {
         return;
     }
     
     try {
-        const contextMessages = await window.connectionModule.apiRequest('/api/agent/context');
+        const contextMessages = await window.connectionModule.sendAdminWsMessage('get_agent_context');
+        // 清空现有内容并显示完整上下文
+        const contextOutput = document.getElementById('contextOutput');
+        if (contextOutput) {
+            contextOutput.innerHTML = '';
+        }
         displayContext(contextMessages);
     } catch (error) {
         console.error('获取上下文失败:', error);
@@ -33,7 +38,7 @@ async function refreshContext() {
     }
 }
 
-// 刷新初始化记忆
+// 刷新初始化记忆 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
 async function refreshInitMemory() {
     if (!window.connectionModule.isConnected) {
         window.uiModule.showToast('未连接到后端', 'warning');
@@ -41,7 +46,12 @@ async function refreshInitMemory() {
     }
     
     try {
-        const initMemory = await window.connectionModule.apiRequest('/api/agent/memory/init');
+        const initMemory = await window.connectionModule.sendAdminWsMessage('get_init_memory');
+        // 清空现有内容并显示完整记忆
+        const initMemoryOutput = document.getElementById('initMemoryOutput');
+        if (initMemoryOutput) {
+            initMemoryOutput.innerHTML = '';
+        }
         displayInitMemory(initMemory);
     } catch (error) {
         console.error('获取初始化记忆失败:', error);
@@ -258,7 +268,7 @@ function addInitMemoryKey() {
     window.uiModule.showToast(`已添加键 "${key}"`, 'success');
 }
 
-// 保存初始化记忆
+// 保存初始化记忆 (通过WebSocket)
 async function saveInitMemory() {
     const form = document.getElementById('initMemoryForm');
     if (!form) return;
@@ -292,10 +302,7 @@ async function saveInitMemory() {
     });
     
     try {
-        await window.connectionModule.apiRequest('/api/agent/memory/init', {
-            method: 'PUT',
-            body: JSON.stringify({ memory: updatedMemory })
-        });
+        await window.connectionModule.sendAdminWsMessage('update_init_memory', { memory: updatedMemory });
         window.uiModule.showToast('初始化记忆保存成功', 'success');
     } catch (error) {
         console.error('保存初始化记忆失败:', error);
@@ -303,39 +310,36 @@ async function saveInitMemory() {
     }
 }
 
-// 显示Agent日志
-function displayAgentLogs(logs) {
+// 显示Agent日志 (由connection.js中的WebSocket消息处理，现在是流式更新)
+function displayAgentLogs(logEntry) {
     if (!agentLogsOutput) return;
-    
-    // 直接显示日志内容，每行一个div，最新日志在底部
-    logs.forEach(logEntry => {
-        const logDiv = document.createElement('div');
-        logDiv.className = 'log-entry';
-        
-        // 根据日志级别设置样式
-        if (logEntry.includes('ERROR') || logEntry.includes('Error')) {
-            logDiv.classList.add('log-error');
-        } else if (logEntry.includes('WARNING') || logEntry.includes('Warning')) {
-            logDiv.classList.add('log-warning');
-        } else if (logEntry.includes('DEBUG') || logEntry.includes('Debug')) {
-            logDiv.classList.add('log-debug');
-        } else {
-            logDiv.classList.add('log-info');
-        }
-        
-        logDiv.textContent = logEntry;
-        agentLogsOutput.appendChild(logDiv);
-    });
-    
+
+    // 创建并添加新的日志条目
+    const logDiv = document.createElement('div');
+    logDiv.className = 'log-entry';
+
+    // 根据日志级别设置样式
+    if (logEntry.includes('ERROR') || logEntry.includes('Error')) {
+        logDiv.classList.add('log-error');
+    } else if (logEntry.includes('WARNING') || logEntry.includes('Warning')) {
+        logDiv.classList.add('log-warning');
+    } else if (logEntry.includes('DEBUG') || logEntry.includes('Debug')) {
+        logDiv.classList.add('log-debug');
+    } else {
+        logDiv.classList.add('log-info');
+    }
+
+    logDiv.textContent = logEntry;
+    agentLogsOutput.appendChild(logDiv);
+
     // 保持只显示最新的1000行日志
     const logEntries = agentLogsOutput.querySelectorAll('.log-entry');
     if (logEntries.length > 1000) {
-        // 删除多余的日志条目
         for (let i = 0; i < logEntries.length - 1000; i++) {
             logEntries[i].remove();
         }
     }
-    
+
     // 滚动到底部以显示最新日志
     agentLogsOutput.scrollTop = agentLogsOutput.scrollHeight;
 }
@@ -496,10 +500,10 @@ function displayContext(messages) {
     }
 }
 
-// 显示Agent上下文（WebSocket消息处理）
-function displayAgentContext(messages) {
+// 显示Agent上下文（WebSocket消息处理，现在是流式更新）
+function displayAgentContext(newMessages) {
     const contextOutput = document.getElementById('contextOutput');
-    if (!contextOutput || !Array.isArray(messages)) {
+    if (!contextOutput || !Array.isArray(newMessages)) {
         return;
     }
     
@@ -507,7 +511,7 @@ function displayAgentContext(messages) {
     const contextViewMode = document.getElementById('contextViewMode');
     const isRawMode = contextViewMode && contextViewMode.checked;
     
-    // 找出新的消息（在现有上下文中不存在的消息）
+    // 获取现有的消息ID
     const existingMessageIds = new Set();
     const existingItems = contextOutput.querySelectorAll('.memory-item');
     existingItems.forEach(item => {
@@ -517,118 +521,144 @@ function displayAgentContext(messages) {
         }
     });
     
-    // 只添加新的消息
-    const newMessages = messages.filter(msg => !existingMessageIds.has(msg.id));
-    
-    // 逐条添加新消息
-    newMessages.forEach(msg => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'memory-item';
-        itemDiv.dataset.messageId = msg.id; // 添加消息ID作为数据属性
-        
-        const timestampDisplay = new Date(msg.timestamp).toLocaleString();
-        
-        if (isRawMode) {
-            // 原始模式显示
-            itemDiv.innerHTML = `
-                <div class="memory-content">
-                    <div><strong>[消息]</strong></div>
-                    <div class="memory-time">${timestampDisplay}</div>
-                </div>
-                <div class="memory-details">
-                    <pre>${JSON.stringify(msg, null, 2)}</pre>
-                </div>
-            `;
-        } else {
-            // 对话模式显示
-            if (msg.type === "llm_interaction") {
-                // 详细上下文条目（AI响应）
-                // 格式化输入消息
-                const inputMessagesHtml = msg.input_messages && msg.input_messages.length > 0 ? 
-                    `<div class="context-section">
-                        <div><strong>输入消息:</strong></div>
-                        <ul>
-                            ${msg.input_messages.map(input => `<li><strong>${input.username}:</strong> ${input.text}</li>`).join('')}
-                        </ul>
-                    </div>` : '';
-                
-                // 格式化工具执行
-                const toolExecutionsHtml = msg.tool_executions && msg.tool_executions.length > 0 ? 
-                    `<div class="context-section">
-                        <div><strong>工具执行:</strong></div>
-                        <ul>
-                            ${msg.tool_executions.map(tool => `
-                                <li>
-                                    <div><strong>${tool.tool_name || tool.name || '未知工具'}</strong></div>
-                                    <div>参数: ${JSON.stringify(tool.arguments || tool.params || {}, null, 2)}</div>
-                                    ${tool.result ? `<div>结果: ${JSON.stringify(tool.result, null, 2)}</div>` : ''}
-                                    ${tool.error ? `<div class="error">错误: ${tool.error}</div>` : ''}
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>` : '';
-                
-                // 格式化提示词（截取前500个字符，避免过长）
-                const promptPreview = msg.prompt ? msg.prompt.substring(0, 500) + (msg.prompt.length > 500 ? '...' : '') : '';
-                const promptHtml = msg.prompt ? 
-                    `<div class="context-section">
-                        <div><strong>提示词:</strong></div>
-                        <div class="prompt-preview">${promptPreview}</div>
-                        <button class="btn small secondary expand-prompt-btn" data-full-prompt="${encodeURIComponent(msg.prompt)}">展开完整提示词</button>
-                    </div>` : '';
-                
-                // 格式化LLM响应（截取前500个字符，避免过长）
-                const llmResponsePreview = msg.llm_response ? msg.llm_response.substring(0, 500) + (msg.llm_response.length > 500 ? '...' : '') : '';
-                const llmResponseHtml = msg.llm_response ? 
-                    `<div class="context-section">
-                        <div><strong>LLM原始响应:</strong></div>
-                        <div class="llm-response-preview">${llmResponsePreview}</div>
-                        ${msg.llm_response.length > 500 ? `<button class="btn small secondary expand-llm-response-btn" data-full-response="${encodeURIComponent(msg.llm_response)}">展开完整响应</button>` : ''}
-                    </div>` : '';
-                
-                itemDiv.innerHTML = `
-                    <div class="memory-content">
-                        <div><strong>[AI响应]</strong></div>
-                        <div class="memory-time">${timestampDisplay}</div>
-                    </div>
-                    <div class="memory-details">
-                        <div class="context-section">
-                            <div><strong>最终响应:</strong></div>
-                            <div>${msg.final_response || '无响应'}</div>
-                        </div>
-                        ${inputMessagesHtml}
-                        ${toolExecutionsHtml}
-                        ${promptHtml}
-                        ${llmResponseHtml}
-                    </div>
-                `;
-            } else {
-                // 简单上下文条目（用户消息或系统消息）
-                const roleDisplay = msg.role === "user" ? "用户" : 
-                                  msg.role === "assistant" ? "助手" : 
-                                  msg.role === "system" ? "系统" : msg.role;
-                
-                itemDiv.innerHTML = `
-                    <div class="memory-content">
-                        <div><strong>[${roleDisplay}]</strong> ${msg.content || ''}</div>
-                        <div class="memory-time">${timestampDisplay}</div>
-                    </div>
-                `;
-            }
+    // 找出真正新增的消息
+    const messagesToAdd = [];
+    for (const msg of newMessages) {
+        if (!existingMessageIds.has(msg.id)) {
+            messagesToAdd.push(msg);
         }
-        
-        contextOutput.appendChild(itemDiv);
-    });
+    }
+    
+    // 如果所有消息都是新的（可能是初始加载），则清空现有内容并显示所有消息
+    if (messagesToAdd.length === newMessages.length && newMessages.length > 0) {
+        contextOutput.innerHTML = '';
+        newMessages.forEach(msg => {
+            addMessageToContext(contextOutput, msg, isRawMode);
+        });
+    } else {
+        // 逐条添加新消息
+        messagesToAdd.forEach(msg => {
+            addMessageToContext(contextOutput, msg, isRawMode);
+        });
+    }
     
     // 绑定展开按钮事件
-    if (newMessages.length > 0) {
+    if (messagesToAdd.length > 0) {
         bindExpandButtons();
     }
     
     // 只有在添加了新消息时才滚动到底部
-    if (newMessages.length > 0) {
+    if (messagesToAdd.length > 0) {
         contextOutput.scrollTop = contextOutput.scrollHeight;
     }
+    
+    // 保持只显示最新的1000条消息
+    const messageItems = contextOutput.querySelectorAll('.memory-item');
+    if (messageItems.length > 1000) {
+        for (let i = 0; i < messageItems.length - 1000; i++) {
+            messageItems[i].remove();
+        }
+    }
+}
+
+// 添加单条消息到上下文显示区域
+function addMessageToContext(contextOutput, msg, isRawMode) {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'memory-item';
+    itemDiv.dataset.messageId = msg.id; // 添加消息ID作为数据属性
+    
+    const timestampDisplay = new Date(msg.timestamp).toLocaleString();
+    
+    if (isRawMode) {
+        // 原始模式显示
+        itemDiv.innerHTML = `
+            <div class="memory-content">
+                <div><strong>[消息]</strong></div>
+                <div class="memory-time">${timestampDisplay}</div>
+            </div>
+            <div class="memory-details">
+                <pre>${JSON.stringify(msg, null, 2)}</pre>
+            </div>
+        `;
+    } else {
+        // 对话模式显示
+        if (msg.type === "llm_interaction") {
+            // 详细上下文条目（AI响应）
+            // 格式化输入消息
+            const inputMessagesHtml = msg.input_messages && msg.input_messages.length > 0 ? 
+                `<div class="context-section">
+                    <div><strong>输入消息:</strong></div>
+                    <ul>
+                        ${msg.input_messages.map(input => `<li><strong>${input.username}:</strong> ${input.text}</li>`).join('')}
+                    </ul>
+                </div>` : '';
+            
+            // 格式化工具执行
+            const toolExecutionsHtml = msg.tool_executions && msg.tool_executions.length > 0 ? 
+                `<div class="context-section">
+                    <div><strong>工具执行:</strong></div>
+                    <ul>
+                        ${msg.tool_executions.map(tool => `
+                            <li>
+                                <div><strong>${tool.tool_name || tool.name || '未知工具'}</strong></div>
+                                <div>参数: ${JSON.stringify(tool.arguments || tool.params || {}, null, 2)}</div>
+                                ${tool.result ? `<div>结果: ${JSON.stringify(tool.result, null, 2)}</div>` : ''}
+                                ${tool.error ? `<div class="error">错误: ${tool.error}</div>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>` : '';
+            
+            // 格式化提示词（截取前500个字符，避免过长）
+            const promptPreview = msg.prompt ? msg.prompt.substring(0, 500) + (msg.prompt.length > 500 ? '...' : '') : '';
+            const promptHtml = msg.prompt ? 
+                `<div class="context-section">
+                    <div><strong>提示词:</strong></div>
+                    <div class="prompt-preview">${promptPreview}</div>
+                    <button class="btn small secondary expand-prompt-btn" data-full-prompt="${encodeURIComponent(msg.prompt)}">展开完整提示词</button>
+                </div>` : '';
+            
+            // 格式化LLM响应（截取前500个字符，避免过长）
+            const llmResponsePreview = msg.llm_response ? msg.llm_response.substring(0, 500) + (msg.llm_response.length > 500 ? '...' : '') : '';
+            const llmResponseHtml = msg.llm_response ? 
+                `<div class="context-section">
+                    <div><strong>LLM原始响应:</strong></div>
+                    <div class="llm-response-preview">${llmResponsePreview}</div>
+                    ${msg.llm_response.length > 500 ? `<button class="btn small secondary expand-llm-response-btn" data-full-response="${encodeURIComponent(msg.llm_response)}">展开完整响应</button>` : ''}
+                </div>` : '';
+            
+            itemDiv.innerHTML = `
+                <div class="memory-content">
+                    <div><strong>[AI响应]</strong></div>
+                    <div class="memory-time">${timestampDisplay}</div>
+                </div>
+                <div class="memory-details">
+                    <div class="context-section">
+                        <div><strong>最终响应:</strong></div>
+                        <div>${msg.final_response || '无响应'}</div>
+                    </div>
+                    ${inputMessagesHtml}
+                    ${toolExecutionsHtml}
+                    ${promptHtml}
+                    ${llmResponseHtml}
+                </div>
+            `;
+        } else {
+            // 简单上下文条目（用户消息或系统消息）
+            const roleDisplay = msg.role === "user" ? "用户" : 
+                              msg.role === "assistant" ? "助手" : 
+                              msg.role === "system" ? "系统" : msg.role;
+            
+            itemDiv.innerHTML = `
+                <div class="memory-content">
+                    <div><strong>[${roleDisplay}]</strong> ${msg.content || ''}</div>
+                    <div class="memory-time">${timestampDisplay}</div>
+                </div>
+            `;
+        }
+    }
+    
+    contextOutput.appendChild(itemDiv);
 }
 
 // 重新渲染上下文（不重新获取数据，仅切换显示模式）
@@ -664,28 +694,20 @@ function rerenderContext() {
     refreshContext();
 }
 
-// 刷新临时记忆
+// 刷新临时记忆 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
 async function refreshTempMemory() {
-    // 强制检查window.connectionModule是否存在
-    if (!window.connectionModule) {
-        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
-        return;
-    }
-    
     if (!window.connectionModule.isConnected) {
         window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
     
-    // 检查API请求函数是否存在
-    if (!window.connectionModule.apiRequest) {
-        window.uiModule.showToast('系统错误：API请求函数未找到', 'error');
-        return;
-    }
-    
     try {
-        // 获取完整的临时记忆内容
-        const tempMemory = await window.connectionModule.apiRequest('/api/agent/memory/temp');
+        const tempMemory = await window.connectionModule.sendAdminWsMessage('get_temp_memory');
+        // 清空现有内容并显示完整记忆
+        const tempMemoryOutput = document.getElementById('tempMemoryOutput');
+        if (tempMemoryOutput) {
+            tempMemoryOutput.innerHTML = '';
+        }
         displayTempMemory(tempMemory);
     } catch (error) {
         console.error('获取临时记忆失败:', error);
@@ -693,13 +715,63 @@ async function refreshTempMemory() {
     }
 }
 
-// 显示临时记忆
+// 显示临时记忆 (支持流式更新)
 function displayTempMemory(messages) {
     const tempMemoryOutput = document.getElementById('tempMemoryOutput');
     if (!tempMemoryOutput) {
         return;
     }
     
+    // 如果只有一个消息对象，则认为是流式更新，追加到现有内容
+    if (!Array.isArray(messages)) {
+        // 创建新的记忆项
+        const msg = messages;
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'memory-item';
+        
+        const timestamp = new Date(msg.timestamp).toLocaleString();
+        
+        // 为流式更新的消息生成一个唯一ID（如果后端没有提供）
+        const messageId = msg.id || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        itemDiv.dataset.messageId = messageId;
+        
+        itemDiv.innerHTML = `
+            <div class="memory-content">
+                <div><strong>[${msg.role}]</strong> ${msg.content || msg.text || ''}</div>
+                <div class="memory-time">${timestamp}</div>
+            </div>
+            <div class="memory-actions">
+                <button class="btn small danger delete-temp-memory-btn" data-id="${messageId}">删除</button>
+            </div>
+        `;
+        
+        tempMemoryOutput.appendChild(itemDiv);
+        
+        // 绑定删除按钮事件
+        const deleteButton = itemDiv.querySelector('.delete-temp-memory-btn');
+        if (deleteButton) {
+            deleteButton.addEventListener('click', (e) => {
+                // 对于流式更新的消息，我们可能需要一个不同的删除机制
+                // 这里暂时只从UI上移除
+                itemDiv.remove();
+            });
+        }
+        
+        // 滚动到底部
+        tempMemoryOutput.scrollTop = tempMemoryOutput.scrollHeight;
+        
+        // 保持只显示最新的100条消息
+        const messageItems = tempMemoryOutput.querySelectorAll('.memory-item');
+        if (messageItems.length > 100) {
+            for (let i = 0; i < messageItems.length - 100; i++) {
+                messageItems[i].remove();
+            }
+        }
+        
+        return;
+    }
+    
+    // 如果是数组，则认为是完整刷新，清空现有内容并重新显示所有消息
     tempMemoryOutput.innerHTML = '';
     
     messages.forEach((msg, index) => {
@@ -802,10 +874,7 @@ function showAddTempMemoryDialog() {
         }
         
         try {
-            await window.connectionModule.apiRequest('/api/agent/memory/temp', {
-                method: 'POST',
-                body: JSON.stringify({ content, role })
-            });
+            await window.connectionModule.sendAdminWsMessage('add_temp_memory', { content, role });
             
             window.uiModule.showToast('临时记忆已添加', 'success');
             closeDialog();
@@ -911,10 +980,7 @@ async function editTempMemoryItem(index) {
             items[index].remove();
             
             // 添加新项
-            await window.connectionModule.apiRequest('/api/agent/memory/temp', {
-                method: 'POST',
-                body: JSON.stringify({ content, role })
-            });
+            await window.connectionModule.sendAdminWsMessage('add_temp_memory', { content, role });
             
             window.uiModule.showToast('临时记忆已更新', 'success');
             closeDialog();
@@ -943,13 +1009,13 @@ async function deleteTempMemoryItem(index) {
     }
 }
 
-// 清空临时记忆
+// 清空临时记忆 (通过WebSocket)
 async function clearTempMemory() {
     const confirmed = await window.uiModule.showConfirmDialog('确定要清空所有临时记忆吗？');
     if (!confirmed) return;
     
     try {
-        await window.connectionModule.apiRequest('/api/agent/memory/temp', { method: 'DELETE' });
+        await window.connectionModule.sendAdminWsMessage('clear_temp_memory');
         tempMemoryOutput.innerHTML = '';
         window.uiModule.showToast('临时记忆已清空', 'success');
     } catch (error) {
@@ -957,27 +1023,20 @@ async function clearTempMemory() {
     }
 }
 
-// 刷新核心记忆
+// 刷新核心记忆 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
 async function refreshCoreMemory() {
-    // 强制检查window.connectionModule是否存在
-    if (!window.connectionModule) {
-        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
-        return;
-    }
-    
     if (!window.connectionModule.isConnected) {
         window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
     
-    // 检查API请求函数是否存在
-    if (!window.connectionModule.apiRequest) {
-        window.uiModule.showToast('系统错误：API请求函数未找到', 'error');
-        return;
-    }
-    
     try {
-        const blocks = await window.connectionModule.apiRequest('/api/agent/memory/blocks');
+        const blocks = await window.connectionModule.sendAdminWsMessage('get_core_memory_blocks');
+        // 清空现有内容并显示完整记忆
+        const coreMemoryOutput = document.getElementById('coreMemoryOutput');
+        if (coreMemoryOutput) {
+            coreMemoryOutput.innerHTML = '';
+        }
         displayCoreMemory(blocks);
     } catch (error) {
         console.error('获取核心记忆失败:', error);
@@ -1039,9 +1098,9 @@ function displayCoreMemory(blocks) {
 
 // 编辑记忆块
 async function editMemoryBlock(blockId) {
-    // 获取记忆块详情
+    // 获取记忆块详情 (通过WebSocket)
     try {
-        const block = await window.connectionModule.apiRequest(`/api/agent/memory/blocks/${blockId}`);
+        const block = await window.connectionModule.sendAdminWsMessage('get_core_memory_block', { block_id: blockId });
         showEditMemoryBlockDialog(block);
     } catch (error) {
         window.uiModule.showToast(`获取记忆块详情失败: ${error.message}`, 'error');
@@ -1120,10 +1179,7 @@ function showEditMemoryBlockDialog(block) {
         const content = contentText.split('\n').filter(line => line.trim() !== '');
         
         try {
-            await window.connectionModule.apiRequest(`/api/agent/memory/blocks/${blockId}`, {
-                method: 'PUT',
-                body: JSON.stringify({ title, description, content })
-            });
+            await window.connectionModule.sendAdminWsMessage('update_core_memory_block', { block_id: blockId, title, description, content });
             
             window.uiModule.showToast('记忆块已更新', 'success');
             closeDialog();
@@ -1134,13 +1190,13 @@ function showEditMemoryBlockDialog(block) {
     });
 }
 
-// 删除记忆块
+// 删除记忆块 (通过WebSocket)
 async function deleteMemoryBlock(blockId) {
     const confirmed = await window.uiModule.showConfirmDialog('确定要删除这个记忆块吗？');
     if (!confirmed) return;
     
     try {
-        await window.connectionModule.apiRequest(`/api/agent/memory/blocks/${blockId}`, { method: 'DELETE' });
+        await window.connectionModule.sendAdminWsMessage('delete_core_memory_block', { block_id: blockId });
         window.uiModule.showToast('记忆块已删除', 'success');
         refreshCoreMemory(); // 刷新显示
     } catch (error) {
@@ -1148,7 +1204,7 @@ async function deleteMemoryBlock(blockId) {
     }
 }
 
-// 添加记忆块
+// 添加记忆块 (通过WebSocket)
 async function addMemoryBlock(e) {
     e.preventDefault();
     
@@ -1160,10 +1216,7 @@ async function addMemoryBlock(e) {
     const content = contentText.split('\n').filter(line => line.trim() !== '');
     
     try {
-        await window.connectionModule.apiRequest('/api/agent/memory/blocks', {
-            method: 'POST',
-            body: JSON.stringify({ title, description, content })
-        });
+        await window.connectionModule.sendAdminWsMessage('create_core_memory_block', { title, description, content });
         
         window.uiModule.showToast('记忆块已添加', 'success');
         window.uiModule.hideAddMemoryBlockDialog();
@@ -1176,27 +1229,20 @@ async function addMemoryBlock(e) {
     }
 }
 
-// 刷新工具
+// 刷新工具 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
 async function refreshTools() {
-    // 强制检查window.connectionModule是否存在
-    if (!window.connectionModule) {
-        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
-        return;
-    }
-    
     if (!window.connectionModule.isConnected) {
         window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
     
-    // 检查API请求函数是否存在
-    if (!window.connectionModule.apiRequest) {
-        window.uiModule.showToast('系统错误：API请求函数未找到', 'error');
-        return;
-    }
-    
     try {
-        const tools = await window.connectionModule.apiRequest('/api/agent/tools');
+        const tools = await window.connectionModule.sendAdminWsMessage('get_tools');
+        // 清空现有内容并显示完整工具列表
+        const toolsOutput = document.getElementById('toolsOutput');
+        if (toolsOutput) {
+            toolsOutput.innerHTML = '';
+        }
         displayTools(tools);
     } catch (error) {
         console.error('获取工具列表失败:', error);
@@ -1214,7 +1260,7 @@ function displayTools(tools) {
     toolsOutput.innerHTML = `<pre>${tools.tools}</pre>`;
 }
 
-// 连接工具
+// 连接工具 (通过WebSocket)
 async function connectTool() {
     const toolNameValue = toolName.value.trim();
     const aiToolNameValue = aiToolName.value.trim();
@@ -1225,8 +1271,8 @@ async function connectTool() {
     }
     
     try {
-        // 这里需要调用一个连接工具的API端点
-        // 目前我们只是显示一个消息
+        // 调用连接工具的WebSocket消息
+        await window.connectionModule.sendAdminWsMessage('connect_tool', { tool_name: toolNameValue, ai_tool_name: aiToolNameValue });
         window.uiModule.showToast(`工具 "${toolNameValue}" 已连接到 "${aiToolNameValue}"`, 'success');
     } catch (error) {
         window.uiModule.showToast(`连接工具失败: ${error.message}`, 'error');

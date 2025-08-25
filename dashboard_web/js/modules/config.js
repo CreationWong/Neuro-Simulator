@@ -97,27 +97,15 @@ function formToConfig() {
     return config;
 }
 
-// 获取配置
+// 获取配置 (通过WebSocket)
 async function getConfig() {
-    // 强制检查window.connectionModule是否存在
-    if (!window.connectionModule) {
-        window.uiModule.showToast('系统错误：连接模块未找到', 'error');
-        return;
-    }
-    
     if (!window.connectionModule.isConnected) {
         window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
     
-    // 检查API请求函数是否存在
-    if (!window.connectionModule.apiRequest) {
-        window.uiModule.showToast('系统错误：API请求函数未找到', 'error');
-        return;
-    }
-    
     try {
-        const config = await window.connectionModule.apiRequest('/api/configs');
+        const config = await window.connectionModule.sendAdminWsMessage('get_configs');
         currentConfig = config; // 保存当前配置
         configToForm(config); // 填充表单
         
@@ -195,19 +183,23 @@ function resetConfigForm() {
     configToForm(currentConfig); // 使用保存的配置重置表单
 }
 
-// 保存配置
+// 保存配置 (通过WebSocket)
 async function saveConfig(e) {
     e.preventDefault(); // 阻止表单默认提交行为
     
+    if (!window.connectionModule.isConnected) {
+        window.uiModule.showToast('未连接到后端', 'warning');
+        return;
+    }
+    
     try {
         const config = formToConfig(); // 从表单获取配置
-        await window.connectionModule.apiRequest('/api/configs', {
-            method: 'PATCH',
-            body: JSON.stringify(config)
-        });
+        // 使用 update_configs action 发送配置更新
+        const updatedConfig = await window.connectionModule.sendAdminWsMessage('update_configs', config);
         window.uiModule.showToast('配置保存成功', 'success');
-        // 更新当前配置
-        currentConfig = {...currentConfig, ...config};
+        // 更新当前配置为服务器返回的完整配置
+        currentConfig = updatedConfig;
+        configToForm(currentConfig); // 用服务器返回的配置更新表单
     } catch (error) {
         console.error('保存配置失败:', error);
         window.uiModule.showToast(`保存配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`, 'error');
