@@ -18,23 +18,64 @@ const connectToolBtn = document.getElementById('connectToolBtn');
 
 // Agent 相关功能
 
-// 刷新上下文 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
-async function refreshContext() {
-    if (!window.connectionModule.isConnected) {
+// --- NEW ---
+// Displays the raw prompt text in the context area
+function displayContextPromptMode(prompt) {
+    const contextOutput = document.getElementById('contextOutput');
+    if (!contextOutput) {
         return;
     }
-    
-    try {
-        const contextMessages = await window.connectionModule.sendAdminWsMessage('get_agent_context');
-        // 清空现有内容并显示完整上下文
-        const contextOutput = document.getElementById('contextOutput');
-        if (contextOutput) {
-            contextOutput.innerHTML = '';
+    contextOutput.innerHTML = ''; // Clear previous content
+    const pre = document.createElement('pre');
+    pre.textContent = prompt;
+    contextOutput.appendChild(pre);
+    contextOutput.scrollTop = contextOutput.scrollHeight;
+}
+
+// --- MODIFIED ---
+// Main function to refresh the context view based on the current mode
+async function refreshContext() {
+    if (!window.connectionModule.isConnected) {
+        // Do not show toast here, as this can be called automatically
+        return;
+    }
+
+    const contextViewMode = document.getElementById('contextViewMode');
+    const isContextMode = contextViewMode && contextViewMode.checked;
+
+    if (isContextMode) {
+        // Fetch and display the full prompt via WebSocket
+        try {
+            const response = await window.connectionModule.sendAdminWsMessage('get_last_prompt');
+            // Check if we got an error response
+            if (response && response.status === 'error') {
+                // If the agent doesn't support prompt generation, show a specific message
+                if (response.message && response.message.includes('not support prompt generation')) {
+                    displayContextPromptMode("当前Agent不支持查看完整提示词");
+                } else {
+                    displayContextPromptMode(`获取提示词失败: ${response.message}`);
+                }
+            } else if (response && response.prompt) {
+                // Successfully got the prompt
+                displayContextPromptMode(response.prompt);
+            } else {
+                // Unexpected response format
+                displayContextPromptMode("获取提示词失败: 响应格式不正确");
+            }
+        } catch (error) {
+            console.error('获取最新Prompt失败:', error);
+            window.uiModule.showToast(`获取最新Prompt失败: ${error.message}`, 'error');
+            displayContextPromptMode("获取提示词失败: 网络错误或服务器异常");
         }
-        displayContext(contextMessages);
-    } catch (error) {
-        console.error('获取上下文失败:', error);
-        window.uiModule.showToast(`获取上下文失败: ${error.message}`, 'error');
+    } else {
+        // Fetch and display the conversation history via WebSocket
+        try {
+            const contextMessages = await window.connectionModule.sendAdminWsMessage('get_agent_context');
+            displayContextConversationMode(contextMessages);
+        } catch (error) {
+            console.error('获取上下文失败:', error);
+            window.uiModule.showToast(`获取上下文失败: ${error.message}`, 'error');
+        }
     }
 }
 
@@ -447,118 +488,65 @@ function displayContextConversationMode(messages) {
     contextOutput.scrollTop = contextOutput.scrollHeight;
 }
 
-// 显示上下文 - 原始模式
-function displayContextRawMode(messages) {
-    const contextOutput = document.getElementById('contextOutput');
-    if (!contextOutput) {
-        return;
-    }
-    
-    // 在手动刷新时，清空现有内容并重新显示所有消息
-    contextOutput.innerHTML = '';
-    
-    messages.forEach(msg => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'memory-item';
-        itemDiv.dataset.messageId = msg.id;
-        
-        const timestampDisplay = new Date(msg.timestamp).toLocaleString();
-        
-        itemDiv.innerHTML = `
-            <div class="memory-content">
-                <div><strong>[消息]</strong></div>
-                <div class="memory-time">${timestampDisplay}</div>
-            </div>
-            <div class="memory-details">
-                <pre>${JSON.stringify(msg, null, 2)}</pre>
-            </div>
-        `;
-        
-        contextOutput.appendChild(itemDiv);
-    });
-    
-    // 滚动到底部以显示最新内容
-    contextOutput.scrollTop = contextOutput.scrollHeight;
-}
-
-// 显示上下文（根据当前模式）
+// This function is now only for conversation mode.
 function displayContext(messages) {
-    const contextOutput = document.getElementById('contextOutput');
-    if (!contextOutput) {
-        return;
-    }
-    
-    const contextViewMode = document.getElementById('contextViewMode');
-    
-    // 在手动刷新时，清空现有内容并重新显示所有消息
-    contextOutput.innerHTML = '';
-    
-    if (contextViewMode && contextViewMode.checked) {
-        displayContextRawMode(messages);
-    } else {
-        displayContextConversationMode(messages);
-    }
+    displayContextConversationMode(messages);
 }
 
-// 显示Agent上下文（WebSocket消息处理，现在是流式更新）
+// Handles live updates from WebSocket.
 function displayAgentContext(newMessages) {
     const contextOutput = document.getElementById('contextOutput');
     if (!contextOutput || !Array.isArray(newMessages)) {
         return;
     }
     
-    // 获取当前显示模式
     const contextViewMode = document.getElementById('contextViewMode');
-    const isRawMode = contextViewMode && contextViewMode.checked;
-    
-    // 获取现有的消息ID
-    const existingMessageIds = new Set();
-    const existingItems = contextOutput.querySelectorAll('.memory-item');
-    existingItems.forEach(item => {
-        const messageId = item.dataset.messageId;
-        if (messageId) {
-            existingMessageIds.add(messageId);
-        }
-    });
-    
-    // 找出真正新增的消息
-    const messagesToAdd = [];
-    for (const msg of newMessages) {
-        if (!existingMessageIds.has(msg.id)) {
-            messagesToAdd.push(msg);
-        }
+    const isContextMode = contextViewMode && contextViewMode.checked;
+
+    // If we are in prompt mode, we need to refresh the prompt display
+    // because context changes affect the generated prompt
+    if (isContextMode) {
+        // Refresh the prompt view
+        refreshContext();
+        return;
     }
+
+    // Proceed with conversation mode update
+    const existingMessageIds = new Set(Array.from(contextOutput.querySelectorAll('.memory-item')).map(item => item.dataset.messageId));
     
-    // 如果所有消息都是新的（可能是初始加载），则清空现有内容并显示所有消息
+    const messagesToAdd = newMessages.filter(msg => !existingMessageIds.has(String(msg.id)));
+
+    // Check if the context was cleared (e.g. memory reset)
+    const wasCleared = contextOutput.children.length > 0 && newMessages.length === 0;
+    if (wasCleared) {
+        contextOutput.innerHTML = '';
+        return;
+    }
+
     if (messagesToAdd.length === newMessages.length && newMessages.length > 0) {
         contextOutput.innerHTML = '';
-        newMessages.forEach(msg => {
-            addMessageToContext(contextOutput, msg, isRawMode);
-        });
+        newMessages.forEach(msg => addMessageToContext(contextOutput, msg, false));
     } else {
-        // 逐条添加新消息
-        messagesToAdd.forEach(msg => {
-            addMessageToContext(contextOutput, msg, isRawMode);
-        });
+        messagesToAdd.forEach(msg => addMessageToContext(contextOutput, msg, false));
     }
     
-    // 绑定展开按钮事件
     if (messagesToAdd.length > 0) {
         bindExpandButtons();
-    }
-    
-    // 只有在添加了新消息时才滚动到底部
-    if (messagesToAdd.length > 0) {
         contextOutput.scrollTop = contextOutput.scrollHeight;
     }
     
-    // 保持只显示最新的1000条消息
     const messageItems = contextOutput.querySelectorAll('.memory-item');
     if (messageItems.length > 1000) {
         for (let i = 0; i < messageItems.length - 1000; i++) {
             messageItems[i].remove();
         }
     }
+}
+
+// Rerenders the context view when the toggle is switched.
+function rerenderContext() {
+    // The main refresh function now handles the mode switching
+    refreshContext();
 }
 
 // 添加单条消息到上下文显示区域
@@ -569,8 +557,11 @@ function addMessageToContext(contextOutput, msg, isRawMode) {
     
     const timestampDisplay = new Date(msg.timestamp).toLocaleString();
     
+    // The new "isRawMode" is now the prompt view, which is not handled by this function.
+    // This function is now only for conversation mode.
     if (isRawMode) {
-        // 原始模式显示
+        // This block is now legacy, as raw mode is replaced by prompt mode.
+        // Kept for safety, but should not be triggered.
         itemDiv.innerHTML = `
             <div class="memory-content">
                 <div><strong>[消息]</strong></div>
@@ -661,36 +652,9 @@ function addMessageToContext(contextOutput, msg, isRawMode) {
     contextOutput.appendChild(itemDiv);
 }
 
-// 重新渲染上下文（不重新获取数据，仅切换显示模式）
+// Rerenders the context view when the toggle is switched.
 function rerenderContext() {
-    // 获取当前上下文输出区域
-    const contextOutput = document.getElementById('contextOutput');
-    if (!contextOutput) {
-        return;
-    }
-    
-    // 获取当前的显示模式
-    const contextViewMode = document.getElementById('contextViewMode');
-    const isRawMode = contextViewMode && contextViewMode.checked;
-    
-    // 更新模式标签
-    const modeLabel = document.getElementById('modeLabel');
-    if (modeLabel) {
-        modeLabel.textContent = isRawMode ? '原始模式' : '对话模式';
-    }
-    
-    // 重新渲染所有消息
-    const messages = Array.from(contextOutput.querySelectorAll('.memory-item')).map(item => {
-        // 从现有DOM元素中提取消息数据
-        // 这是一个简化的实现，实际应用中可能需要更复杂的数据提取逻辑
-        return {
-            id: item.dataset.messageId,
-            // 其他字段需要从DOM中提取或重新获取
-        };
-    });
-    
-    // 最简单和最可靠的方法是重新获取数据
-    // 这样可以确保所有消息都按照正确的格式显示
+    // The main refresh function now handles the mode switching
     refreshContext();
 }
 

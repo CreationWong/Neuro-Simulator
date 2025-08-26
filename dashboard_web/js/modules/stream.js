@@ -6,11 +6,24 @@ const startStreamBtn = document.getElementById('startStreamBtn');
 const stopStreamBtn = document.getElementById('stopStreamBtn');
 const restartStreamBtn = document.getElementById('restartStreamBtn');
 
-// 更新直播状态 (通过WebSocket事件驱动，不再主动轮询)
+// 更新直播状态 (通过WebSocket事件驱动)
 async function updateStreamStatus() {
-    // 此函数已不再需要，因为状态由后端主动推送
-    // 保留空函数以避免其他地方调用时报错
-    console.log("Stream status update is now event-driven via WebSocket.");
+    if (!window.connectionModule.isConnected) {
+        console.log("Not connected to backend, cannot update stream status.");
+        return;
+    }
+    
+    try {
+        const response = await window.connectionModule.sendAdminWsMessage('get_stream_status');
+        const streamStatus = document.getElementById('streamStatus');
+        if (streamStatus) {
+            streamStatus.textContent = response.is_running ? '运行中' : '已停止';
+            streamStatus.style.color = response.is_running ? '#4CAF50' : '#F44336';
+        }
+    } catch (error) {
+        console.error("Failed to update stream status:", error);
+        window.uiModule.showToast(`获取直播状态失败: ${error.message}`, 'error');
+    }
 }
 
 // 开始直播 (通过WebSocket)

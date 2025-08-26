@@ -587,7 +587,7 @@ function initEventListeners() {
     const modeLabel = document.getElementById('modeLabel');
     if (contextViewMode && modeLabel) {
         contextViewMode.addEventListener('change', function() {
-            modeLabel.textContent = this.checked ? '原始模式' : '对话模式';
+            modeLabel.textContent = this.checked ? '上下文模式' : '对话模式';
             // 重新渲染上下文显示
             if (window.connectionModule && window.connectionModule.isConnected) {
                 // 使用重新渲染函数
