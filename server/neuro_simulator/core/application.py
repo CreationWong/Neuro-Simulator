@@ -287,6 +287,10 @@ async def websocket_admin_endpoint(websocket: WebSocket):
         initial_context = await agent.get_message_history()
         await websocket.send_json({"type": "agent_context", "action": "update", "messages": initial_context})
         
+        # Send initial stream status
+        status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+        await websocket.send_json({"type": "stream_status", "payload": status})
+        
         # Main loop for receiving messages from the client and pushing log updates
         while websocket.client_state == WebSocketState.CONNECTED:
             # Check for incoming messages
@@ -391,17 +395,29 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             if not process_manager.is_running:
                 process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream started"}
+            # Broadcast stream status update
+            from ..utils.websocket import connection_manager
+            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+            await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
 
         elif action == "stop_stream":
             if process_manager.is_running:
                 await process_manager.stop_live_processes()
             response["payload"] = {"status": "success", "message": "Stream stopped"}
+            # Broadcast stream status update
+            from ..utils.websocket import connection_manager
+            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+            await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
 
         elif action == "restart_stream":
             await process_manager.stop_live_processes()
             await asyncio.sleep(1)
             process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream restarted"}
+            # Broadcast stream status update
+            from ..utils.websocket import connection_manager
+            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+            await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
 
         elif action == "get_stream_status":
             status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
@@ -431,6 +447,24 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
         elif action == "get_agent_context":
             context = await agent.get_message_history()
             response["payload"] = context
+
+        elif action == "get_last_prompt":
+            # Check if the agent supports prompt generation introspection
+            agent_instance = getattr(agent, 'agent_instance', None) if hasattr(agent, 'agent_instance') else agent
+            if not hasattr(agent_instance, 'memory_manager') or not hasattr(agent_instance.memory_manager, 'get_recent_chat') or not hasattr(agent_instance, '_build_neuro_prompt'):
+                response["payload"] = {"status": "error", "message": "The active agent does not support prompt generation introspection."}
+            else:
+                recent_history = await agent_instance.memory_manager.get_recent_chat(entries=10)
+                messages_for_prompt = []
+                for entry in recent_history:
+                    if entry.get('role') == 'user':
+                        parts = entry.get('content', '').split(':', 1)
+                        if len(parts) == 2:
+                            messages_for_prompt.append({'username': parts[0].strip(), 'text': parts[1].strip()})
+                        else:
+                            messages_for_prompt.append({'username': 'user', 'text': entry.get('content', '')})
+                prompt = await agent_instance._build_neuro_prompt(messages_for_prompt)
+                response["payload"] = {"prompt": prompt}
 
         elif action == "reset_agent_memory":
             await agent.reset_memory()

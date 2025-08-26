@@ -6,6 +6,7 @@ import time
 
 from ..core.config import config_manager
 
+
 router = APIRouter(tags=["System & Utilities"])
 
 
@@ -58,3 +59,5 @@ async def root():
         "version": "2.0",
         "api_docs": "/docs",
     }
+
+

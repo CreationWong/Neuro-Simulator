@@ -246,6 +246,25 @@ This section details the actions related to the agent's Tools.
 - **Server Response (`type: "response"`)**: 
   - `payload`: The full list of agent context messages.
 
+### Get Last Prompt
+
+- **action**: `get_last_prompt`
+- **payload**: (empty)
+- **Server Response (`type: "response"`)**: 
+  - `payload`: An object containing the dynamically built prompt.
+    ```json
+    {
+      "prompt": "string" // The full prompt text
+    }
+    ```
+  - `payload` (error case): 
+    ```json
+    {
+      "status": "error",
+      "message": "string" // Error description
+    }
+    ```
+
 ### Reset Agent Memory
 
 - **action**: `reset_agent_memory`
