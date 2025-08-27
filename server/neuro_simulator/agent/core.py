@@ -16,7 +16,8 @@ from ..utils.logging import QueueLogHandler, agent_log_queue
 from ..utils.websocket import connection_manager
 from .llm import LLMClient
 from .memory.manager import MemoryManager
-from .tools.core import ToolManager
+from .tools.manager import ToolManager
+
 
 # Create a logger for the agent
 agent_logger = logging.getLogger("neuro_agent")
@@ -73,15 +74,38 @@ class Agent:
         await self.memory_manager.reset_chat_history()
         agent_logger.info("All agent memory has been reset.")
 
+    def _format_tool_schemas_for_prompt(self, schemas: List[Dict[str, Any]]) -> str:
+        """Formats a list of tool schemas into a string for the LLM prompt."""
+        if not schemas:
+            return "No tools available."
+        
+        lines = ["Available tools:"]
+        for i, schema in enumerate(schemas):
+            params_str_parts = []
+            for param in schema.get("parameters", []):
+                p_name = param.get('name')
+                p_type = param.get('type')
+                p_req = 'required' if param.get('required') else 'optional'
+                params_str_parts.append(f"{p_name}: {p_type} ({p_req})")
+            params_str = ", ".join(params_str_parts)
+            lines.append(f"{i+1}. {schema.get('name')}({params_str}) - {schema.get('description')}")
+        
+        return "\n".join(lines)
+
     async def _build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
         """Builds the prompt for the Neuro (Actor) LLM."""
         template_path = Path(self.memory_manager.memory_dir).parent / "neuro_prompt.txt"
         with open(template_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
 
-        # Gather context
-        tool_descriptions = self.tool_manager.get_tool_descriptions()
+        # Gather context for Neuro Agent
+        tool_schemas = self.tool_manager.get_tool_schemas_for_agent('neuro_agent')
+        tool_descriptions = self._format_tool_schemas_for_prompt(tool_schemas)
         
+        # Format Init Memory
+        init_memory_items = self.memory_manager.init_memory or {}
+        init_memory_text = "\n".join(f"{key}: {value}" for key, value in init_memory_items.items())
+
         # Format Core Memory from blocks
         core_memory_blocks = await self.memory_manager.get_core_memory_blocks()
         core_memory_parts = []
@@ -109,6 +133,7 @@ class Agent:
 
         return prompt_template.format(
             tool_descriptions=tool_descriptions,
+            init_memory=init_memory_text,
             core_memory=core_memory_text,
             temp_memory=temp_memory_text,
             recent_history=recent_history_text,
@@ -121,16 +146,23 @@ class Agent:
         with open(template_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
         
+        # Gather context for Memory Agent
+        tool_schemas = self.tool_manager.get_tool_schemas_for_agent('memory_agent')
+        tool_descriptions = self._format_tool_schemas_for_prompt(tool_schemas)
+
         history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in conversation_history])
         
-        return prompt_template.format(conversation_history=history_text)
+        return prompt_template.format(
+            tool_descriptions=tool_descriptions,
+            conversation_history=history_text
+        )
 
     def _parse_tool_calls(self, response_text: str) -> List[Dict[str, Any]]:
         """Parses LLM response for JSON tool calls."""
         try:
             # The LLM is prompted to return a JSON array of tool calls.
             # Find the JSON block, which might be wrapped in markdown.
-            match = re.search(r'''```json\s*([\s\S]*?)\s*```|(\[[\s\S]*\])''', response_text)
+            match = re.search(r'''```json\s*([\s\S]*?)\s*```|([[\][\s\S]*]])''', response_text)
             if not match:
                 agent_logger.warning(f"No valid JSON tool call block found in response: {response_text}")
                 return []
@@ -160,10 +192,10 @@ class Agent:
 
             agent_logger.info(f"Executing tool: {tool_name} with params: {params}")
             try:
-                result = await self.tool_manager.execute_tool(tool_name, params)
+                result = await self.tool_manager.execute_tool(tool_name, **params)
                 execution_results.append({"name": tool_name, "params": params, "result": result})
-                if tool_name == "speak":
-                    final_response = params.get("text", "")
+                if tool_name == "speak" and result.get("status") == "success":
+                    final_response = result.get("spoken_text", "")
             except Exception as e:
                 agent_logger.error(f"Error executing tool {tool_name}: {e}")
                 execution_results.append({"name": tool_name, "params": params, "error": str(e)})

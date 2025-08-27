@@ -205,17 +205,69 @@ After any successful update operation, the server will broadcast a message to al
 
 This section details the actions related to the agent's Tools.
 
-### Get Available Tools
+### Get All Available Tools
 
-- **action**: `get_tools`
+- **action**: `get_all_tools`
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
-  - `payload`: An object containing the tool descriptions.
+  - `payload`: An object containing a list of all available tool schemas.
     ```json
     {
-      "tools": "string" // A string describing the available tools
+      "tools": [
+        {
+          "name": "string",
+          "description": "string",
+          "parameters": [
+            {
+              "name": "string",
+              "type": "string",
+              "description": "string",
+              "required": "boolean"
+            },
+            ...
+          ]
+        },
+        ...
+      ]
     }
     ```
+
+### Get Agent Tool Allocations
+
+- **action**: `get_agent_tool_allocations`
+- **payload**: (empty)
+- **Server Response (`type: "response"`)**: 
+  - `payload`: An object containing the agent-to-tool-name allocation dictionary.
+    ```json
+    {
+      "allocations": {
+        "neuro_agent": ["string", ...], // List of tool names
+        "memory_agent": ["string", ...]
+      }
+    }
+    ```
+
+### Set Agent Tool Allocations
+
+- **action**: `set_agent_tool_allocations`
+- **payload**: 
+  ```json
+  {
+    "allocations": {
+      "neuro_agent": ["string", ...], // List of tool names
+      "memory_agent": ["string", ...]
+    }
+  }
+  ```
+- **Server Response (`type: "response"`)**: 
+  - `payload`: `{"status": "success"}`
+
+### Reload Tools
+
+- **action**: `reload_tools`
+- **payload**: (empty)
+- **Server Response (`type: "response"`)**: 
+  - `payload`: `{"status": "success"}`
 
 ### Execute Tool
 
@@ -234,6 +286,20 @@ This section details the actions related to the agent's Tools.
       "result": "..." // The result can be of any type
     }
     ```
+
+### Server-Pushed Update Events
+
+#### Allocations Updated
+After a successful `set_agent_tool_allocations` action, the server will broadcast this event.
+
+- **type**: `agent_tool_allocations_updated`
+- **payload**: The full, updated allocations object (same format as the response to `get_agent_tool_allocations`).
+
+#### Available Tools Updated
+After a successful `reload_tools` action, the server will broadcast this event.
+
+- **type**: `available_tools_updated`
+- **payload**: The full, updated list of all available tool schemas (same format as the response to `get_all_tools`).
 
 ---
 

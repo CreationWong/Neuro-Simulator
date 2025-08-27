@@ -52,7 +52,7 @@ dev = [
 ]
 
 [tool.setuptools.package-data]
-neuro_simulator = ["config.yaml.example", "media/*"]
+neuro_simulator = ["config.yaml.example", "media/*", "agent/*.txt"]
 
 [tool.setuptools.packages.find]
 include = ["neuro_simulator*"]

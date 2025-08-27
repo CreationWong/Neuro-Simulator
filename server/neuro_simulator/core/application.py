@@ -332,7 +332,6 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             response["payload"] = {"status": "success", "block_id": block_id}
             # Broadcast the update to all admins
             updated_blocks = await agent.get_memory_blocks()
-            from ..utils.websocket import connection_manager
             await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
 
         elif action == "update_core_memory_block":
@@ -340,7 +339,6 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             response["payload"] = {"status": "success"}
             # Broadcast the update to all admins
             updated_blocks = await agent.get_memory_blocks()
-            from ..utils.websocket import connection_manager
             await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
 
         elif action == "delete_core_memory_block":
@@ -348,7 +346,6 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             response["payload"] = {"status": "success"}
             # Broadcast the update to all admins
             updated_blocks = await agent.get_memory_blocks()
-            from ..utils.websocket import connection_manager
             await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
 
         # Temp Memory Actions
@@ -360,7 +357,6 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             await agent.add_temp_memory(**payload)
             response["payload"] = {"status": "success"}
             updated_temp_mem = await agent.get_temp_memory()
-            from ..utils.websocket import connection_manager
             await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
 
         elif action == "clear_temp_memory":
@@ -378,13 +374,35 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             await agent.update_init_memory(**payload)
             response["payload"] = {"status": "success"}
             updated_init_mem = await agent.get_init_memory()
-            from ..utils.websocket import connection_manager
             await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
 
         # Tool Actions
-        elif action == "get_tools":
-            tools = await agent.get_available_tools()
-            response["payload"] = {"tools": tools}
+        elif action == "get_all_tools":
+            agent_instance = getattr(agent, 'agent_instance', agent)
+            all_tools = agent_instance.tool_manager.get_all_tool_schemas()
+            response["payload"] = {"tools": all_tools}
+
+        elif action == "get_agent_tool_allocations":
+            agent_instance = getattr(agent, 'agent_instance', agent)
+            allocations = agent_instance.tool_manager.get_allocations()
+            response["payload"] = {"allocations": allocations}
+
+        elif action == "set_agent_tool_allocations":
+            agent_instance = getattr(agent, 'agent_instance', agent)
+            allocations_payload = payload.get("allocations", {})
+            agent_instance.tool_manager.set_allocations(allocations_payload)
+            response["payload"] = {"status": "success"}
+            # Broadcast the update to all admins
+            updated_allocations = agent_instance.tool_manager.get_allocations()
+            await connection_manager.broadcast_to_admins({"type": "agent_tool_allocations_updated", "payload": {"allocations": updated_allocations}})
+
+        elif action == "reload_tools":
+            agent_instance = getattr(agent, 'agent_instance', agent)
+            agent_instance.tool_manager.reload_tools()
+            response["payload"] = {"status": "success"}
+            # Broadcast an event to notify UI to refresh tool lists
+            all_tools = agent_instance.tool_manager.get_all_tool_schemas()
+            await connection_manager.broadcast_to_admins({"type": "available_tools_updated", "payload": {"tools": all_tools}})
 
         elif action == "execute_tool":
             result = await agent.execute_tool(**payload)
@@ -396,7 +414,6 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
                 process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream started"}
             # Broadcast stream status update
-            from ..utils.websocket import connection_manager
             status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
             await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
 
@@ -405,7 +422,6 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
                 await process_manager.stop_live_processes()
             response["payload"] = {"status": "success", "message": "Stream stopped"}
             # Broadcast stream status update
-            from ..utils.websocket import connection_manager
             status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
             await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
 
@@ -415,7 +431,6 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream restarted"}
             # Broadcast stream status update
-            from ..utils.websocket import connection_manager
             status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
             await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
 
