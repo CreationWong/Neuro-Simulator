@@ -1,7 +1,6 @@
 // dashboard_web/js/modules/agent.js
 
 // Agent 控制相关元素
-const serverLogsOutput = document.getElementById('serverLogsOutput');
 const agentLogsOutput = document.getElementById('agentLogsOutput');
 const contextOutput = document.getElementById('contextOutput');
 const refreshTempMemoryBtn = document.getElementById('refreshTempMemoryBtn');
@@ -10,11 +9,6 @@ const tempMemoryOutput = document.getElementById('tempMemoryOutput');
 const refreshCoreMemoryBtn = document.getElementById('refreshCoreMemoryBtn');
 const addCoreMemoryBlockBtn = document.getElementById('addCoreMemoryBlockBtn');
 const coreMemoryOutput = document.getElementById('coreMemoryOutput');
-const refreshToolsBtn = document.getElementById('refreshToolsBtn');
-const toolsOutput = document.getElementById('toolsOutput');
-const toolName = document.getElementById('toolName');
-const aiToolName = document.getElementById('aiToolName');
-const connectToolBtn = document.getElementById('connectToolBtn');
 
 // Agent 相关功能
 
@@ -512,28 +506,12 @@ function displayAgentContext(newMessages) {
     }
 
     // Proceed with conversation mode update
-    const existingMessageIds = new Set(Array.from(contextOutput.querySelectorAll('.memory-item')).map(item => item.dataset.messageId));
+    // Clear existing content and display all messages (for WebSocket updates)
+    contextOutput.innerHTML = '';
+    newMessages.forEach(msg => addMessageToContext(contextOutput, msg, false));
     
-    const messagesToAdd = newMessages.filter(msg => !existingMessageIds.has(String(msg.id)));
-
-    // Check if the context was cleared (e.g. memory reset)
-    const wasCleared = contextOutput.children.length > 0 && newMessages.length === 0;
-    if (wasCleared) {
-        contextOutput.innerHTML = '';
-        return;
-    }
-
-    if (messagesToAdd.length === newMessages.length && newMessages.length > 0) {
-        contextOutput.innerHTML = '';
-        newMessages.forEach(msg => addMessageToContext(contextOutput, msg, false));
-    } else {
-        messagesToAdd.forEach(msg => addMessageToContext(contextOutput, msg, false));
-    }
-    
-    if (messagesToAdd.length > 0) {
-        bindExpandButtons();
-        contextOutput.scrollTop = contextOutput.scrollHeight;
-    }
+    bindExpandButtons();
+    contextOutput.scrollTop = contextOutput.scrollHeight;
     
     const messageItems = contextOutput.querySelectorAll('.memory-item');
     if (messageItems.length > 1000) {
@@ -652,12 +630,6 @@ function addMessageToContext(contextOutput, msg, isRawMode) {
     contextOutput.appendChild(itemDiv);
 }
 
-// Rerenders the context view when the toggle is switched.
-function rerenderContext() {
-    // The main refresh function now handles the mode switching
-    refreshContext();
-}
-
 // 刷新临时记忆 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
 async function refreshTempMemory() {
     if (!window.connectionModule.isConnected) {
@@ -764,88 +736,6 @@ function displayTempMemory(messages) {
             const index = e.target.dataset.index;
             deleteTempMemoryItem(index);
         });
-    });
-}
-
-// 显示添加临时记忆对话框
-function showAddTempMemoryDialog() {
-    // 创建对话框元素
-    const dialog = document.createElement('div');
-    dialog.className = 'modal-dialog show';
-    dialog.id = 'addTempMemoryDialog';
-    
-    dialog.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>添加临时记忆</h3>
-                <button class="close-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="addTempMemoryForm">
-                    <div class="form-group">
-                        <label for="tempMemoryRole">角色:</label>
-                        <select id="tempMemoryRole" class="form-control">
-                            <option value="system">system</option>
-                            <option value="user">user</option>
-                            <option value="assistant">assistant</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="tempMemoryContent">内容:</label>
-                        <textarea id="tempMemoryContent" rows="4" class="form-control"></textarea>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" class="btn secondary" id="cancelAddTempMemoryBtn">取消</button>
-                        <button type="submit" class="btn primary">添加</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    `;
-    
-    // 添加到文档中
-    document.body.appendChild(dialog);
-    
-    // 绑定事件
-    const closeBtn = dialog.querySelector('.close-btn');
-    const cancelBtn = document.getElementById('cancelAddTempMemoryBtn');
-    const form = document.getElementById('addTempMemoryForm');
-    
-    const closeDialog = () => {
-        dialog.remove();
-    };
-    
-    closeBtn.addEventListener('click', closeDialog);
-    cancelBtn.addEventListener('click', closeDialog);
-    
-    // 点击对话框背景关闭
-    dialog.addEventListener('click', (e) => {
-        if (e.target === dialog) {
-            closeDialog();
-        }
-    });
-    
-    // 表单提交事件
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const role = document.getElementById('tempMemoryRole').value;
-        const content = document.getElementById('tempMemoryContent').value;
-        
-        if (!content.trim()) {
-            window.uiModule.showToast('请输入内容', 'warning');
-            return;
-        }
-        
-        try {
-            await window.connectionModule.sendAdminWsMessage('add_temp_memory', { content, role });
-            
-            window.uiModule.showToast('临时记忆已添加', 'success');
-            closeDialog();
-            refreshTempMemory(); // 刷新显示
-        } catch (error) {
-            window.uiModule.showToast(`添加临时记忆失败: ${error.message}`, 'error');
-        }
     });
 }
 
@@ -1193,55 +1083,7 @@ async function addMemoryBlock(e) {
     }
 }
 
-// 刷新工具 (通过WebSocket) - 现在由事件驱动，此函数可以保留用于手动刷新或初始化
-async function refreshTools() {
-    if (!window.connectionModule.isConnected) {
-        window.uiModule.showToast('未连接到后端', 'warning');
-        return;
-    }
-    
-    try {
-        const tools = await window.connectionModule.sendAdminWsMessage('get_tools');
-        // 清空现有内容并显示完整工具列表
-        const toolsOutput = document.getElementById('toolsOutput');
-        if (toolsOutput) {
-            toolsOutput.innerHTML = '';
-        }
-        displayTools(tools);
-    } catch (error) {
-        console.error('获取工具列表失败:', error);
-        window.uiModule.showToast(`获取工具列表失败: ${error.message}`, 'error');
-    }
-}
 
-// 显示工具
-function displayTools(tools) {
-    const toolsOutput = document.getElementById('toolsOutput');
-    if (!toolsOutput) {
-        return;
-    }
-    
-    toolsOutput.innerHTML = `<pre>${tools.tools}</pre>`;
-}
-
-// 连接工具 (通过WebSocket)
-async function connectTool() {
-    const toolNameValue = toolName.value.trim();
-    const aiToolNameValue = aiToolName.value.trim();
-    
-    if (!toolNameValue || !aiToolNameValue) {
-        window.uiModule.showToast('请填写工具名称和AI工具名称', 'warning');
-        return;
-    }
-    
-    try {
-        // 调用连接工具的WebSocket消息
-        await window.connectionModule.sendAdminWsMessage('connect_tool', { tool_name: toolNameValue, ai_tool_name: aiToolNameValue });
-        window.uiModule.showToast(`工具 "${toolNameValue}" 已连接到 "${aiToolNameValue}"`, 'success');
-    } catch (error) {
-        window.uiModule.showToast(`连接工具失败: ${error.message}`, 'error');
-    }
-}
 
 // 导出函数供其他模块使用
 window.agentModule = {
@@ -1262,13 +1104,10 @@ window.agentModule = {
     displayCoreMemory,
     editMemoryBlock,
     deleteMemoryBlock,
-    addMemoryBlock,
-    refreshTools,
-    displayTools,
-    connectTool
+    addMemoryBlock
 };
 
-// 绑定展开按钮事件
+
 function bindExpandButtons() {
     // 展开完整提示词按钮
     const expandPromptButtons = document.querySelectorAll('.expand-prompt-btn');

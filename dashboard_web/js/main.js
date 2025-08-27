@@ -33,8 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (window.connectionModule && window.connectionModule.connectToBackend) {
                     window.connectionModule.connectToBackend(true);
                 } else {
-                    // 如果 window.connectionModule 还不可用，则稍后再检查
-                    console.log('Waiting for window.connectionModule to be available...');
+                    // If window.connectionModule is not yet available, check again later.
                     setTimeout(checkAndConnect, 100);
                 }
             };

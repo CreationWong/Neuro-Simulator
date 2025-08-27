@@ -14,15 +14,8 @@ let allocationsData = {};
 
 function initToolsPage() {
     if (!window.connectionModule || !window.connectionModule.isConnected) {
-        console.warn("Cannot initialize Tools page: WebSocket not connected.");
         return;
     }
-
-    // Attach event listeners
-    if (reloadToolsBtn) reloadToolsBtn.addEventListener('click', handleReloadTools);
-    if (saveToolAllocationsBtn) saveToolAllocationsBtn.addEventListener('click', handleSaveAllocations);
-
-    // Fetch initial data
     fetchAllToolsAndAllocations();
 }
 

@@ -6,26 +6,6 @@ const startStreamBtn = document.getElementById('startStreamBtn');
 const stopStreamBtn = document.getElementById('stopStreamBtn');
 const restartStreamBtn = document.getElementById('restartStreamBtn');
 
-// 更新直播状态 (通过WebSocket事件驱动)
-async function updateStreamStatus() {
-    if (!window.connectionModule.isConnected) {
-        console.log("Not connected to backend, cannot update stream status.");
-        return;
-    }
-    
-    try {
-        const response = await window.connectionModule.sendAdminWsMessage('get_stream_status');
-        const streamStatus = document.getElementById('streamStatus');
-        if (streamStatus) {
-            streamStatus.textContent = response.is_running ? '运行中' : '已停止';
-            streamStatus.style.color = response.is_running ? '#4CAF50' : '#F44336';
-        }
-    } catch (error) {
-        console.error("Failed to update stream status:", error);
-        window.uiModule.showToast(`获取直播状态失败: ${error.message}`, 'error');
-    }
-}
-
 // 开始直播 (通过WebSocket)
 async function startStream() {
     const confirmed = await window.uiModule.showConfirmDialog('确定要开始直播吗？');
@@ -91,7 +71,6 @@ async function restartStream() {
 
 // 导出函数供其他模块使用
 window.streamModule = {
-    updateStreamStatus,
     startStream,
     stopStream,
     restartStream

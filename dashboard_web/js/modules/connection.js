@@ -377,6 +377,7 @@ function connectAdminWebSocket() {
                             window.toolsModule.handleAllocationsUpdate(data.payload.allocations);
                         }
                     }
+                    
                     else {
                         console.log('Received WebSocket message:', data);
                     }
