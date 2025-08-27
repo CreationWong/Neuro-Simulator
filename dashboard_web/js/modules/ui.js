@@ -362,11 +362,6 @@ function initEventListeners() {
     const refreshCoreMemoryBtn = document.getElementById('refreshCoreMemoryBtn');
     const addCoreMemoryBlockBtn = document.getElementById('addCoreMemoryBlockBtn');
     const coreMemoryOutput = document.getElementById('coreMemoryOutput');
-    const refreshToolsBtn = document.getElementById('refreshToolsBtn');
-    const toolsOutput = document.getElementById('toolsOutput');
-    const toolName = document.getElementById('toolName');
-    const aiToolName = document.getElementById('aiToolName');
-    const connectToolBtn = document.getElementById('connectToolBtn');
     const addMemoryBlockForm = document.getElementById('addMemoryBlockForm');
     const cancelAddMemoryBtn = document.getElementById('cancelAddMemoryBtn');
     
@@ -412,24 +407,6 @@ function initEventListeners() {
     if (addCoreMemoryBlockBtn) {
         addCoreMemoryBlockBtn.addEventListener('click', () => {
             showAddMemoryBlockDialog();
-        });
-    }
-    if (refreshToolsBtn) {
-        refreshToolsBtn.addEventListener('click', () => {
-            if (window.agentModule && window.agentModule.refreshTools) {
-                window.agentModule.refreshTools();
-            } else {
-                console.error('window.agentModule.refreshTools is not available');
-            }
-        });
-    }
-    if (connectToolBtn) {
-        connectToolBtn.addEventListener('click', () => {
-            if (window.agentModule && window.agentModule.connectTool) {
-                window.agentModule.connectTool();
-            } else {
-                console.error('window.agentModule.connectTool is not available');
-            }
         });
     }
     
@@ -510,9 +487,9 @@ function initEventListeners() {
                         window.agentModule.refreshCoreMemory();
                     }
                 } else if (tab.dataset.agentTab === 'tools' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 加载初始工具数据
-                    if (window.agentModule && window.agentModule.refreshTools) {
-                        window.agentModule.refreshTools();
+                    // 加载新的工具页面
+                    if (window.toolsModule && window.toolsModule.initToolsPage) {
+                        window.toolsModule.initToolsPage();
                     }
                 } else if (tab.dataset.agentTab === 'agent-logs' && window.connectionModule && window.connectionModule.isConnected) {
                     // 日志是流式更新的，这里可以加载历史日志（如果后端支持）

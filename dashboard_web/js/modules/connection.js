@@ -367,6 +367,16 @@ function connectAdminWebSocket() {
                             streamStatus.style.color = data.payload.is_running ? '#4CAF50' : '#F44336';
                         }
                     }
+                    else if (data.type === 'available_tools_updated') {
+                        if (window.toolsModule && window.toolsModule.handleAvailableToolsUpdate) {
+                            window.toolsModule.handleAvailableToolsUpdate(data.payload.tools);
+                        }
+                    }
+                    else if (data.type === 'agent_tool_allocations_updated') {
+                        if (window.toolsModule && window.toolsModule.handleAllocationsUpdate) {
+                            window.toolsModule.handleAllocationsUpdate(data.payload.allocations);
+                        }
+                    }
                     else {
                         console.log('Received WebSocket message:', data);
                     }

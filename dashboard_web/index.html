@@ -316,22 +316,32 @@
                         
                         <!-- 工具 Tab -->
                         <div class="agent-tab-content" id="tools-agent-tab">
-                            <div class="agent-controls">
-                                <button id="refreshToolsBtn" class="btn secondary">刷新工具</button>
+                            <div class="card">
+                                <h3>可用工具管理</h3>
+                                <p class="description">在这里为 Agent 分配可用的工具标签。Neuro Agent 负责与观众互动，Memory Agent 负责在后台整理记忆。</p>
+                                <div class="agent-controls">
+                                    <button id="reloadToolsBtn" class="btn secondary">重载工具</button>
+                                    <button id="saveToolAllocationsBtn" class="btn primary">保存分配</button>
+                                </div>
+                                <div id="allToolsContainer" class="tools-management-container">
+                                    <!-- All available tools will be rendered here by JavaScript -->
+                                    <p>正在加载工具...</p>
+                                </div>
                             </div>
-                            <div id="toolsOutput" class="tools-output"></div>
-                            
-                            <div class="tool-connection">
-                                <h3>工具连接</h3>
-                                <div class="form-group">
-                                    <label for="toolName">工具名称:</label>
-                                    <input type="text" id="toolName" class="form-control" placeholder="输入工具名称">
+                        
+                            <div class="card-container-horizontal">
+                                <div class="card">
+                                    <h3>Neuro Agent 工具集</h3>
+                                    <div id="neuroAgentTools" class="tools-display-container">
+                                        <!-- Neuro Agent's tools will be rendered here -->
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="aiToolName">连接到AI的工具:</label>
-                                    <input type="text" id="aiToolName" class="form-control" placeholder="输入AI工具名称">
+                                <div class="card">
+                                    <h3>Memory Agent 工具集</h3>
+                                    <div id="memoryAgentTools" class="tools-display-container">
+                                        <!-- Memory Agent's tools will be rendered here -->
+                                    </div>
                                 </div>
-                                <button id="connectToolBtn" class="btn primary">连接工具</button>
                             </div>
                         </div>
                         
@@ -364,6 +374,7 @@
     <script src="js/modules/stream.js"></script>
     <script src="js/modules/config.js"></script>
     <script src="js/modules/agent.js"></script>
+    <script src="js/modules/tools.js"></script>
     <script src="js/modules/chatbot.js"></script>
     <script src="js/main.js"></script>
 </body>
