@@ -1,7 +1,5 @@
 # neuro_simulator/services/audience.py
-import asyncio
 import logging
-import random
 
 from google import genai
 from google.genai import types

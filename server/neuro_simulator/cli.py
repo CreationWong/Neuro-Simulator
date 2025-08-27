@@ -8,29 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
-def copy_resource(package_name: str, resource_path: str, destination_path: Path, is_dir: bool = False):
-    """A helper function to copy a resource from the package to the working directory."""
-    if destination_path.exists():
-        return
 
-    try:
-        import pkg_resources
-        source_path_str = pkg_resources.resource_filename(package_name, resource_path)
-        source_path = Path(source_path_str)
-    except (ModuleNotFoundError, KeyError):
-        source_path = Path(__file__).parent / resource_path
-
-    if source_path.exists():
-        try:
-            if is_dir:
-                shutil.copytree(source_path, destination_path)
-            else:
-                shutil.copy(source_path, destination_path)
-            logging.info(f"Created '{destination_path}' from package resource.")
-        except Exception as e:
-            logging.warning(f"Could not copy resource '{resource_path}'. Error: {e}")
-    else:
-        logging.warning(f"Resource '{resource_path}' not found in package or development folder.")
 
 def main():
     """Main entry point for the CLI."""
@@ -54,39 +32,91 @@ def main():
     os.chdir(work_dir)
     logging.info(f"Using working directory: {work_dir}")
 
-    # 2. Ensure required assets and configs exist
-    copy_resource('neuro_simulator', 'core/config.yaml.example', work_dir / 'config.yaml.example')
-    copy_resource('neuro_simulator', 'assets', work_dir / 'assets', is_dir=True)
-    # Ensure agent directory and its contents exist
-    agent_dir = work_dir / "agent"
-    agent_dir.mkdir(parents=True, exist_ok=True)
-    copy_resource('neuro_simulator', 'agent/neuro_prompt.txt', agent_dir / 'neuro_prompt.txt')
-    copy_resource('neuro_simulator', 'agent/memory_prompt.txt', agent_dir / 'memory_prompt.txt')
+    # 2. Initialize paths and load configuration
+    from neuro_simulator.core import path_manager
+    from neuro_simulator.core.config import config_manager
+    import uvicorn
 
-    # Ensure agent memory directory and its contents exist
-    agent_memory_dir = agent_dir / "memory"
-    agent_memory_dir.mkdir(parents=True, exist_ok=True)
-    for filename in ["chat_history.json", "core_memory.json", "init_memory.json"]:
-        copy_resource('neuro_simulator', f'agent/memory/{filename}', agent_memory_dir / filename)
+    path_manager.initialize_path_manager(os.getcwd())
 
-    # 3. Validate essential files
-    errors = []
-    if not (work_dir / "config.yaml").exists():
-        errors.append(f"'config.yaml' not found in '{work_dir}'. Please copy 'config.yaml.example' to 'config.yaml' and configure it.")
-    if not (work_dir / "assets" / "neuro_start.mp4").exists():
-        errors.append(f"Required file 'neuro_start.mp4' not found in '{work_dir / 'assets'}'.")
+    # Define example_path early for config loading
+    example_path = Path(__file__).parent / "core" / "config.yaml.example"
 
-    if errors:
-        for error in errors:
-            logging.error(error)
-        sys.exit(1)
-
-    # 4. Import and run the server
+    # 2.2. Copy default config.yaml.example if it doesn't exist
     try:
-        from neuro_simulator.core.application import run_server
-        logging.info("Starting Neuro-Simulator server...")
-        # The full application logger will take over from here
-        run_server(args.host, args.port)
+        source_config_example = example_path
+        destination_config_example = path_manager.path_manager.working_dir / "config.yaml.example"
+        if not destination_config_example.exists():
+            shutil.copy(source_config_example, destination_config_example)
+            logging.info(f"Copied default config.yaml.example to {destination_config_example}")
+    except Exception as e:
+        logging.warning(f"Could not copy default config.yaml.example: {e}")
+
+    main_config_path = path_manager.path_manager.working_dir / "config.yaml"
+    config_manager.load_and_validate(str(main_config_path), str(example_path))
+
+    # 2.5. Copy default prompt templates if they don't exist
+    try:
+        # Use Path(__file__).parent for robust path resolution
+        base_path = Path(__file__).parent
+        neuro_prompt_example = base_path / "agent" / "neuro_prompt.txt"
+        memory_prompt_example = base_path / "agent" / "memory_prompt.txt"
+
+        if not path_manager.path_manager.neuro_prompt_path.exists():
+            shutil.copy(neuro_prompt_example, path_manager.path_manager.neuro_prompt_path)
+            logging.info(f"Copied default neuro prompt to {path_manager.path_manager.neuro_prompt_path}")
+        if not path_manager.path_manager.memory_agent_prompt_path.exists():
+            shutil.copy(memory_prompt_example, path_manager.path_manager.memory_agent_prompt_path)
+            logging.info(f"Copied default memory prompt to {path_manager.path_manager.memory_agent_prompt_path}")
+
+        # Copy default memory JSON files if they don't exist
+        memory_files = {
+            "core_memory.json": path_manager.path_manager.core_memory_path,
+            "init_memory.json": path_manager.path_manager.init_memory_path,
+            "temp_memory.json": path_manager.path_manager.temp_memory_path,
+        }
+        for filename, dest_path in memory_files.items():
+            src_path = base_path / "agent" / "memory" / filename
+            if not dest_path.exists():
+                shutil.copy(src_path, dest_path)
+                logging.info(f"Copied default {filename} to {dest_path}")
+
+        # Copy default assets directory if it doesn't exist
+        source_assets_dir = base_path / "assets"
+        destination_assets_dir = path_manager.path_manager.assets_dir
+        
+        # Ensure the destination assets directory exists
+        destination_assets_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy individual files from source assets to destination assets
+        for item in source_assets_dir.iterdir():
+            if item.is_file():
+                dest_file = destination_assets_dir / item.name
+                if not dest_file.exists():
+                    shutil.copy(item, dest_file)
+                    logging.info(f"Copied asset {item.name} to {dest_file}")
+            elif item.is_dir():
+                # Recursively copy subdirectories if they don't exist
+                dest_subdir = destination_assets_dir / item.name
+                if not dest_subdir.exists():
+                    shutil.copytree(item, dest_subdir)
+                    logging.info(f"Copied asset directory {item.name} to {dest_subdir}")
+    except Exception as e:
+        logging.warning(f"Could not copy default prompt templates, memory files, or assets: {e}")
+
+    # 3. Determine server host and port
+    server_host = args.host or config_manager.settings.server.host
+    server_port = args.port or config_manager.settings.server.port
+
+    # 4. Run the server
+    logging.info(f"Starting Neuro-Simulator server on {server_host}:{server_port}...")
+    try:
+        uvicorn.run(
+            "neuro_simulator.core.application:app",
+            host=server_host,
+            port=server_port,
+            reload=False
+        )
     except ImportError as e:
         logging.error(f"Could not import the application. Make sure the package is installed correctly. Details: {e}", exc_info=True)
         sys.exit(1)

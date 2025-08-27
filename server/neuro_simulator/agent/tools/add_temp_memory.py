@@ -1,10 +1,10 @@
 # neuro_simulator/agent/tools/add_temp_memory.py
 """The Add Temp Memory tool for the agent."""
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from .base import BaseTool
-from ..memory.manager import MemoryManager
+from neuro_simulator.agent.tools.base import BaseTool
+from neuro_simulator.agent.memory.manager import MemoryManager
 
 class AddTempMemoryTool(BaseTool):
     """Tool to add an entry to the agent's temporary memory."""

@@ -1,6 +1,5 @@
 # neuro_simulator/core/agent_factory.py
 import logging
-from pathlib import Path
 
 from .agent_interface import BaseAgent
 from .config import config_manager, AppSettings

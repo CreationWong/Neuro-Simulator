@@ -3,7 +3,6 @@ import asyncio
 import base64
 import html
 import logging
-from pathlib import Path
 
 import azure.cognitiveservices.speech as speechsdk
 

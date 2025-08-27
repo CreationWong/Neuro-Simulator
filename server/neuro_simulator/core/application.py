@@ -7,7 +7,7 @@ import logging
 import random
 import re
 import time
-from pathlib import Path
+import os
 from typing import List
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -17,6 +17,7 @@ from starlette.websockets import WebSocketState
 # --- Core Imports ---
 from .config import config_manager, AppSettings
 from ..core.agent_factory import create_agent
+from ..agent.core import Agent as LocalAgent
 from ..services.letta import LettaAgent
 from ..services.builtin import BuiltinAgentWrapper
 
@@ -34,7 +35,8 @@ from ..utils.queue import (
     add_to_neuro_input_queue,
     get_recent_audience_chats,
     is_neuro_input_queue_empty,
-    get_all_neuro_input_chats
+    get_all_neuro_input_chats,
+    initialize_queues,
 )
 from ..utils.state import app_state
 from ..utils.websocket import connection_manager
@@ -169,6 +171,10 @@ async def neuro_response_cycle():
             if not response_text:
                 continue
 
+            # Push updated agent context to admin clients immediately after processing
+            updated_context = await agent.get_message_history()
+            await connection_manager.broadcast_to_admins({"type": "agent_context", "action": "update", "messages": updated_context})
+
             async with app_state.neuro_last_speech_lock:
                 app_state.neuro_last_speech = response_text
 
@@ -192,6 +198,7 @@ async def neuro_response_cycle():
             
             await connection_manager.broadcast({"type": "neuro_speech_segment", "is_end": True})
             live_stream_manager.set_neuro_speaking_status(False)
+            
             await asyncio.sleep(config_manager.settings.neuro_behavior.post_speech_cooldown_sec)
 
         except asyncio.TimeoutError:
@@ -210,17 +217,24 @@ async def neuro_response_cycle():
 @app.on_event("startup")
 async def startup_event():
     """Actions to perform on application startup."""
-    global chatbot_manager
+    # 1. Configure logging first
     configure_server_logging()
-    
+
+    # 2. Initialize queues now that config is loaded
+    initialize_queues()
+
+    # 4. Initialize other managers/services that depend on config
+    global chatbot_manager
     chatbot_manager = AudienceChatbotManager()
 
+    # 5. Register callbacks
     async def metadata_callback(settings: AppSettings):
         await live_stream_manager.broadcast_stream_metadata()
     
     config_manager.register_update_callback(metadata_callback)
     config_manager.register_update_callback(chatbot_manager.handle_config_update)
     
+    # 6. Initialize agent (which will load its own configs)
     try:
         await create_agent()
         logger.info(f"Successfully initialized agent type: {config_manager.settings.agent_type}")
@@ -410,6 +424,8 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
 
         # Stream Control Actions
         elif action == "start_stream":
+            logger.info("Start stream action received. Resetting agent memory before starting processes...")
+            await agent.reset_memory()
             if not process_manager.is_running:
                 process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream started"}
@@ -464,22 +480,33 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             response["payload"] = context
 
         elif action == "get_last_prompt":
-            # Check if the agent supports prompt generation introspection
-            agent_instance = getattr(agent, 'agent_instance', None) if hasattr(agent, 'agent_instance') else agent
-            if not hasattr(agent_instance, 'memory_manager') or not hasattr(agent_instance.memory_manager, 'get_recent_chat') or not hasattr(agent_instance, '_build_neuro_prompt'):
-                response["payload"] = {"status": "error", "message": "The active agent does not support prompt generation introspection."}
+            # This is specific to the builtin agent, as Letta doesn't expose its prompt.
+            agent_instance = getattr(agent, 'agent_instance', agent)
+            if not isinstance(agent_instance, LocalAgent):
+                 response["payload"] = {"prompt": "The active agent does not support prompt generation introspection."}
             else:
-                recent_history = await agent_instance.memory_manager.get_recent_chat(entries=10)
-                messages_for_prompt = []
-                for entry in recent_history:
-                    if entry.get('role') == 'user':
-                        parts = entry.get('content', '').split(':', 1)
-                        if len(parts) == 2:
-                            messages_for_prompt.append({'username': parts[0].strip(), 'text': parts[1].strip()})
-                        else:
-                            messages_for_prompt.append({'username': 'user', 'text': entry.get('content', '')})
-                prompt = await agent_instance._build_neuro_prompt(messages_for_prompt)
-                response["payload"] = {"prompt": prompt}
+                try:
+                    # 1. Get the recent history from the agent itself
+                    history = await agent_instance.get_neuro_history(limit=10)
+                    
+                    # 2. Reconstruct the 'messages' list that _build_neuro_prompt expects
+                    messages_for_prompt = []
+                    for entry in history:
+                        if entry.get('role') == 'user':
+                            # Content is in the format "username: text"
+                            content = entry.get('content', '')
+                            parts = content.split(':', 1)
+                            if len(parts) == 2:
+                                messages_for_prompt.append({'username': parts[0].strip(), 'text': parts[1].strip()})
+                            elif content: # Handle cases where there's no colon
+                                messages_for_prompt.append({'username': 'user', 'text': content})
+
+                    # 3. Build the prompt using the agent's own internal logic
+                    prompt = await agent_instance._build_neuro_prompt(messages_for_prompt)
+                    response["payload"] = {"prompt": prompt}
+                except Exception as e:
+                    logger.error(f"Error generating last prompt: {e}", exc_info=True)
+                    response["payload"] = {"prompt": f"Failed to generate prompt: {e}"}
 
         elif action == "reset_agent_memory":
             await agent.reset_memory()
@@ -504,17 +531,4 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             await websocket.send_json(response)
 
 
-# --- Server Entrypoint ---
 
-def run_server(host: str = None, port: int = None):
-    """Runs the FastAPI server with Uvicorn."""
-    import uvicorn
-    server_host = host or config_manager.settings.server.host
-    server_port = port or config_manager.settings.server.port
-    
-    uvicorn.run(
-        "neuro_simulator.core.application:app",
-        host=server_host,
-        port=server_port,
-        reload=False
-    )

@@ -3,8 +3,8 @@
 
 from typing import Dict, Any, List, Optional
 
-from .base import BaseTool
-from ..memory.manager import MemoryManager
+from neuro_simulator.agent.tools.base import BaseTool
+from neuro_simulator.agent.memory.manager import MemoryManager
 
 class UpdateCoreMemoryBlockTool(BaseTool):
     """Tool to update an existing core memory block."""

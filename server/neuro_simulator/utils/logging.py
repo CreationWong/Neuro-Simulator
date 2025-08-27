@@ -87,4 +87,13 @@ def configure_server_logging():
         uvicorn_logger.handlers = [server_queue_handler, console_handler]
         uvicorn_logger.propagate = False # Prevent double-logging
 
+    # Configure the neuro_agent logger
+    neuro_agent_logger = logging.getLogger("neuro_agent")
+    neuro_agent_queue_handler = QueueLogHandler(agent_log_queue)
+    neuro_agent_queue_handler.setFormatter(queue_formatter)
+    neuro_agent_logger.addHandler(neuro_agent_queue_handler)
+    neuro_agent_logger.addHandler(console_handler) # Also send agent logs to console
+    neuro_agent_logger.setLevel(logging.INFO)
+    neuro_agent_logger.propagate = False # Prevent double-logging
+
     root_logger.info("Server logging configured with unified formatting for queue and console.")

@@ -3,8 +3,8 @@
 
 from typing import Dict, Any, List
 
-from .base import BaseTool
-from ..memory.manager import MemoryManager
+from neuro_simulator.agent.tools.base import BaseTool
+from neuro_simulator.agent.memory.manager import MemoryManager
 
 class DeleteCoreMemoryBlockTool(BaseTool):
     """Tool to delete an existing core memory block."""

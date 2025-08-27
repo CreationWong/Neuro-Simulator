@@ -39,7 +39,34 @@ All messages are sent as JSON strings.
 
 ---
 
-## 3. Core Memory Actions
+## 3. Initial Server-Pushed Events
+
+Upon a successful WebSocket connection, the server immediately pushes the following events to the newly connected client:
+
+- **type**: `server_log`
+  - **payload**: A string containing a single log entry from the server's historical log queue. This is sent for every log entry in the queue.
+- **type**: `agent_log`
+  - **payload**: A string containing a single log entry from the agent's historical log queue. This is sent for every log entry in the queue.
+- **type**: `agent_context`
+  - **payload**: An object containing the agent's current message history.
+    ```json
+    {
+      "action": "update",
+      "messages": [ ... ] // Array of message objects
+    }
+    ```
+- **type**: `stream_status`
+  - **payload**: The current status of the live stream process.
+    ```json
+    {
+      "is_running": boolean,
+      "backend_status": "running" | "stopped"
+    }
+    ```
+
+---
+
+## 4. Core Memory Actions
 
 This section details the actions related to the agent's Core Memory.
 
@@ -49,17 +76,6 @@ This section details the actions related to the agent's Core Memory.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: An array of memory block objects.
-    ```json
-    [
-      {
-        "id": "string",
-        "title": "string",
-        "description": "string",
-        "content": ["string", ...]
-      },
-      ...
-    ]
-    ```
 
 ### Create Block
 
@@ -104,14 +120,12 @@ This section details the actions related to the agent's Core Memory.
 
 ### Server-Pushed Update Event
 
-After any successful create, update, or delete operation, the server will broadcast a message to all connected admin clients.
-
 - **type**: `core_memory_updated`
-- **payload**: The full, updated list of all core memory blocks (same format as the response to `get_core_memory_blocks`).
+- **payload**: The full, updated list of all core memory blocks.
 
 ---
 
-## 4. Temp Memory Actions
+## 5. Temp Memory Actions
 
 This section details the actions related to the agent's Temp Memory.
 
@@ -121,17 +135,6 @@ This section details the actions related to the agent's Temp Memory.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: An array of temp memory objects.
-    ```json
-    [
-      {
-        "id": "string",
-        "role": "string",
-        "content": "string",
-        "timestamp": "string"
-      },
-      ...
-    ]
-    ```
 
 ### Add Temp Memory Item
 
@@ -155,14 +158,12 @@ This section details the actions related to the agent's Temp Memory.
 
 ### Server-Pushed Update Event
 
-After any successful add or clear operation, the server will broadcast a message to all connected admin clients.
-
 - **type**: `temp_memory_updated`
-- **payload**: The full, updated list of all temp memory items (same format as the response to `get_temp_memory`).
+- **payload**: The full, updated list of all temp memory items.
 
 ---
 
-## 5. Init Memory Actions
+## 6. Init Memory Actions
 
 This section details the actions related to the agent's Init Memory.
 
@@ -172,13 +173,6 @@ This section details the actions related to the agent's Init Memory.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: The init memory object.
-    ```json
-    {
-      "key1": "value1",
-      "key2": ["value2", "value3"],
-      ...
-    }
-    ```
 
 ### Update Init Memory
 
@@ -194,14 +188,12 @@ This section details the actions related to the agent's Init Memory.
 
 ### Server-Pushed Update Event
 
-After any successful update operation, the server will broadcast a message to all connected admin clients.
-
 - **type**: `init_memory_updated`
-- **payload**: The full, updated init memory object (same format as the response to `get_init_memory`).
+- **payload**: The full, updated init memory object.
 
 ---
 
-## 6. Tool Actions
+## 7. Tool Actions
 
 This section details the actions related to the agent's Tools.
 
@@ -210,42 +202,14 @@ This section details the actions related to the agent's Tools.
 - **action**: `get_all_tools`
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
-  - `payload`: An object containing a list of all available tool schemas.
-    ```json
-    {
-      "tools": [
-        {
-          "name": "string",
-          "description": "string",
-          "parameters": [
-            {
-              "name": "string",
-              "type": "string",
-              "description": "string",
-              "required": "boolean"
-            },
-            ...
-          ]
-        },
-        ...
-      ]
-    }
-    ```
+  - `payload`: `{"tools": [ ...tool_schemas ]}`
 
 ### Get Agent Tool Allocations
 
 - **action**: `get_agent_tool_allocations`
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
-  - `payload`: An object containing the agent-to-tool-name allocation dictionary.
-    ```json
-    {
-      "allocations": {
-        "neuro_agent": ["string", ...], // List of tool names
-        "memory_agent": ["string", ...]
-      }
-    }
-    ```
+  - `payload`: `{"allocations": {"neuro_agent": [...], "memory_agent": [...]}}`
 
 ### Set Agent Tool Allocations
 
@@ -254,8 +218,8 @@ This section details the actions related to the agent's Tools.
   ```json
   {
     "allocations": {
-      "neuro_agent": ["string", ...], // List of tool names
-      "memory_agent": ["string", ...]
+      "neuro_agent": ["tool_name", ...],
+      "memory_agent": ["tool_name", ...]
     }
   }
   ```
@@ -276,34 +240,20 @@ This section details the actions related to the agent's Tools.
   ```json
   {
     "tool_name": "string",
-    "params": { ... } // An object with the parameters for the tool
+    "params": { ... }
   }
   ```
 - **Server Response (`type: "response"`)**: 
-  - `payload`: An object containing the result of the tool execution.
-    ```json
-    {
-      "result": "..." // The result can be of any type
-    }
-    ```
+  - `payload`: `{"result": "..."}`
 
 ### Server-Pushed Update Events
 
-#### Allocations Updated
-After a successful `set_agent_tool_allocations` action, the server will broadcast this event.
-
 - **type**: `agent_tool_allocations_updated`
-- **payload**: The full, updated allocations object (same format as the response to `get_agent_tool_allocations`).
-
-#### Available Tools Updated
-After a successful `reload_tools` action, the server will broadcast this event.
-
 - **type**: `available_tools_updated`
-- **payload**: The full, updated list of all available tool schemas (same format as the response to `get_all_tools`).
 
 ---
 
-## 7. General Agent Actions
+## 8. General Agent Actions
 
 ### Get Agent Context
 
@@ -311,25 +261,16 @@ After a successful `reload_tools` action, the server will broadcast this event.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: The full list of agent context messages.
+- **Note**: A similar event `{"type": "agent_context", "action": "update", ...}` is pushed by the server on initial connection and after every agent response cycle.
 
 ### Get Last Prompt
 
 - **action**: `get_last_prompt`
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
-  - `payload`: An object containing the dynamically built prompt.
-    ```json
-    {
-      "prompt": "string" // The full prompt text
-    }
-    ```
-  - `payload` (error case): 
-    ```json
-    {
-      "status": "error",
-      "message": "string" // Error description
-    }
-    ```
+  - `payload`: `{"prompt": "string"}`
+  - `payload` (error case): `{"status": "error", "message": "string"}`
+- **Note**: This is primarily for the `builtin` agent. Other agents (like `letta`) may not support prompt introspection and will return a specific message.
 
 ### Reset Agent Memory
 
@@ -337,43 +278,13 @@ After a successful `reload_tools` action, the server will broadcast this event.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: `{"status": "success"}`
-- **Server-Pushed Events**: This action will trigger `core_memory_updated`, `temp_memory_updated`, `init_memory_updated`, and `agent_context` events to all clients.
+- **Server-Pushed Events**: This action triggers `core_memory_updated`, `temp_memory_updated`, `init_memory_updated`, and `agent_context` events.
 
 ---
 
-## 8. Stream Control Actions
+## 9. Stream Control Actions
 
-...
-
----
-
-## 9. Config Management Actions
-
-### Get Configs
-
-- **action**: `get_configs`
-- **payload**: (empty)
-- **Server Response (`type: "response"`)**: 
-  - `payload`: The config object.
-
-### Update Configs
-
-- **action**: `update_configs`
-- **payload**: The config object with the fields to update.
-- **Server Response (`type: "response"`)**: 
-  - `payload`: The full, updated config object.
-
-### Reload Configs
-
-- **action**: `reload_configs`
-- **payload**: (empty)
-- **Server Response (`type: "response"`)**: 
-  - `payload`: `{"status": "success"}`
-
-### Server-Pushed Update Event
-
-- **type**: `config_updated`
-- **payload**: The full, updated config object.
+This section details actions for controlling the live stream simulation.
 
 ### Get Stream Status
 
@@ -388,6 +299,7 @@ After a successful `reload_tools` action, the server will broadcast this event.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: `{"status": "success", "message": "Stream started"}`
+- **Server-Pushed Event**: Triggers a `stream_status` update to all clients.
 
 ### Stop Stream
 
@@ -395,6 +307,7 @@ After a successful `reload_tools` action, the server will broadcast this event.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: `{"status": "success", "message": "Stream stopped"}`
+- **Server-Pushed Event**: Triggers a `stream_status` update to all clients.
 
 ### Restart Stream
 
@@ -402,3 +315,31 @@ After a successful `reload_tools` action, the server will broadcast this event.
 - **payload**: (empty)
 - **Server Response (`type: "response"`)**: 
   - `payload`: `{"status": "success", "message": "Stream restarted"}`
+- **Server-Pushed Event**: Triggers a `stream_status` update to all clients.
+
+---
+
+## 10. Config Management Actions
+
+### Get Configs
+
+- **action**: `get_configs`
+- **payload**: (empty)
+- **Server Response (`type: "response"`)**: 
+  - `payload`: The filtered config object (sensitive keys removed).
+
+### Update Configs
+
+- **action**: `update_configs`
+- **payload**: The config object with the fields to update.
+- **Server Response (`type: "response"`)**: 
+  - `payload`: The full, updated, and filtered config object.
+- **Server-Pushed Event**: Triggers a `config_updated` event to all clients.
+
+### Reload Configs
+
+- **action**: `reload_configs`
+- **payload**: (empty)
+- **Server Response (`type: "response"`)**: 
+  - `payload`: `{"status": "success"}`
+- **Server-Pushed Event**: Triggers a `config_updated` event to all clients.

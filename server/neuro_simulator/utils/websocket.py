@@ -1,8 +1,6 @@
 # neuro_simulator/utils/websocket.py
-import asyncio
 import json
 import logging
-from collections import deque
 
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
@@ -39,7 +37,7 @@ class WebSocketManager:
 
     async def broadcast(self, message: dict):
         for connection in self.active_connections:
-            await connection.send_json(message)
+            await self.send_personal_message(message, connection)
 
     async def broadcast_to_admins(self, message: dict):
         for connection in self.admin_connections:

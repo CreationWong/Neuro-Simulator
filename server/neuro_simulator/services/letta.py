@@ -67,11 +67,29 @@ class LettaAgent(BaseAgent):
             raise ValueError("Letta agent ID (neuro_agent_id) is not configured.")
 
     async def reset_memory(self):
+        """Resets message history and clears the conversation_summary block."""
         try:
+            # Reset message history
             await asyncio.to_thread(self.client.agents.messages.reset, agent_id=self.agent_id)
             logger.info(f"Letta Agent (ID: {self.agent_id}) message history has been reset.")
+
+            # Find and clear the conversation_summary block
+            blocks = await asyncio.to_thread(self.client.agents.blocks.list, agent_id=self.agent_id)
+            summary_block = next((block for block in blocks if block.name == "conversation_summary"), None)
+            
+            if summary_block:
+                await asyncio.to_thread(
+                    self.client.agents.blocks.modify,
+                    agent_id=self.agent_id,
+                    block_id=summary_block.id,
+                    content=""
+                )
+                logger.info(f"Cleared content of 'conversation_summary' block (ID: {summary_block.id}) for Letta Agent.")
+            else:
+                logger.warning("'conversation_summary' block not found for Letta Agent, skipping clearing.")
+
         except Exception as e:
-            logger.warning(f"Failed to reset Letta Agent message history: {e}")
+            logger.warning(f"Failed during Letta Agent memory reset: {e}")
 
     async def process_messages(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         # Check if this is a superchat message based on the specific structure

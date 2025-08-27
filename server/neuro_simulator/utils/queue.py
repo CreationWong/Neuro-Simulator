@@ -3,16 +3,39 @@
 
 import logging
 from collections import deque
-from pathlib import Path
 
 from ..core.config import config_manager
 from ..utils.state import app_state
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
 
-# Use settings from the config manager to initialize deque maxlen
-audience_chat_buffer: deque[dict] = deque(maxlen=config_manager.settings.performance.audience_chat_buffer_max_size)
-neuro_input_queue: deque[dict] = deque(maxlen=config_manager.settings.performance.neuro_input_queue_max_size)
+# Deques for chat messages
+audience_chat_buffer: deque[dict] = deque()
+neuro_input_queue: deque[dict] = deque()
+
+def initialize_queues():
+    """
+    Initializes the chat queues with sizes from the loaded configuration.
+    This must be called after the config is loaded.
+    """
+    global audience_chat_buffer, neuro_input_queue
+    
+    settings = config_manager.settings
+    if not settings:
+        logger.error("Queue initialization failed: Config not loaded.")
+        return
+
+    logger.info("Initializing queues with configured sizes.")
+    
+    # Re-initialize the deques with the correct maxlen
+    audience_chat_buffer = deque(
+        audience_chat_buffer, 
+        maxlen=settings.performance.audience_chat_buffer_max_size
+    )
+    neuro_input_queue = deque(
+        neuro_input_queue,
+        maxlen=settings.performance.neuro_input_queue_max_size
+    )
 
 def clear_all_queues():
     """Clears all chat queues."""

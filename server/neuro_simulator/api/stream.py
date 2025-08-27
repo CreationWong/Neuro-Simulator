@@ -1,1 +1,0 @@
-# This file is now empty as all stream control API endpoints have been migrated to WebSockets.

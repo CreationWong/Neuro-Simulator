@@ -1,10 +1,13 @@
 # neuro_simulator/api/system.py
 """API endpoints for system, config, and utility functions."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
 import time
+from typing import Any, Dict
 
-from ..core.config import config_manager
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+
+from ..core.config import AppSettings, config_manager
+from ..utils.process import process_manager
 
 
 router = APIRouter(tags=["System & Utilities"])

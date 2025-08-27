@@ -4,8 +4,8 @@
 import logging
 from typing import Dict, Any, List
 
-from .base import BaseTool
-from ..memory.manager import MemoryManager
+from neuro_simulator.agent.tools.base import BaseTool
+from neuro_simulator.agent.memory.manager import MemoryManager
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "agent", 1))
 

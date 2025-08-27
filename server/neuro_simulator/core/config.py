@@ -1,8 +1,9 @@
 # backend/config.py
-import os
+import shutil
+from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import Dict, Optional, List
 import logging
 import asyncio
 from collections.abc import Mapping
@@ -106,76 +107,77 @@ class ConfigManager:
         self._update_callbacks = []
         self._initialized = True
 
-    def _get_config_file_path(self) -> str:
-        """获取配置文件路径"""
-        import sys
-        import argparse
-        
-        # 解析命令行参数以获取工作目录
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--dir', '-D', type=str, help='Working directory')
-        # 只解析已知参数，避免干扰其他模块的参数解析
-        args, _ = parser.parse_known_args()
-        
-        if args.dir:
-            # 如果指定了工作目录，使用该目录下的配置文件
-            config_path = os.path.join(args.dir, "config.yaml")
-        else:
-            # 默认使用 ~/.config/neuro-simulator 目录
-            config_path = os.path.join(os.path.expanduser("~"), ".config", "neuro-simulator", "config.yaml")
-            
-        return config_path
+    import sys
 
-    def _load_config_from_yaml(self) -> dict:
-        # 获取配置文件路径
-        config_path = self._get_config_file_path()
-        
-        # 检查配置文件是否存在
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Configuration file '{config_path}' not found. "
-                                  "Please create it from config.yaml.example.")
-        
+class ConfigManager:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ConfigManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        self.settings: Optional[AppSettings] = None
+        self._update_callbacks = []
+        self._initialized = True
+
+    def load_and_validate(self, config_path_str: str, example_path_str: str):
+        """Loads the main config file, handling first-run scenarios, and validates it."""
+        config_path = Path(config_path_str)
+        example_path = Path(example_path_str)
+
+        # Scenario 1: Both config and example are missing in the working directory.
+        if not config_path.exists() and not example_path.exists():
+            try:
+                import pkg_resources
+                package_example_path_str = pkg_resources.resource_filename('neuro_simulator', 'core/config.yaml.example')
+                shutil.copy(package_example_path_str, example_path)
+                logging.info(f"Created '{example_path}' from package resource.")
+                logging.error(f"Configuration file '{config_path.name}' not found. A new '{example_path.name}' has been created. Please configure it and rename it to '{config_path.name}'.")
+                sys.exit(1)
+            except Exception as e:
+                logging.error(f"FATAL: Could not create config from package resources: {e}")
+                sys.exit(1)
+
+        # Scenario 2: Config is missing, but example exists.
+        elif not config_path.exists() and example_path.exists():
+            logging.error(f"Configuration file '{config_path.name}' not found, but '{example_path.name}' exists. Please rename it to '{config_path.name}' after configuration.")
+            sys.exit(1)
+
+        # Scenario 3: Config exists, but example is missing.
+        elif config_path.exists() and not example_path.exists():
+            try:
+                import pkg_resources
+                package_example_path_str = pkg_resources.resource_filename('neuro_simulator', 'core/config.yaml.example')
+                shutil.copy(package_example_path_str, example_path)
+                logging.info(f"Created missing '{example_path.name}' from package resource.")
+            except Exception as e:
+                logging.warning(f"Could not create missing '{example_path.name}': {e}")
+
+        # Proceed with loading the config if it exists.
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                content = yaml.safe_load(f)
-                if content is None:
+                yaml_config = yaml.safe_load(f)
+                if yaml_config is None:
                     raise ValueError(f"Configuration file '{config_path}' is empty.")
-                return content
+            
+            self.settings = AppSettings.model_validate(yaml_config)
+            logging.info("Main configuration loaded successfully.")
+
         except Exception as e:
             logging.error(f"Error loading or parsing {config_path}: {e}")
-            raise
-
-    def _load_settings(self) -> AppSettings:
-        yaml_config = self._load_config_from_yaml()
-        
-        base_settings = AppSettings.model_validate(yaml_config)
-
-        # 检查关键配置项
-        if base_settings.agent_type == "letta":
-            missing_keys = []
-            if not base_settings.api_keys.letta_token:
-                missing_keys.append("api_keys.letta_token")
-            if not base_settings.api_keys.neuro_agent_id:
-                missing_keys.append("api_keys.neuro_agent_id")
-            
-            if missing_keys:
-                raise ValueError(f"Critical config missing in config.yaml for letta agent: {', '.join(missing_keys)}. "
-                               f"Please check your config.yaml file against config.yaml.example.")
-
-        logging.info("Configuration loaded successfully.")
-        return base_settings
+            sys.exit(1) # Exit if the main config is invalid
 
     def save_settings(self):
         """Saves the current configuration to config.yaml while preserving comments and formatting."""
+        from .path_manager import path_manager
+        config_file_path = str(path_manager.working_dir / "config.yaml")
+
         try:
-            # 获取配置文件路径
-            config_file_path = self._get_config_file_path()
-            
-            # 检查配置文件目录是否存在，如果不存在则创建
-            config_dir = os.path.dirname(config_file_path)
-            if config_dir and not os.path.exists(config_dir):
-                os.makedirs(config_dir, exist_ok=True)
-            
             # 1. Read the existing config file as text to preserve comments and formatting
             with open(config_file_path, 'r', encoding='utf-8') as f:
                 config_lines = f.readlines()
@@ -184,7 +186,8 @@ class ConfigManager:
             config_to_save = self.settings.model_dump(mode='json', exclude={'api_keys'})
 
             # 3. Read the existing config on disk to get the api_keys that should be preserved.
-            existing_config = self._load_config_from_yaml()
+            with open(config_file_path, 'r', encoding='utf-8') as f:
+                existing_config = yaml.safe_load(f)
             if 'api_keys' in existing_config:
                 # 4. Add the preserved api_keys block back to the data to be saved.
                 config_to_save['api_keys'] = existing_config['api_keys']

@@ -6,7 +6,7 @@ LLM client for the Neuro Simulator's built-in agent.
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict
 
 from google import genai
 from google.genai import types

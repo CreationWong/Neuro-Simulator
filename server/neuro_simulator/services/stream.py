@@ -11,6 +11,28 @@ from ..utils.state import app_state
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
 
+_WORKING_DIR = os.getcwd()
+_WELCOME_VIDEO_PATH_BACKEND = os.path.join(_WORKING_DIR, "assets", "neuro_start.mp4")
+_WELCOME_VIDEO_DURATION_SEC_DEFAULT = 10.0
+
+@staticmethod
+def _get_video_duration(video_path: str) -> float:
+    """Gets the duration of an MP4 video file using mutagen."""
+    if not os.path.exists(video_path):
+        logger.warning(f"Video file '{video_path}' not found. Using default duration.")
+        return _WELCOME_VIDEO_DURATION_SEC_DEFAULT
+    try:
+        video = MP4(video_path)
+        duration = video.info.length
+        logger.info(f"Successfully read video duration for '{video_path}': {duration:.2f}s.")
+        return duration
+    except MP4StreamInfoError:
+        logger.warning(f"Could not parse stream info for '{video_path}'. Using default duration.")
+        return _WELCOME_VIDEO_DURATION_SEC_DEFAULT
+    except Exception as e:
+        logger.error(f"Error getting video duration: {e}. Using default duration.")
+        return _WELCOME_VIDEO_DURATION_SEC_DEFAULT
+
 class LiveStreamManager:
     class NeuroAvatarStage:
         HIDDEN = "hidden"
@@ -25,28 +47,9 @@ class LiveStreamManager:
     
     event_queue: asyncio.Queue = asyncio.Queue()
 
-    _working_dir = os.getcwd()
-    _WELCOME_VIDEO_PATH_BACKEND = os.path.join(_working_dir, "assets", "neuro_start.mp4")
+    _WORKING_DIR = os.getcwd()
+    _WELCOME_VIDEO_PATH_BACKEND = os.path.join(_WORKING_DIR, "assets", "neuro_start.mp4")
     _WELCOME_VIDEO_DURATION_SEC_DEFAULT = 10.0
-    
-    @staticmethod
-    def _get_video_duration(video_path: str) -> float:
-        """Gets the duration of an MP4 video file using mutagen."""
-        if not os.path.exists(video_path):
-            logger.warning(f"Video file '{video_path}' not found. Using default duration.")
-            return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
-        try:
-            video = MP4(video_path)
-            duration = video.info.length
-            logger.info(f"Successfully read video duration for '{video_path}': {duration:.2f}s.")
-            return duration
-        except MP4StreamInfoError:
-            logger.warning(f"Could not parse stream info for '{video_path}'. Using default duration.")
-            return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
-        except Exception as e:
-            logger.error(f"Error getting video duration: {e}. Using default duration.")
-            return LiveStreamManager._WELCOME_VIDEO_DURATION_SEC_DEFAULT
-
     _WELCOME_VIDEO_DURATION_SEC = _get_video_duration(_WELCOME_VIDEO_PATH_BACKEND)
     AVATAR_INTRO_TOTAL_DURATION_SEC = 3.0
 
