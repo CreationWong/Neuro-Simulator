@@ -80,7 +80,7 @@ class ToolManager:
     def _load_allocations(self):
         """Loads tool allocations from JSON files, creating defaults if they don't exist."""
         default_allocations = {
-            "neuro_agent": ["speak", "get_core_memory_blocks", "get_core_memory_block"],
+            "neuro_agent": ["speak", "get_core_memory_blocks", "get_core_memory_block", "model_spin"],
             "memory_agent": ["add_temp_memory", "create_core_memory_block", "update_core_memory_block", "delete_core_memory_block", "add_to_core_memory_block", "remove_from_core_memory_block", "get_core_memory_blocks", "get_core_memory_block"]
         }
 
