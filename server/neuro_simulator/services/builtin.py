@@ -66,7 +66,17 @@ class BuiltinAgentWrapper(BaseAgent):
         return self.agent_instance.memory_manager.init_memory
 
     async def update_init_memory(self, memory: Dict[str, Any]):
-        await self.agent_instance.memory_manager.update_init_memory(memory)
+        await self.agent_instance.memory_manager.replace_init_memory(memory)
+        updated_init_mem = await self.get_init_memory()
+        await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+
+    async def update_init_memory_item(self, key: str, value: Any):
+        await self.agent_instance.memory_manager.update_init_memory_item(key, value)
+        updated_init_mem = await self.get_init_memory()
+        await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+
+    async def delete_init_memory_key(self, key: str):
+        await self.agent_instance.memory_manager.delete_init_memory_key(key)
         updated_init_mem = await self.get_init_memory()
         await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
 
@@ -76,6 +86,11 @@ class BuiltinAgentWrapper(BaseAgent):
 
     async def add_temp_memory(self, content: str, role: str):
         await self.agent_instance.memory_manager.add_temp_memory(content, role)
+        updated_temp_mem = await self.get_temp_memory()
+        await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+
+    async def delete_temp_memory_item(self, item_id: str):
+        await self.agent_instance.memory_manager.delete_temp_memory_item(item_id)
         updated_temp_mem = await self.get_temp_memory()
         await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
 

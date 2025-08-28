@@ -69,10 +69,22 @@ class MemoryManager:
     async def _save_init_memory(self):
         with open(self.init_memory_file, 'w', encoding='utf-8') as f:
             json.dump(self.init_memory, f, ensure_ascii=False, indent=2)
-            
-    async def update_init_memory(self, new_memory: Dict[str, Any]):
-        self.init_memory.update(new_memory)
+
+    async def replace_init_memory(self, new_memory: Dict[str, Any]):
+        """Replaces the entire init memory with a new object."""
+        self.init_memory = new_memory
         await self._save_init_memory()
+
+    async def update_init_memory_item(self, key: str, value: Any):
+        """Updates or adds a single key-value pair in init memory."""
+        self.init_memory[key] = value
+        await self._save_init_memory()
+
+    async def delete_init_memory_key(self, key: str):
+        """Deletes a key from init memory."""
+        if key in self.init_memory:
+            del self.init_memory[key]
+            await self._save_init_memory()
             
     async def _save_core_memory(self):
         with open(self.core_memory_file, 'w', encoding='utf-8') as f:
@@ -93,6 +105,13 @@ class MemoryManager:
         if len(self.temp_memory) > 20:
             self.temp_memory = self.temp_memory[-20:]
         await self._save_temp_memory()
+
+    async def delete_temp_memory_item(self, item_id: str):
+        """Deletes an item from temp memory by its ID."""
+        initial_len = len(self.temp_memory)
+        self.temp_memory = [item for item in self.temp_memory if item.get("id") != item_id]
+        if len(self.temp_memory) < initial_len:
+            await self._save_temp_memory()
         
     async def get_core_memory_blocks(self) -> Dict[str, Any]:
         return self.core_memory.get("blocks", {})

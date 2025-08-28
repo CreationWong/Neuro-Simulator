@@ -341,6 +341,10 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             blocks = await agent.get_memory_blocks()
             response["payload"] = blocks
         
+        elif action == "get_core_memory_block":
+            block = await agent.get_memory_block(**payload)
+            response["payload"] = block
+
         elif action == "create_core_memory_block":
             block_id = await agent.create_memory_block(**payload)
             response["payload"] = {"status": "success", "block_id": block_id}
@@ -373,6 +377,12 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             updated_temp_mem = await agent.get_temp_memory()
             await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
 
+        elif action == "delete_temp_memory_item":
+            await agent.delete_temp_memory_item(**payload)
+            response["payload"] = {"status": "success"}
+            updated_temp_mem = await agent.get_temp_memory()
+            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+
         elif action == "clear_temp_memory":
             await agent.clear_temp_memory()
             response["payload"] = {"status": "success"}
@@ -386,6 +396,18 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
 
         elif action == "update_init_memory":
             await agent.update_init_memory(**payload)
+            response["payload"] = {"status": "success"}
+            updated_init_mem = await agent.get_init_memory()
+            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+
+        elif action == "update_init_memory_item":
+            await agent.update_init_memory_item(**payload)
+            response["payload"] = {"status": "success"}
+            updated_init_mem = await agent.get_init_memory()
+            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+
+        elif action == "delete_init_memory_key":
+            await agent.delete_init_memory_key(**payload)
             response["payload"] = {"status": "success"}
             updated_init_mem = await agent.get_init_memory()
             await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
