@@ -84,4 +84,19 @@ export class NeuroAvatar {
                 break;
         }
     }
+
+    public triggerSpin(): void {
+        if (!neuroStaticAvatarContainer) return;
+
+        console.log("Triggering avatar spin animation.");
+
+        // Add the animation class
+        neuroStaticAvatarContainer.classList.add('spin-animation');
+
+        // Remove the class after the animation completes (1 second)
+        setTimeout(() => {
+            neuroStaticAvatarContainer.classList.remove('spin-animation');
+            console.log("Avatar spin animation finished.");
+        }, 1000);
+    }
 }

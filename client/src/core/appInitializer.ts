@@ -304,6 +304,9 @@ export class AppInitializer {
             case 'offline':
                 this.goOffline();
                 break;
+            case 'model_spin':
+                this.neuroAvatar.triggerSpin();
+                break;
             case 'update_stream_metadata':
                 this.streamInfoDisplay.update(message as StreamMetadataMessage);
                 break;

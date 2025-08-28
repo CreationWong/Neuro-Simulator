@@ -76,6 +76,20 @@
   height: auto;
   display: block;
 }
+
+.spin-animation {
+  animation: spin-counter-clockwise 1s linear;
+}
+
+@keyframes spin-counter-clockwise {
+  from {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  to {
+    transform: translateX(-50%) rotate(360deg);
+  }
+}
+
 #neuro-caption {
   position: absolute;
   bottom: 5%;
