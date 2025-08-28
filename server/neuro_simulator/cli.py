@@ -40,7 +40,7 @@ def main():
     path_manager.initialize_path_manager(os.getcwd())
 
     # Define example_path early for config loading
-    example_path = Path(__file__).parent / "core" / "config.yaml.example"
+    example_path = Path(__file__).parent / "config.yaml.example"
 
     # 2.2. Copy default config.yaml.example if it doesn't exist
     try:
@@ -48,7 +48,7 @@ def main():
         destination_config_example = path_manager.path_manager.working_dir / "config.yaml.example"
         if not destination_config_example.exists():
             shutil.copy(source_config_example, destination_config_example)
-            logging.info(f"Copied default config.yaml.example to {destination_config_example}")
+            logging.info(f"Copyed default config.yaml.example to {destination_config_example}")
     except Exception as e:
         logging.warning(f"Could not copy default config.yaml.example: {e}")
 

@@ -133,9 +133,11 @@ class ConfigManager:
         # Scenario 1: Both config and example are missing in the working directory.
         if not config_path.exists() and not example_path.exists():
             try:
-                import pkg_resources
-                package_example_path_str = pkg_resources.resource_filename('neuro_simulator', 'core/config.yaml.example')
-                shutil.copy(package_example_path_str, example_path)
+                import importlib.resources
+                # For Python 3.9+, prefer importlib.resources.files
+                ref = importlib.resources.files('neuro_simulator') / 'config.yaml.example'
+                with importlib.resources.as_file(ref) as package_example_path:
+                    shutil.copy(package_example_path, example_path)
                 logging.info(f"Created '{example_path}' from package resource.")
                 logging.error(f"Configuration file '{config_path.name}' not found. A new '{example_path.name}' has been created. Please configure it and rename it to '{config_path.name}'.")
                 sys.exit(1)
@@ -151,9 +153,11 @@ class ConfigManager:
         # Scenario 3: Config exists, but example is missing.
         elif config_path.exists() and not example_path.exists():
             try:
-                import pkg_resources
-                package_example_path_str = pkg_resources.resource_filename('neuro_simulator', 'core/config.yaml.example')
-                shutil.copy(package_example_path_str, example_path)
+                import importlib.resources
+                # For Python 3.9+, prefer importlib.resources.files
+                ref = importlib.resources.files('neuro_simulator') / 'config.yaml.example'
+                with importlib.resources.as_file(ref) as package_example_path:
+                    shutil.copy(package_example_path, example_path)
                 logging.info(f"Created missing '{example_path.name}' from package resource.")
             except Exception as e:
                 logging.warning(f"Could not create missing '{example_path.name}': {e}")
