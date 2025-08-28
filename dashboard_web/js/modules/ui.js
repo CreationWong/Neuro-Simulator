@@ -299,6 +299,80 @@ function hideAddMemoryBlockDialog() {
     }
 }
 
+// 显示添加初始化记忆项对话框
+function showAddInitMemoryItemDialog() {
+    // 创建对话框元素
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-dialog show';
+    dialog.id = 'addInitMemoryItemDialog';
+
+    dialog.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加/编辑初始化记忆项</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addInitMemoryItemForm">
+                    <div class="form-group">
+                        <label for="initMemoryKey">键:</label>
+                        <input type="text" id="initMemoryKey" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="initMemoryValue">值:</label>
+                        <textarea id="initMemoryValue" rows="4" class="form-control"></textarea>
+                        <small>可以是字符串、JSON对象或数组（每行一个元素）。</small>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn secondary" id="cancelAddInitMemoryBtn">取消</button>
+                        <button type="submit" class="btn primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    // 添加到文档中
+    document.body.appendChild(dialog);
+
+    // 绑定事件
+    const closeBtn = dialog.querySelector('.close-btn');
+    const cancelBtn = document.getElementById('cancelAddInitMemoryBtn');
+    const form = document.getElementById('addInitMemoryItemForm');
+
+    const closeDialog = () => {
+        dialog.remove();
+    };
+
+    closeBtn.addEventListener('click', closeDialog);
+    cancelBtn.addEventListener('click', closeDialog);
+
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            closeDialog();
+        }
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const key = document.getElementById('initMemoryKey').value.trim();
+        const value = document.getElementById('initMemoryValue').value;
+
+        if (!key) {
+            window.uiModule.showToast('请输入键', 'warning');
+            return;
+        }
+
+        // The agentModule.updateInitMemoryItem function will handle parsing and sending the data
+        if (window.agentModule && window.agentModule.updateInitMemoryItem) {
+            await window.agentModule.updateInitMemoryItem(key, value);
+            closeDialog();
+        } else {
+            window.uiModule.showToast('发生错误，无法保存', 'error');
+        }
+    });
+}
+
 // 初始化事件监听器
 function initEventListeners() {
     // 连接表单提交
@@ -394,6 +468,10 @@ function initEventListeners() {
     }
     if (addTempMemoryBtn) {
         addTempMemoryBtn.addEventListener('click', showAddTempMemoryDialog);
+    }
+    const addInitMemoryItemBtn = document.getElementById('addInitMemoryItemBtn');
+    if (addInitMemoryItemBtn) {
+        addInitMemoryItemBtn.addEventListener('click', showAddInitMemoryItemDialog);
     }
     if (refreshCoreMemoryBtn) {
         refreshCoreMemoryBtn.addEventListener('click', () => {
@@ -622,6 +700,7 @@ window.uiModule = {
     showConfirmDialog,
     showAddMemoryBlockDialog,
     showAddTempMemoryDialog,
+    showAddInitMemoryItemDialog,
     hideAddMemoryBlockDialog,
     showDisconnectDialog,
     initEventListeners
