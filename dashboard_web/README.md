@@ -1,8 +1,6 @@
 # Neuro-Simulator 控制面板
 
-*本临时README由AI自动生成*
-
-这是一个独立部署的 Web 控制面板，用于管理 Neuro Simulator 服务端
+这是一个独立部署的 Web 控制面板，用于管理 Neuro Simulator 服务端  
 通过这个面板，你可以方便地控制直播进程、管理配置和监控日志
 
 ## 功能特性
@@ -40,7 +38,14 @@ dashboard_web/
 ├── css/
 │   └── style.css    # 样式文件
 ├── js/
-│   └── main.js      # 主要 JavaScript 代码
+│   ├── main.js      # 入口和协调器
+│   └── modules/     # 功能模块
+│       ├── agent.js
+│       ├── config.js
+│       ├── connection.js
+│       ├── stream.js
+│       ├── tools.js
+│       └── ui.js
 ├── assets/
 │   └── favicon.ico  # 网站图标
 └── README.md        # 说明文档
