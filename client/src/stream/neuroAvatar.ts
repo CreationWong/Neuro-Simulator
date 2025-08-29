@@ -49,16 +49,18 @@ export class NeuroAvatar {
     public setStage(stage: string, initialSetup: boolean = false): void {
         if (!neuroStaticAvatarContainer) return;
 
+        const baseTransition = 'transform 0.5s ease-in-out';
+
         if (initialSetup) {
             neuroStaticAvatarContainer.style.transition = 'none';
             neuroStaticAvatarContainer.offsetHeight; 
         } else {
             // 为 stage2 动画设置特定的过渡
             if (stage === NeuroAvatarStage.STEP2) {
-                neuroStaticAvatarContainer.style.transition = 'bottom 1s cubic-bezier(0.4, 0.0, 1, 1)';
+                neuroStaticAvatarContainer.style.transition = `bottom 1s cubic-bezier(0.4, 0.0, 1, 1), ${baseTransition}`;
             } else {
-                // 其他阶段无过渡
-                neuroStaticAvatarContainer.style.transition = 'none';
+                // 其他阶段只保留 transform 的过渡
+                neuroStaticAvatarContainer.style.transition = baseTransition;
             }
         }
         
@@ -98,5 +100,19 @@ export class NeuroAvatar {
             neuroStaticAvatarContainer.classList.remove('spin-animation');
             console.log("Avatar spin animation finished.");
         }, 1000);
+    }
+
+    public triggerZoom(): void {
+        if (!neuroStaticAvatarContainer) return;
+        console.log("Triggering avatar zoom-in animation.");
+        neuroStaticAvatarContainer.classList.add('zoom-in');
+    }
+
+    public resetZoom(): void {
+        if (!neuroStaticAvatarContainer) return;
+        if (neuroStaticAvatarContainer.classList.contains('zoom-in')) {
+            console.log("Resetting avatar zoom.");
+            neuroStaticAvatarContainer.classList.remove('zoom-in');
+        }
     }
 }

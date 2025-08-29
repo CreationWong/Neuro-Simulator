@@ -69,7 +69,7 @@
   pointer-events: none;
   z-index: 15;
   visibility: hidden;
-  transition: none;
+  transition: transform 0.5s ease-in-out;
 }
 #neuro-static-avatar-container img {
   width: 100%;
@@ -78,7 +78,7 @@
 }
 
 .spin-animation {
-  animation: spin-counter-clockwise 1s linear;
+  animation: spin-counter-clockwise 0.5s linear;
 }
 
 @keyframes spin-counter-clockwise {
@@ -88,6 +88,10 @@
   to {
     transform: translateX(-50%) rotate(360deg);
   }
+}
+
+#neuro-static-avatar-container.zoom-in {
+  transform: translateX(-50%) scale(1.15);
 }
 
 #neuro-caption {

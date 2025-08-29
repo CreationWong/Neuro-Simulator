@@ -132,6 +132,10 @@ export class AppInitializer {
         return this.audioPlayer;
     }
 
+    public getNeuroAvatar(): NeuroAvatar {
+        return this.neuroAvatar;
+    }
+
     private handleSettingsUpdate(newSettings: AppSettings): void {
         console.log("Settings updated. Re-initializing connection with new settings:", newSettings);
         this.currentSettings = newSettings;
@@ -307,6 +311,9 @@ export class AppInitializer {
             case 'model_spin':
                 this.neuroAvatar.triggerSpin();
                 break;
+            case 'model_zoom':
+                this.neuroAvatar.triggerZoom();
+                break;
             case 'update_stream_metadata':
                 this.streamInfoDisplay.update(message as StreamMetadataMessage);
                 break;
@@ -324,7 +331,7 @@ export class AppInitializer {
             case 'enter_live_phase':
                 this.currentPhase = 'live';
                 this.videoPlayer.hide();
-                this.neuroAvatar.setStage('step2', true); 
+                this.neuroAvatar.setStage('step2'); 
                 break;
             case 'neuro_is_speaking':
                 break;

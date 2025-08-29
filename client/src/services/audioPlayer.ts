@@ -80,8 +80,13 @@ export class AudioPlayer {
                 this.playNextAudioSegment();
             }, { once: true });
         } else if (this.audioQueue.length === 0 && this.allSegmentsReceived) {
-            console.log("Neuro's full audio response played. Starting caption timeout.");
+            console.log("Neuro's full audio response played. Starting caption timeout and resetting zoom.");
             startCaptionTimeout();
+            try {
+                singletonManager.getAppInitializer().getNeuroAvatar().resetZoom();
+            } catch (e) {
+                console.warn("Could not reset neuro avatar zoom at end of speech", e);
+            }
         }
     }
     
@@ -100,6 +105,11 @@ export class AudioPlayer {
         this.isPlayingAudio = false;
         this.allSegmentsReceived = false;
         hideNeuroCaption(); // 强制隐藏字幕
+        try {
+            singletonManager.getAppInitializer().getNeuroAvatar().resetZoom();
+        } catch (e) {
+            console.warn("Could not reset neuro avatar zoom on stop", e);
+        }
         console.log("Neuro audio playback stopped, queue cleared.");
     }
     
