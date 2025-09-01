@@ -1,5 +1,6 @@
 # backend/config.py
 import shutil
+import sys
 from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
@@ -90,24 +91,6 @@ def _deep_update(source: dict, overrides: dict) -> dict:
         else:
             source[key] = overrides[key]
     return source
-
-class ConfigManager:
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ConfigManager, cls).__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-
-    def __init__(self):
-        if self._initialized:
-            return
-        self.settings: AppSettings = self._load_settings()
-        self._update_callbacks = []
-        self._initialized = True
-
-    import sys
 
 class ConfigManager:
     _instance = None
