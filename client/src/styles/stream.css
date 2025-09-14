@@ -78,7 +78,7 @@
 }
 
 .spin-animation {
-  animation: spin-counter-clockwise 0.5s linear;
+  animation: spin-counter-clockwise 1s linear;
 }
 
 @keyframes spin-counter-clockwise {
