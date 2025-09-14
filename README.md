@@ -114,12 +114,12 @@ Neuro-Simulator/
       - [x] 调用 Gemini 和 OpenAI API 格式的LLM
       - [x] 基于 Neuro Agent 的上一句内容而做出 Reaction
       - [ ] ~~在 prompt 中包含直播标题等更多信息~~ 将在更详细的 Chatbot Agent 中实现
-      - [ ] ~~实现更长的上下文~~ 将在更详细的 Chatbot Agent 中实现
-    - [ ] Chatbot Agent
-      - [ ] 更好的用户名生成逻辑
-      - [ ] 更长的上下文，包括自身输出和 Neuro Agent 内容
+      - [x] ~~实现更长的上下文~~ 将在更详细的 Chatbot Agent 中实现
+    - [x] Chatbot Agent
+      - [x] 更好的用户名生成逻辑
+      - [x] 更长的上下文，包括自身输出和 Neuro Agent 内容
       - [ ] 在 prompt 中包含直播标题、Neuro 和 Twitch 相关背景知识等更多信息
-      - [ ] 类似 Neuro Agent 的记忆系统，实现有状态 Chatbot Agent
+      - [x] 类似 Neuro Agent 的记忆系统，实现有状态 Chatbot Agent
   - [ ] 真实的 Filter 模块，取代 Agent prompt 中的自我 Filtered.
   - [x] 对外 API 接口，包括常规的 http 和 ws 端点
   - [x] Twitch Chat 及管理
