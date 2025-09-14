@@ -53,6 +53,22 @@ agent:
   # Agent使用的模型，切换gemini/openai时记得更改
   agent_model: "gemini-2.5-flash-lite"
 
+# --- 内建 Chatbot Agent 设置 ---
+# 仅当需要启用新的有状态 Chatbot Agent 时配置
+chatbot_agent:
+  # Agent的API服务商，支持"gemini"和"openai"
+  agent_provider: "gemini"
+  # Agent使用的模型，建议使用一个速度快、成本低的模型
+  agent_model: "gemini-1.5-flash-latest"
+  # Chatbot Agent 生成间隔（秒）
+  generation_interval_sec: 3
+  # 每次生成的消息数量
+  chats_per_batch: 2
+  # 昵称生成配置
+  nickname_generation:
+    enable_dynamic_pool: true  # 开关：是否在启动时动态生成词库
+    dynamic_pool_size: 50      # 动态生成池的大小（形容词和名词各50个）
+
 # --- Neuro 行为与节奏控制 ---
 neuro_behavior:
   # 输入聊天采样数量 - 每次生成 Neuro 回复时从观众聊天中采样的消息数量，不建议太长
@@ -63,62 +79,6 @@ neuro_behavior:
   
   # 初始问候语 - 直播开始时给 Neuro 的系统提示语
   initial_greeting: "The stream has just started. Greet your audience and say hello!"
-
-# --- Chatbot 配置 ---
-audience_simulation:
-  # LLM 提供商 - 选择用于生成观众聊天的 AI 服务，只能是 'gemini' 或 'openai'
-  llm_provider: "gemini"
-  
-  # Gemini 模型 - 使用 Gemini 服务时的具体模型名称
-  # 推荐使用gemma-3-27b-it，每天可免费调用14000次（15:00 GMT+8 刷新次数）
-  gemini_model: "gemma-3-27b-it"
-  
-  # OpenAI 模型 - 使用 OpenAI 服务时的具体模型名称
-  # 推荐使用SiliconFlow，9B以下模型免费不限量调用（注意TPM限制）
-  openai_model: "THUDM/GLM-4-9B-0414"
-  
-  # LLM 温度 - 控制 AI 生成内容的随机性，值越高越随机（0-2之间）
-  llm_temperature: 0.7
-  
-  # 聊天生成间隔（秒） - 调用 Chatbot 生成新观众聊天的时间间隔
-  chat_generation_interval_sec: 2
-  
-  # 每批聊天生成数量 - 每次调用 Chatbot 时生成的聊天消息数量
-  chats_per_batch: 3
-  
-  # 最大输出 Token 数 - 单次调用 Chatbot 时允许生成的最大 token 数量
-  max_output_tokens: 300
-  
-  # Chatbot 提示模板 - 用于指导 AI 生成观众聊天内容的提示词
-  # 其中 {neuro_speech} 和 {num_chats_to_generate} 会被动态替换
-  prompt_template: |
-    You are a Twitch live stream viewer. Your goal is to generate short, realistic, and relevant chat messages.
-    The streamer, Neuro-Sama, just said the following:
-    ---
-    {neuro_speech}
-    ---
-    Based on what Neuro-Sama said, generate a variety of chat messages. Your messages should be:
-    - Directly reacting to her words.
-    - Asking follow-up questions.
-    - Using relevant Twitch emotes (like LUL, Pog, Kappa, etc.).
-    - General banter related to the topic.
-    - Short and punchy, like real chat messages.
-    Do NOT act as the streamer. Do NOT generate full conversations.
-    Generate exactly {num_chats_to_generate} distinct chat messages. Each message must be prefixed with a DIFFERENT fictional username, like 'ChatterBoy: message text', 'EmoteFan: message text'.
-  
-  # 用户名黑名单 - 当检测到这些用户名时会自动替换为 username_pool 中的用户名
-  username_blocklist: ["ChatterBoy", "EmoteFan", "Username", "User"]
-  
-  # 用户名池 - 用于替换黑名单用户名或生成新用户名（有时候Chatbot LLM可能未给出用户名）的候选列表
-  username_pool:
-    - "ChatterBox"
-    - "EmoteLord"
-    - "QuestionMark"
-    - "StreamFan"
-    - "PixelPundit"
-    - "CodeSage"
-    - "DataDiver"
-    - "ByteBard"
 
 # --- 音频合成 (TTS) 配置 ---
 tts:

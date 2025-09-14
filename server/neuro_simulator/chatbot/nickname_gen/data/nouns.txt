@@ -1,0 +1,8 @@
+Panda
+Cat
+Fox
+Bear
+Lion
+Tiger
+Wolf
+Eagle

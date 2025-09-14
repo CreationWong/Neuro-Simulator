@@ -40,17 +40,7 @@ class NeuroBehaviorSettings(BaseModel):
     post_speech_cooldown_sec: float
     initial_greeting: str
 
-class AudienceSimSettings(BaseModel):
-    llm_provider: str
-    gemini_model: str
-    openai_model: str
-    llm_temperature: float
-    chat_generation_interval_sec: int
-    chats_per_batch: int
-    max_output_tokens: int
-    prompt_template: str = Field(default="")
-    username_blocklist: List[str] = Field(default_factory=list)
-    username_pool: List[str] = Field(default_factory=list)
+
 
 class TTSSettings(BaseModel):
     voice_name: str
@@ -67,13 +57,25 @@ class ServerSettings(BaseModel):
     client_origins: List[str] = Field(default_factory=list)
     panel_password: Optional[str] = None
 
+class NicknameGenerationSettings(BaseModel):
+    enable_dynamic_pool: bool
+    dynamic_pool_size: int
+
+class ChatbotAgentSettings(BaseModel):
+    """Settings for the new chatbot agent"""
+    agent_provider: str
+    agent_model: str
+    generation_interval_sec: int
+    chats_per_batch: int
+    nickname_generation: NicknameGenerationSettings
+
 class AppSettings(BaseModel):
     api_keys: ApiKeysSettings = Field(default_factory=ApiKeysSettings)
     stream_metadata: StreamMetadataSettings
     agent_type: str  # 可选 "letta" 或 "builtin"
     agent: AgentSettings
+    chatbot_agent: ChatbotAgentSettings
     neuro_behavior: NeuroBehaviorSettings
-    audience_simulation: AudienceSimSettings
     tts: TTSSettings
     performance: PerformanceSettings
     server: ServerSettings

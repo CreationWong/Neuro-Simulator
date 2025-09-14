@@ -128,6 +128,10 @@ class LiveStreamManager:
             return time.time() - self._stream_start_global_time
         return 0.0
 
+    def get_current_phase(self) -> str:
+        """Gets the current stream phase."""
+        return self._current_phase
+
     def get_initial_state_for_client(self) -> dict:
         """Generates the initial state event for a newly connected client."""
         elapsed_time = self.get_elapsed_time()

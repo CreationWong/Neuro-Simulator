@@ -18,6 +18,7 @@ from starlette.websockets import WebSocketState
 from .config import config_manager, AppSettings
 from ..core.agent_factory import create_agent
 from ..agent.core import Agent as LocalAgent
+from ..chatbot.core import ChatbotAgent
 from ..services.letta import LettaAgent
 from ..services.builtin import BuiltinAgentWrapper
 
@@ -25,7 +26,6 @@ from ..services.builtin import BuiltinAgentWrapper
 from ..api.system import router as system_router
 
 # --- Services and Utilities ---
-from ..services.audience import AudienceChatbotManager, get_dynamic_audience_prompt
 from ..services.audio import synthesize_audio_segment
 from ..services.stream import live_stream_manager
 from ..utils.logging import configure_server_logging, server_log_queue, agent_log_queue
@@ -37,6 +37,7 @@ from ..utils.queue import (
     is_neuro_input_queue_empty,
     get_all_neuro_input_chats,
     initialize_queues,
+    get_recent_audience_chats_for_chatbot,
 )
 from ..utils.state import app_state
 from ..utils.websocket import connection_manager
@@ -64,7 +65,7 @@ app.include_router(system_router)
 
 # --- Background Task Definitions ---
 
-chatbot_manager: AudienceChatbotManager = None
+chatbot_agent: ChatbotAgent = None
 
 async def broadcast_events_task():
     """Broadcasts events from the live_stream_manager's queue to all clients."""
@@ -79,48 +80,52 @@ async def broadcast_events_task():
             logger.error(f"Error in broadcast_events_task: {e}", exc_info=True)
 
 async def fetch_and_process_audience_chats():
-    """Generates a batch of audience chat messages."""
-    if not chatbot_manager or not chatbot_manager.client:
+    """Generates a batch of audience chat messages using the new ChatbotAgent."""
+    if not chatbot_agent:
         return
     try:
-        dynamic_prompt = await get_dynamic_audience_prompt()
-        raw_chat_text = await chatbot_manager.client.generate_chat_messages(
-            prompt=dynamic_prompt, 
-            max_tokens=config_manager.settings.audience_simulation.max_output_tokens
+        # Get context for the chatbot
+        current_neuro_speech = app_state.neuro_last_speech
+        context_message = current_neuro_speech if current_neuro_speech else "The stream is starting! Let's say hello and get the hype going!"
+        recent_history = get_recent_audience_chats_for_chatbot(limit=10)
+
+        # Generate messages
+        generated_messages = await chatbot_agent.generate_chat_messages(
+            neuro_speech=context_message,
+            recent_history=recent_history
         )
         
-        parsed_chats = []
-        for line in raw_chat_text.split('\n'):
-            line = line.strip()
-            if ':' in line:
-                username_raw, text = line.split(':', 1)
-                username = username_raw.strip()
-                if username in config_manager.settings.audience_simulation.username_blocklist:
-                    username = random.choice(config_manager.settings.audience_simulation.username_pool)
-                if username and text.strip(): 
-                    parsed_chats.append({"username": username, "text": text.strip()})
-            elif line: 
-                parsed_chats.append({"username": random.choice(config_manager.settings.audience_simulation.username_pool), "text": line})
-        
-        chats_to_broadcast = parsed_chats[:config_manager.settings.audience_simulation.chats_per_batch]
-        
-        for chat in chats_to_broadcast: 
+        if not generated_messages:
+            return
+
+        # Process and broadcast generated messages
+        for chat in generated_messages: 
             add_to_audience_buffer(chat)
             add_to_neuro_input_queue(chat)
             broadcast_message = {"type": "chat_message", **chat, "is_user_message": False}
             await connection_manager.broadcast(broadcast_message)
-            await asyncio.sleep(random.uniform(0.1, 0.4))
+            # Stagger the messages slightly to feel more natural
+            await asyncio.sleep(random.uniform(0.2, 0.8))
+            
     except Exception as e:
-        logger.error(f"Error in fetch_and_process_audience_chats: {e}", exc_info=True)
+        logger.error(f"Error in new fetch_and_process_audience_chats: {e}", exc_info=True)
 
 async def generate_audience_chat_task():
     """Periodically triggers the audience chat generation task."""
     while True:
         try:
+            # Wait until the live phase starts
+            # await app_state.live_phase_started_event.wait() 
+            
             asyncio.create_task(fetch_and_process_audience_chats())
-            await asyncio.sleep(config_manager.settings.audience_simulation.chat_generation_interval_sec)
+            
+            # Use the interval from the new chatbot_agent config
+            await asyncio.sleep(config_manager.settings.chatbot_agent.generation_interval_sec)
         except asyncio.CancelledError:
             break
+        except Exception as e:
+            logger.error(f"Error in generate_audience_chat_task: {e}", exc_info=True)
+            await asyncio.sleep(10) # Avoid fast-looping on persistent errors
 
 async def neuro_response_cycle():
     """The core response loop for the agent."""
@@ -223,18 +228,18 @@ async def startup_event():
     # 2. Initialize queues now that config is loaded
     initialize_queues()
 
-    # 4. Initialize other managers/services that depend on config
-    global chatbot_manager
-    chatbot_manager = AudienceChatbotManager()
+    # 3. Initialize the new Chatbot Agent
+    global chatbot_agent
+    chatbot_agent = ChatbotAgent()
+    await chatbot_agent.initialize()
 
-    # 5. Register callbacks
+    # 4. Register callbacks
     async def metadata_callback(settings: AppSettings):
         await live_stream_manager.broadcast_stream_metadata()
     
     config_manager.register_update_callback(metadata_callback)
-    config_manager.register_update_callback(chatbot_manager.handle_config_update)
     
-    # 6. Initialize agent (which will load its own configs)
+    # 5. Initialize main agent (which will load its own configs)
     try:
         await create_agent()
         logger.info(f"Successfully initialized agent type: {config_manager.settings.agent_type}")
