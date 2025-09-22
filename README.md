@@ -180,7 +180,7 @@ Neuro-Simulator/
       - [x] 仿真字幕样式
         - [x] 字体和描边效果
         - [x] 逐字跳出效果
-        - [ ] 随内容量的字号调整效果
+        - [x] 随内容量的字号调整效果
       - [x] 仿真 Twitch Chat Overlay
       - [x] Neuro 立绘
         - [x] 开场上升

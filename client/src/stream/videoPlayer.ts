@@ -30,20 +30,39 @@ export class VideoPlayer {
 
         const app = singletonManager.getAppInitializer();
         const muteButton = app.getMuteButton();
-        startupVideo.muted = muteButton.getIsMuted();
 
-        // 直接调用 play()，这是最强的播放指令
+        const seekAfterPlay = () => {
+            if (isFinite(startupVideo.duration) && initialProgress > 0.1 && initialProgress < startupVideo.duration) {
+                startupVideo.currentTime = initialProgress;
+                console.log(`Seeked to: ${initialProgress.toFixed(2)}s.`);
+            }
+        };
+
+        // 1. 总是先尝试有声播放
+        startupVideo.muted = false;
         const playPromise = startupVideo.play();
 
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                // 播放成功开始后，再尝试设置时间点
-                if (isFinite(startupVideo.duration) && initialProgress > 0.1 && initialProgress < startupVideo.duration) {
-                    startupVideo.currentTime = initialProgress;
-                    console.log(`Playback started, then seeked to: ${initialProgress.toFixed(2)}s.`);
-                }
+                // 有声播放成功！
+                console.log("Unmuted autoplay successful.");
+                seekAfterPlay();
             }).catch(error => {
-                console.warn("Video play failed. This might be due to browser autoplay restrictions.", error);
+                // 有声播放失败，被浏览器阻止
+                console.warn("Unmuted autoplay failed. Showing unmute prompt and falling back to muted playback.", error);
+                
+                // 2. 显示交互提示按钮
+                muteButton.show();
+
+                // 3. 回退到静音播放
+                startupVideo.muted = true;
+                const mutedPlayPromise = startupVideo.play();
+                mutedPlayPromise.then(() => {
+                    console.log("Muted fallback playback started.");
+                    seekAfterPlay();
+                }).catch(mutedError => {
+                    console.error("Muted fallback playback also failed. This is unexpected.", mutedError);
+                });
             });
         }
     }

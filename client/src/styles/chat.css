@@ -297,10 +297,11 @@
   position: absolute;
   top: 60%;
   left: 50%;
-  transform: translate(-50%);
+  transform: translate(-50%, -50%);
   width: 90%; /* 限制文本宽度以自动换行 */
   font-size: 2cqi;
   text-align: center;
+  overflow-wrap: break-word; /* 强制换行 */
 }
 
 
