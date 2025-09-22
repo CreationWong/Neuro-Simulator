@@ -67,7 +67,7 @@ export function showNeuroCaption(text: string, duration?: number): void {
         }
 
         const totalChars = text.length;
-        let displayedText = neuroCaptionElement.textContent; // 保留现有文本
+        let displayedText = neuroCaptionElement.textContent || ''; // 保留现有文本
 
         const displayWord = (index: number) => {
             if (index < words.length) {
