@@ -39,7 +39,7 @@ class ChatbotLLMClient:
             if not api_key:
                 raise ValueError("GEMINI_API_KEY is not set in configuration for the chatbot agent.")
             
-            genai.configure(api_key=api_key)
+            self.client = genai.Client(api_key=api_key)
             self.model_name = settings.chatbot_agent.agent_model
             self._generate_func = self._generate_gemini
             
@@ -62,20 +62,21 @@ class ChatbotLLMClient:
 
     async def _generate_gemini(self, prompt: str, max_tokens: int) -> str:
         """Generates text using the Gemini model."""
-        generation_config = types.GenerationConfig(
+        generation_config = types.GenerateContentConfig(
             max_output_tokens=max_tokens,
         )
-        model = genai.GenerativeModel(self.model_name)
         try:
-            response = await model.generate_content_async(
+            # Run the synchronous SDK call in a thread to avoid blocking asyncio
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
+                model=self.model_name,
                 contents=prompt,
-                generation_config=generation_config
+                config=generation_config
             )
             return response.text
         except Exception as e:
             logger.error(f"Error in chatbot _generate_gemini: {e}", exc_info=True)
             return ""
-
     async def _generate_openai(self, prompt: str, max_tokens: int) -> str:
         """Generates text using the OpenAI model."""
         try:
