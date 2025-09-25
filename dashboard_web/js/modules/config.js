@@ -1,252 +1,115 @@
 // dashboard_web/js/modules/config.js
 
-// 配置管理相关元素
-const configForm = document.getElementById('configForm');
-const resetConfigBtn = document.getElementById('resetConfigBtn');
-let currentConfig = {}; // 存储当前配置
+let jsonEditor = null; // To hold the JSON Editor instance
 
-// 将配置对象转换为表单值
-function configToForm(config) {
-    const configForm = document.getElementById('configForm');
-    if (!configForm) {
-        return;
-    }
-    
-    // 遍历表单中的每个输入元素
-    const formElements = configForm.querySelectorAll('input, select, textarea');
-    
-    formElements.forEach(element => {
-        const name = element.name;
-        if (!name) return;
-        
-        // 解析嵌套属性路径 (例如: stream_metadata.stream_title)
-        const keys = name.split('.');
-        let value = config;
-        
-        // 通过路径获取配置值
-        for (const key of keys) {
-            if (value && typeof value === 'object' && key in value) {
-                value = value[key];
-            } else {
-                value = undefined;
-                break;
-            }
-        }
-        
-        // 根据元素类型设置值
-        if (value !== undefined) {
-            if (element.type === 'checkbox') {
-                element.checked = value;
-            } else if (Array.isArray(value)) {
-                // 对于数组类型，将其转换为逗号分隔的字符串
-                element.value = value.join(', ');
-            } else {
-                element.value = value;
-            }
-        }
-    });
-}
-
-// 将表单值转换为配置对象
-function formToConfig() {
-    const configForm = document.getElementById('configForm');
-    if (!configForm) {
-        return {};
-    }
-    
-    const config = {};
-    
-    // 遍历表单中的每个输入元素
-    const formElements = configForm.querySelectorAll('input, select, textarea');
-    
-    formElements.forEach(element => {
-        const name = element.name;
-        if (!name) return;
-        
-        // 解析嵌套属性路径 (例如: stream_metadata.stream_title)
-        const keys = name.split('.');
-        let obj = config;
-        
-        // 创建嵌套对象结构
-        for (let i = 0; i < keys.length - 1; i++) {
-            const key = keys[i];
-            if (!(key in obj)) {
-                obj[key] = {};
-            }
-            obj = obj[key];
-        }
-        
-        // 设置最终值
-        const lastKey = keys[keys.length - 1];
-        if (element.type === 'checkbox') {
-            obj[lastKey] = element.checked;
-        } else if (element.type === 'number') {
-            const numValue = parseFloat(element.value);
-            obj[lastKey] = isNaN(numValue) ? element.value : numValue;
-        } else if (element.type === 'text' && 
-                  (element.name.endsWith('.stream_tags') || 
-                   element.name.endsWith('.username_blocklist') ||
-                   element.name.endsWith('.username_pool'))) {
-            // 处理数组类型字段
-            obj[lastKey] = element.value.split(',').map(item => item.trim()).filter(item => item);
-        } else {
-            obj[lastKey] = element.value;
-        }
-    });
-    
-    return config;
-}
-
-// 获取配置 (通过WebSocket)
-async function getConfig() {
+// Initializes the configuration editor
+async function initializeConfigEditor() {
     if (!window.connectionModule.isConnected) {
-        window.uiModule.showToast('未连接到后端', 'warning');
+        console.log("Cannot initialize config editor: Not connected.");
         return;
     }
-    
+
+    const container = document.getElementById('config-editor-container');
+    if (!container) {
+        console.error("Config editor container not found!");
+        return;
+    }
+    container.innerHTML = '正在加载配置...'; // Loading indicator
+
     try {
-        const config = await window.connectionModule.sendAdminWsMessage('get_configs');
-        currentConfig = config; // 保存当前配置
-        configToForm(config); // 填充表单
-        
-        // 检查是否有未显示的配置项
-        checkForMissingConfigItems(config);
-        
-        // 检查是否使用了内建Agent并相应地显示/隐藏Agent管理标签页
-        updateAgentManagementVisibility(config);
+        // Fetch schema and current values in parallel
+        const [schema, values] = await Promise.all([
+            window.connectionModule.sendAdminWsMessage('get_settings_schema'),
+            window.connectionModule.sendAdminWsMessage('get_configs')
+        ]);
+
+        // Clear loading message
+        container.innerHTML = '';
+
+        // Destroy existing editor instance if it exists
+        if (jsonEditor) {
+            jsonEditor.destroy();
+        }
+
+        // Create the JSON Editor
+        jsonEditor = new JSONEditor(container, {
+            schema: schema,
+            startval: values,
+            theme: 'html',
+            show_errors: 'interaction',
+            disable_edit_json: true,
+            disable_properties: true,
+        });
+
+        // Check for Agent type and update tab visibility
+        updateAgentManagementVisibility(values);
+
     } catch (error) {
-        console.error('获取配置失败:', error);
-        window.uiModule.showToast(`获取配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`, 'error');
+        console.error('初始化配置编辑器失败:', error);
+        container.innerHTML = `<p style="color: red;">加载配置失败: ${error.message}</p>`;
+        window.uiModule.showToast(`加载配置失败: ${error.message}`, 'error');
     }
 }
 
-// 检查是否有未在面板中显示的配置项
-function checkForMissingConfigItems(config) {
-    // 定义应该在面板中显示的配置项路径
-    const expectedPaths = [
-        'stream_metadata.stream_title',
-        'stream_metadata.stream_category',
-        'stream_metadata.stream_tags',
-        'neuro_behavior.input_chat_sample_size',
-        'neuro_behavior.post_speech_cooldown_sec',
-        'neuro_behavior.initial_greeting',
-        'audience_simulation.llm_provider',
-        'audience_simulation.gemini_model',
-        'audience_simulation.openai_model',
-        'audience_simulation.llm_temperature',
-        'audience_simulation.chat_generation_interval_sec',
-        'audience_simulation.chats_per_batch',
-        'audience_simulation.max_output_tokens',
-        'audience_simulation.username_blocklist',
-        'audience_simulation.username_pool',
-        'agent.agent_provider',
-        'agent.agent_model',
-        'performance.neuro_input_queue_max_size',
-        'performance.audience_chat_buffer_max_size',
-        'performance.initial_chat_backlog_limit'
-    ];
-    
-    // 收集实际配置中的所有路径
-    const actualPaths = [];
-    
-    function collectPaths(obj, prefix = '') {
-        for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                const fullPath = prefix ? `${prefix}.${key}` : key;
-                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-                    collectPaths(obj[key], fullPath);
-                } else {
-                    actualPaths.push(fullPath);
-                }
-            }
-        }
+// Saves the configuration
+async function saveConfig() {
+    if (!jsonEditor) {
+        window.uiModule.showToast('编辑器未初始化', 'error');
+        return;
     }
-    
-    collectPaths(config);
-    
-    // 检查是否有未显示的配置项
-    const missingPaths = actualPaths.filter(path => 
-        !expectedPaths.includes(path) && 
-        !path.startsWith('api_keys') && 
-        !path.startsWith('tts') && 
-        !path.startsWith('server') &&
-        path !== 'stream_metadata.streamer_nickname'
-    );
-    
-    if (missingPaths.length > 0) {
-        // 可以在这里添加更多用户提示逻辑
-    }
-}
 
-// 重置配置表单
-function resetConfigForm() {
-    configToForm(currentConfig); // 使用保存的配置重置表单
-}
-
-// 保存配置 (通过WebSocket)
-async function saveConfig(e) {
-    e.preventDefault(); // 阻止表单默认提交行为
-    
     if (!window.connectionModule.isConnected) {
         window.uiModule.showToast('未连接到后端', 'warning');
         return;
     }
-    
+
+    // Validate the editor's content
+    const errors = jsonEditor.validate();
+    if (errors.length) {
+        console.error('配置验证失败:', errors);
+        window.uiModule.showToast('配置中有错误，请修正后再保存', 'error');
+        return;
+    }
+
     try {
-        const config = formToConfig(); // 从表单获取配置
-        // 使用 update_configs action 发送配置更新
-        const updatedConfig = await window.connectionModule.sendAdminWsMessage('update_configs', config);
-        window.uiModule.showToast('配置保存成功', 'success');
-        // 更新当前配置为服务器返回的完整配置
-        currentConfig = updatedConfig;
-        configToForm(currentConfig); // 用服务器返回的配置更新表单
+        const updatedValues = jsonEditor.getValue();
+        await window.connectionModule.sendAdminWsMessage('update_configs', updatedValues);
+        window.uiModule.showToast('配置保存成功！', 'success');
+
+        // After saving, also update the agent management tab visibility
+        updateAgentManagementVisibility(updatedValues);
+
     } catch (error) {
         console.error('保存配置失败:', error);
-        window.uiModule.showToast(`保存配置失败: ${error.message}\n\n请检查后端日志以获取更多信息。`, 'error');
+        window.uiModule.showToast(`保存配置失败: ${error.message}`, 'error');
     }
 }
 
-// 检查是否使用了内建Agent并相应地显示/隐藏Agent管理标签页
+// Checks the agent_type from config and shows/hides the Agent Management tab
 function updateAgentManagementVisibility(config) {
-    // 使用setTimeout确保DOM完全加载后再修改元素
-    setTimeout(() => {
-        const agentManagementTab = document.getElementById('agentManagementTab');
-        const chatbotManagementTab = document.getElementById('chatbotManagementTab');
-        
-        // 如果通过ID获取不到，尝试通过data属性获取
-        const agentManagementTabByData = agentManagementTab || document.querySelector('[data-tab="agent-management"]');
-        const chatbotManagementTabByData = chatbotManagementTab || document.querySelector('[data-tab="chatbot-management"]');
-        
-        if (agentManagementTabByData && chatbotManagementTabByData) {
-            // 检查配置中是否使用了内建Agent
-            // 根据配置结构，agent_type 字段标识使用的Agent类型
-            // 如果没有agent_type字段，默认认为是builtin agent
-            const isBuiltinAgent = !config.agent_type || config.agent_type === 'builtin';
-            
-            if (isBuiltinAgent) {
-                agentManagementTabByData.style.display = 'block';
-            } else {
-                agentManagementTabByData.style.display = 'none';
-                
-                // 如果当前激活的标签页是Agent管理，则切换到连接标签页
-                const activeTab = document.querySelector('.nav-tab.active');
-                if (activeTab && activeTab.dataset.tab === 'agent-management') {
-                    window.uiModule.switchTab('connection');
-                }
+    const agentManagementTab = document.querySelector('[data-tab="agent-management"]');
+    const chatbotManagementTab = document.querySelector('[data-tab="chatbot-management"]');
+
+    if (chatbotManagementTab) {
+        chatbotManagementTab.style.display = 'block'; // Always show Chatbot Management
+    }
+
+    if (agentManagementTab) {
+        const isBuiltinAgent = !config.agent_type || config.agent_type === 'builtin';
+        if (isBuiltinAgent) {
+            agentManagementTab.style.display = 'block';
+        } else {
+            agentManagementTab.style.display = 'none';
+            const activeTab = document.querySelector('.nav-tab.active');
+            if (activeTab && activeTab.dataset.tab === 'agent-management') {
+                window.uiModule.switchTab('control');
             }
-            
-            // 目前ChatBot管理标签页始终隐藏，日后实现时再显示
-            chatbotManagementTabByData.style.display = 'none';
         }
-    }, 0); // 使用0毫秒延时，确保在当前执行栈清空后再执行
+    }
 }
 
-// 导出函数供其他模块使用
+// Export functions to be used by other modules
 window.configModule = {
-    getConfig,
-    resetConfigForm,
-    saveConfig,
-    configToForm,
-    formToConfig,
-    updateAgentManagementVisibility
+    initializeConfigEditor,
+    saveConfig
 };

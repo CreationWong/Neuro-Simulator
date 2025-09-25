@@ -19,7 +19,7 @@ def main():
     
     args = parser.parse_args()
     
-    # 1. Set working directory
+    # --- 1. Setup Working Directory ---
     if args.dir:
         work_dir = Path(args.dir).resolve()
         if not work_dir.exists():
@@ -32,83 +32,70 @@ def main():
     os.chdir(work_dir)
     logging.info(f"Using working directory: {work_dir}")
 
-    # 2. Initialize paths and load configuration
+    # --- 2. Initialize Path Manager ---
     from neuro_simulator.core import path_manager
-    from neuro_simulator.core.config import config_manager
-    import uvicorn
-
     path_manager.initialize_path_manager(os.getcwd())
 
-    # Define example_path early for config loading
-    example_path = Path(__file__).parent / "config.yaml.example"
-
-    # 2.2. Copy default config.yaml.example if it doesn't exist
+    # --- 3. First-Run Environment Initialization ---
+    # This block ensures that a new user has all the necessary default files.
     try:
-        source_config_example = example_path
-        destination_config_example = path_manager.path_manager.working_dir / "config.yaml.example"
-        if not destination_config_example.exists():
-            shutil.copy(source_config_example, destination_config_example)
-            logging.info(f"Copyed default config.yaml.example to {destination_config_example}")
+        package_source_path = Path(__file__).parent
+        
+        # Helper to copy files if they don't exist
+        def copy_if_not_exists(src: Path, dest: Path):
+            if not dest.exists():
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(src, dest)
+                logging.info(f"Copied default file to {dest}")
+
+        # Copy config.yaml.example
+        copy_if_not_exists(package_source_path / "config.yaml.example", work_dir / "config.yaml.example")
+
+        # Copy prompts
+        copy_if_not_exists(package_source_path / "agent" / "neuro_prompt.txt", path_manager.path_manager.neuro_prompt_path)
+        copy_if_not_exists(package_source_path / "agent" / "memory_prompt.txt", path_manager.path_manager.memory_agent_prompt_path)
+
+        # Copy default memory JSON files
+        copy_if_not_exists(package_source_path / "agent" / "memory" / "core_memory.json", path_manager.path_manager.core_memory_path)
+        copy_if_not_exists(package_source_path / "agent" / "memory" / "init_memory.json", path_manager.path_manager.init_memory_path)
+        copy_if_not_exists(package_source_path / "agent" / "memory" / "temp_memory.json", path_manager.path_manager.temp_memory_path)
+
+        # Copy default assets directory
+        source_assets_dir = package_source_path / "assets"
+        destination_assets_dir = path_manager.path_manager.assets_dir
+        if not destination_assets_dir.exists():
+            shutil.copytree(source_assets_dir, destination_assets_dir)
+            logging.info(f"Copied default asset directory to {destination_assets_dir}")
+
     except Exception as e:
-        logging.warning(f"Could not copy default config.yaml.example: {e}")
+        logging.warning(f"Could not copy all default files: {e}")
+
+    # --- 4. Load Configuration ---
+    from neuro_simulator.core.config import config_manager
+    from pydantic import ValidationError
+    import uvicorn
 
     main_config_path = path_manager.path_manager.working_dir / "config.yaml"
-    config_manager.load_and_validate(str(main_config_path), str(example_path))
-
-    # 2.5. Copy default prompt templates if they don't exist
     try:
-        # Use Path(__file__).parent for robust path resolution
-        base_path = Path(__file__).parent
-        neuro_prompt_example = base_path / "agent" / "neuro_prompt.txt"
-        memory_prompt_example = base_path / "agent" / "memory_prompt.txt"
-
-        if not path_manager.path_manager.neuro_prompt_path.exists():
-            shutil.copy(neuro_prompt_example, path_manager.path_manager.neuro_prompt_path)
-            logging.info(f"Copied default neuro prompt to {path_manager.path_manager.neuro_prompt_path}")
-        if not path_manager.path_manager.memory_agent_prompt_path.exists():
-            shutil.copy(memory_prompt_example, path_manager.path_manager.memory_agent_prompt_path)
-            logging.info(f"Copied default memory prompt to {path_manager.path_manager.memory_agent_prompt_path}")
-
-        # Copy default memory JSON files if they don't exist
-        memory_files = {
-            "core_memory.json": path_manager.path_manager.core_memory_path,
-            "init_memory.json": path_manager.path_manager.init_memory_path,
-            "temp_memory.json": path_manager.path_manager.temp_memory_path,
-        }
-        for filename, dest_path in memory_files.items():
-            src_path = base_path / "agent" / "memory" / filename
-            if not dest_path.exists():
-                shutil.copy(src_path, dest_path)
-                logging.info(f"Copied default {filename} to {dest_path}")
-
-        # Copy default assets directory if it doesn't exist
-        source_assets_dir = base_path / "assets"
-        destination_assets_dir = path_manager.path_manager.assets_dir
-        
-        # Ensure the destination assets directory exists
-        destination_assets_dir.mkdir(parents=True, exist_ok=True)
-
-        # Copy individual files from source assets to destination assets
-        for item in source_assets_dir.iterdir():
-            if item.is_file():
-                dest_file = destination_assets_dir / item.name
-                if not dest_file.exists():
-                    shutil.copy(item, dest_file)
-                    logging.info(f"Copied asset {item.name} to {dest_file}")
-            elif item.is_dir():
-                # Recursively copy subdirectories if they don't exist
-                dest_subdir = destination_assets_dir / item.name
-                if not dest_subdir.exists():
-                    shutil.copytree(item, dest_subdir)
-                    logging.info(f"Copied asset directory {item.name} to {dest_subdir}")
+        config_manager.load(str(main_config_path))
+    except FileNotFoundError:
+        logging.error(f"FATAL: Configuration file '{main_config_path.name}' not found.")
+        logging.error(f"If this is your first time, please rename 'config.yaml.example' to 'config.yaml' after filling it out.")
+        sys.exit(1)
+    except ValidationError as e:
+        logging.error(f"FATAL: Configuration error in '{main_config_path.name}':")
+        logging.error(e)
+        sys.exit(1)
     except Exception as e:
-        logging.warning(f"Could not copy default prompt templates, memory files, or assets: {e}")
+        logging.error(f"FATAL: An unexpected error occurred while loading the configuration: {e}")
+        sys.exit(1)
 
-    # 3. Determine server host and port
+    # --- 5. Determine Server Host and Port ---
+    # Command-line arguments override config file settings
     server_host = args.host or config_manager.settings.server.host
     server_port = args.port or config_manager.settings.server.port
 
-    # 4. Run the server
+    # --- 6. Run the Server ---
     logging.info(f"Starting Neuro-Simulator server on {server_host}:{server_port}...")
     try:
         uvicorn.run(

@@ -8,11 +8,7 @@ let modalDialog = null; // 模态对话框元素
 
 // 标签页相关元素
 const navTabs = document.querySelectorAll('.nav-tab');
-const tabContents = document.querySelectorAll('.tab-content');
-
-// Agent 标签页相关元素
-const agentTabBtns = document.querySelectorAll('.agent-tab-btn');
-const agentTabContents = document.querySelectorAll('.agent-tab-content');
+const tabContents = document.querySelectorAll('.main-tab-content');
 
 // 模态对话框相关元素
 const addMemoryBlockDialog = document.getElementById('addMemoryBlockDialog');
@@ -20,51 +16,28 @@ const addMemoryBlockForm = document.getElementById('addMemoryBlockForm');
 const cancelAddMemoryBtn = document.getElementById('cancelAddMemoryBtn');
 const closeDialogBtns = document.querySelectorAll('.close-btn');
 
-// 切换标签页
+// 切换主标签页
 function switchTab(tabName) {
-    // 更新标签页激活状态
     navTabs.forEach(tab => {
-        if (tab.dataset.tab === tabName) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
     });
-    
-    // 显示对应的内容区域
     tabContents.forEach(content => {
-        if (content.id === `${tabName}-tab`) {
-            content.classList.add('active');
-        } else {
-            content.classList.remove('active');
-        }
+        content.classList.toggle('active', content.id === `${tabName}-tab`);
     });
 }
 
-// 切换Agent标签页
+// 以编程方式切换Agent子标签页
 function switchAgentTab(tabName) {
-    // 更新标签页激活状态
-    agentTabBtns.forEach(tab => {
-        if (tab.dataset.agentTab === tabName) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
-    });
-    
-    // 显示对应的内容区域
-    agentTabContents.forEach(content => {
-        if (content.id === `${tabName}-agent-tab`) {
-            content.classList.add('active');
-        } else {
-            content.classList.remove('active');
-        }
-    });
+    console.log('DEBUG: Checking for bootstrap object in switchAgentTab:', typeof bootstrap);
+    const tabButton = document.querySelector(`#agent-nav-tabs button[data-bs-target="#${tabName}-agent-tab"]`);
+    if (tabButton) {
+        const tab = bootstrap.Tab.getOrCreateInstance(tabButton);
+        tab.show();
+    }
 }
 
 // 显示横幅提示
 function showToast(message, type = 'info', duration = 5000) {
-    // 如果容器不存在，创建它
     if (!toastContainer) {
         toastContainer = document.getElementById('toastContainer');
         if (!toastContainer) {
@@ -74,82 +47,42 @@ function showToast(message, type = 'info', duration = 5000) {
             document.body.appendChild(toastContainer);
         }
     }
-    
-    // 创建横幅元素
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
-    // 添加图标
     const icon = document.createElement('span');
     icon.className = 'icon';
     switch (type) {
-        case 'success':
-            icon.textContent = '✓';
-            break;
-        case 'error':
-            icon.textContent = '✗';
-            break;
-        case 'warning':
-            icon.textContent = '!';
-            break;
-        default:
-            icon.textContent = 'ℹ';
+        case 'success': icon.textContent = '✓'; break;
+        case 'error': icon.textContent = '✗'; break;
+        case 'warning': icon.textContent = '!'; break;
+        default: icon.textContent = 'ℹ';
     }
-    
-    // 添加消息文本
     const messageEl = document.createElement('span');
     messageEl.className = 'message';
     messageEl.textContent = message;
-    
-    // 添加关闭按钮
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn';
     closeBtn.innerHTML = '&times;';
     closeBtn.onclick = () => {
         toast.classList.remove('show');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 300);
+        setTimeout(() => toast.parentNode?.removeChild(toast), 300);
     };
-    
-    // 组装元素
-    toast.appendChild(icon);
-    toast.appendChild(messageEl);
-    toast.appendChild(closeBtn);
-    
-    // 添加到容器
+    toast.append(icon, messageEl, closeBtn);
     toastContainer.appendChild(toast);
-    
-    // 触发显示动画
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    // 自动隐藏
+    setTimeout(() => toast.classList.add('show'), 10);
     if (duration > 0) {
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
-        }, duration);
+        setTimeout(() => closeBtn.onclick(), duration);
     }
 }
 
 // 显示确认对话框
 function showConfirmDialog(message) {
-    // 如果对话框元素不存在，创建它
     if (!confirmDialog) {
         confirmDialog = document.getElementById('confirmDialog');
         if (!confirmDialog) {
             confirmDialog = document.createElement('div');
             confirmDialog.id = 'confirmDialog';
             confirmDialog.className = 'confirm-dialog';
-            
             confirmDialog.innerHTML = `
                 <div class="confirm-content">
                     <div class="confirm-message"></div>
@@ -159,540 +92,179 @@ function showConfirmDialog(message) {
                     </div>
                 </div>
             `;
-            
             document.body.appendChild(confirmDialog);
         }
     }
-    
-    // 设置消息
     confirmDialog.querySelector('.confirm-message').textContent = message;
-    
-    // 显示对话框
     confirmDialog.classList.add('show');
-    
-    // 返回Promise
     return new Promise((resolve) => {
-        // 绑定事件（每次调用时重新绑定以确保事件处理程序是最新的）
         const okButton = confirmDialog.querySelector('.confirm-ok');
         const cancelButton = confirmDialog.querySelector('.confirm-cancel');
-        
-        // 清除之前的事件监听器
         const newOkButton = okButton.cloneNode(true);
         okButton.parentNode.replaceChild(newOkButton, okButton);
-        
         const newCancelButton = cancelButton.cloneNode(true);
         cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
-        
-        // 添加新的事件监听器
-        newOkButton.addEventListener('click', () => {
-            resolve(true);
-            confirmDialog.classList.remove('show');
-        });
-        
-        newCancelButton.addEventListener('click', () => {
-            resolve(false);
-            confirmDialog.classList.remove('show');
-        });
+        newOkButton.addEventListener('click', () => { resolve(true); confirmDialog.classList.remove('show'); });
+        newCancelButton.addEventListener('click', () => { resolve(false); confirmDialog.classList.remove('show'); });
     });
 }
 
-// 显示添加记忆块对话框
-function showAddMemoryBlockDialog() {
-    if (addMemoryBlockDialog) {
-        addMemoryBlockDialog.classList.add('show');
-    }
-}
+// 其他对话框函数 (showAddMemoryBlockDialog, etc.) 保持不变
+function showAddMemoryBlockDialog() { if (addMemoryBlockDialog) addMemoryBlockDialog.classList.add('show'); }
+function hideAddMemoryBlockDialog() { if (addMemoryBlockDialog) addMemoryBlockDialog.classList.remove('show'); }
 
-// 显示添加临时记忆对话框
 function showAddTempMemoryDialog() {
-    // 创建对话框元素
     const dialog = document.createElement('div');
     dialog.className = 'modal-dialog show';
     dialog.id = 'addTempMemoryDialog';
-    
     dialog.innerHTML = `
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>添加临时记忆</h3>
-                <button class="close-btn">&times;</button>
-            </div>
+            <div class="modal-header"><h3>添加临时记忆</h3><button class="close-btn">&times;</button></div>
             <div class="modal-body">
                 <form id="addTempMemoryForm">
-                    <div class="form-group">
-                        <label for="tempMemoryRole">角色:</label>
-                        <select id="tempMemoryRole" class="form-control">
-                            <option value="system">system</option>
-                            <option value="user">user</option>
-                            <option value="assistant">assistant</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="tempMemoryContent">内容:</label>
-                        <textarea id="tempMemoryContent" rows="4" class="form-control"></textarea>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" class="btn secondary" id="cancelAddTempMemoryBtn">取消</button>
-                        <button type="submit" class="btn primary">添加</button>
-                    </div>
+                    <div class="form-group"><label for="tempMemoryRole">角色:</label><select id="tempMemoryRole" class="form-control"><option value="system">system</option><option value="user">user</option><option value="assistant">assistant</option></select></div>
+                    <div class="form-group"><label for="tempMemoryContent">内容:</label><textarea id="tempMemoryContent" rows="4" class="form-control"></textarea></div>
+                    <div class="button-group"><button type="button" class="btn secondary" id="cancelAddTempMemoryBtn">取消</button><button type="submit" class="btn primary">添加</button></div>
                 </form>
             </div>
         </div>
     `;
-    
-    // 添加到文档中
     document.body.appendChild(dialog);
-    
-    // 绑定事件
-    const closeBtn = dialog.querySelector('.close-btn');
-    const cancelBtn = document.getElementById('cancelAddTempMemoryBtn');
-    const form = document.getElementById('addTempMemoryForm');
-    
-    const closeDialog = () => {
-        dialog.remove();
-    };
-    
-    closeBtn.addEventListener('click', closeDialog);
-    cancelBtn.addEventListener('click', closeDialog);
-    
-    // 点击对话框背景关闭
-    dialog.addEventListener('click', (e) => {
-        if (e.target === dialog) {
-            closeDialog();
-        }
-    });
-    
-    // 表单提交事件
-    form.addEventListener('submit', async (e) => {
+    const closeDialog = () => dialog.remove();
+    dialog.querySelector('.close-btn').addEventListener('click', closeDialog);
+    dialog.querySelector('#cancelAddTempMemoryBtn').addEventListener('click', closeDialog);
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) closeDialog(); });
+    dialog.querySelector('#addTempMemoryForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const role = document.getElementById('tempMemoryRole').value;
-        const content = document.getElementById('tempMemoryContent').value;
-        
-        if (!content.trim()) {
-            window.uiModule.showToast('请输入内容', 'warning');
-            return;
-        }
-        
+        const content = document.getElementById('tempMemoryContent').value.trim();
+        if (!content) { window.uiModule.showToast('请输入内容', 'warning'); return; }
         try {
-            if (window.connectionModule && window.connectionModule.sendAdminWsMessage) {
-                await window.connectionModule.sendAdminWsMessage('add_temp_memory', { content, role });
-                
-                window.uiModule.showToast('临时记忆已添加', 'success');
-                closeDialog();
-                if (window.agentModule && window.agentModule.refreshTempMemory) {
-                    window.agentModule.refreshTempMemory(); // 刷新显示
-                }
-            } else {
-                console.error('window.connectionModule.sendAdminWsMessage is not available');
-                window.uiModule.showToast('未连接到后端', 'error');
-            }
-        } catch (error) {
-            window.uiModule.showToast(`添加临时记忆失败: ${error.message}`, 'error');
-        }
+            await window.connectionModule.sendAdminWsMessage('add_temp_memory', { content, role: document.getElementById('tempMemoryRole').value });
+            window.uiModule.showToast('临时记忆已添加', 'success');
+            closeDialog();
+            window.agentModule?.refreshTempMemory();
+        } catch (error) { window.uiModule.showToast(`添加临时记忆失败: ${error.message}`, 'error'); }
     });
 }
 
-// 隐藏添加记忆块对话框
-function hideAddMemoryBlockDialog() {
-    if (addMemoryBlockDialog) {
-        addMemoryBlockDialog.classList.remove('show');
-    }
-}
-
-// 显示添加初始化记忆项对话框
 function showAddInitMemoryItemDialog() {
-    // 创建对话框元素
     const dialog = document.createElement('div');
     dialog.className = 'modal-dialog show';
     dialog.id = 'addInitMemoryItemDialog';
-
     dialog.innerHTML = `
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>添加/编辑初始化记忆项</h3>
-                <button class="close-btn">&times;</button>
-            </div>
+            <div class="modal-header"><h3>添加/编辑初始化记忆项</h3><button class="close-btn">&times;</button></div>
             <div class="modal-body">
                 <form id="addInitMemoryItemForm">
-                    <div class="form-group">
-                        <label for="initMemoryKey">键:</label>
-                        <input type="text" id="initMemoryKey" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="initMemoryValue">值:</label>
-                        <textarea id="initMemoryValue" rows="4" class="form-control"></textarea>
-                        <small>可以是字符串、JSON对象或数组（每行一个元素）。</small>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" class="btn secondary" id="cancelAddInitMemoryBtn">取消</button>
-                        <button type="submit" class="btn primary">保存</button>
-                    </div>
+                    <div class="form-group"><label for="initMemoryKey">键:</label><input type="text" id="initMemoryKey" class="form-control" required></div>
+                    <div class="form-group"><label for="initMemoryValue">值:</label><textarea id="initMemoryValue" rows="4" class="form-control"></textarea><small>可以是字符串、JSON对象或数组（每行一个元素）。</small></div>
+                    <div class="button-group"><button type="button" class="btn secondary" id="cancelAddInitMemoryBtn">取消</button><button type="submit" class="btn primary">保存</button></div>
                 </form>
             </div>
         </div>
     `;
-
-    // 添加到文档中
     document.body.appendChild(dialog);
-
-    // 绑定事件
-    const closeBtn = dialog.querySelector('.close-btn');
-    const cancelBtn = document.getElementById('cancelAddInitMemoryBtn');
-    const form = document.getElementById('addInitMemoryItemForm');
-
-    const closeDialog = () => {
-        dialog.remove();
-    };
-
-    closeBtn.addEventListener('click', closeDialog);
-    cancelBtn.addEventListener('click', closeDialog);
-
-    dialog.addEventListener('click', (e) => {
-        if (e.target === dialog) {
-            closeDialog();
-        }
-    });
-
-    form.addEventListener('submit', async (e) => {
+    const closeDialog = () => dialog.remove();
+    dialog.querySelector('.close-btn').addEventListener('click', closeDialog);
+    dialog.querySelector('#cancelAddInitMemoryBtn').addEventListener('click', closeDialog);
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) closeDialog(); });
+    dialog.querySelector('#addInitMemoryItemForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const key = document.getElementById('initMemoryKey').value.trim();
-        const value = document.getElementById('initMemoryValue').value;
-
-        if (!key) {
-            window.uiModule.showToast('请输入键', 'warning');
-            return;
-        }
-
-        // The agentModule.updateInitMemoryItem function will handle parsing and sending the data
-        if (window.agentModule && window.agentModule.updateInitMemoryItem) {
-            await window.agentModule.updateInitMemoryItem(key, value);
-            closeDialog();
-        } else {
-            window.uiModule.showToast('发生错误，无法保存', 'error');
-        }
+        if (!key) { window.uiModule.showToast('请输入键', 'warning'); return; }
+        await window.agentModule?.updateInitMemoryItem(key, document.getElementById('initMemoryValue').value);
+        closeDialog();
     });
 }
 
 // 初始化事件监听器
 function initEventListeners() {
-    // 连接表单提交
-    const connectionForm = document.getElementById('connectionForm');
-    if (connectionForm) {
-        connectionForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (window.connectionModule && window.connectionModule.connectToBackend) {
-                window.connectionModule.connectToBackend();
-            } else {
-                console.error('window.connectionModule.connectToBackend is not available');
-            }
-        });
-    }
-    
-    // 断开连接按钮
-    const disconnectBtn = document.getElementById('disconnectBtn');
-    if (disconnectBtn) {
-        disconnectBtn.addEventListener('click', () => {
-            if (window.connectionModule && window.connectionModule.disconnectFromBackend) {
-                window.connectionModule.disconnectFromBackend();
-            } else {
-                console.error('window.connectionModule.disconnectFromBackend is not available');
-            }
-        });
-    }
-    
-    // 直播控制按钮
-    const startStreamBtn = document.getElementById('startStreamBtn');
-    const stopStreamBtn = document.getElementById('stopStreamBtn');
-    const restartStreamBtn = document.getElementById('restartStreamBtn');
-    
-    if (startStreamBtn) startStreamBtn.addEventListener('click', () => {
-        if (window.streamModule && window.streamModule.startStream) {
-            window.streamModule.startStream();
-        } else {
-            console.error('window.streamModule.startStream is not available');
-        }
-    });
-    if (stopStreamBtn) stopStreamBtn.addEventListener('click', () => {
-        if (window.streamModule && window.streamModule.stopStream) {
-            window.streamModule.stopStream();
-        } else {
-            console.error('window.streamModule.stopStream is not available');
-        }
-    });
-    if (restartStreamBtn) restartStreamBtn.addEventListener('click', () => {
-        if (window.streamModule && window.streamModule.restartStream) {
-            window.streamModule.restartStream();
-        } else {
-            console.error('window.streamModule.restartStream is not available');
-        }
-    });
-    
-    // Agent 控制按钮
-    const refreshInitMemoryBtn = document.getElementById('refreshInitMemoryBtn');
-    const refreshTempMemoryBtn = document.getElementById('refreshTempMemoryBtn');
-    const addTempMemoryBtn = document.getElementById('addTempMemoryBtn');
-    const clearTempMemoryBtn = document.getElementById('clearTempMemoryBtn');
-    const tempMemoryOutput = document.getElementById('tempMemoryOutput');
-    const refreshCoreMemoryBtn = document.getElementById('refreshCoreMemoryBtn');
-    const addCoreMemoryBlockBtn = document.getElementById('addCoreMemoryBlockBtn');
-    const coreMemoryOutput = document.getElementById('coreMemoryOutput');
-    const addMemoryBlockForm = document.getElementById('addMemoryBlockForm');
-    const cancelAddMemoryBtn = document.getElementById('cancelAddMemoryBtn');
-    
-    if (refreshInitMemoryBtn) {
-        refreshInitMemoryBtn.addEventListener('click', () => {
-            if (window.agentModule && window.agentModule.refreshInitMemory) {
-                window.agentModule.refreshInitMemory();
-            } else {
-                console.error('window.agentModule.refreshInitMemory is not available');
-            }
-        });
-    }
-    if (refreshTempMemoryBtn) {
-        refreshTempMemoryBtn.addEventListener('click', () => {
-            if (window.agentModule && window.agentModule.refreshTempMemory) {
-                window.agentModule.refreshTempMemory();
-            } else {
-                console.error('window.agentModule.refreshTempMemory is not available');
-            }
-        });
-    }
-    if (clearTempMemoryBtn) {
-        clearTempMemoryBtn.addEventListener('click', () => {
-            if (window.agentModule && window.agentModule.clearTempMemory) {
-                window.agentModule.clearTempMemory();
-            } else {
-                console.error('window.agentModule.clearTempMemory is not available');
-            }
-        });
-    }
-    if (addTempMemoryBtn) {
-        addTempMemoryBtn.addEventListener('click', showAddTempMemoryDialog);
-    }
-    const addInitMemoryItemBtn = document.getElementById('addInitMemoryItemBtn');
-    if (addInitMemoryItemBtn) {
-        addInitMemoryItemBtn.addEventListener('click', showAddInitMemoryItemDialog);
-    }
-    if (refreshCoreMemoryBtn) {
-        refreshCoreMemoryBtn.addEventListener('click', () => {
-            if (window.agentModule && window.agentModule.refreshCoreMemory) {
-                window.agentModule.refreshCoreMemory();
-            } else {
-                console.error('window.agentModule.refreshCoreMemory is not available');
-            }
-        });
-    }
-    if (addCoreMemoryBlockBtn) {
-        addCoreMemoryBlockBtn.addEventListener('click', () => {
-            showAddMemoryBlockDialog();
-        });
-    }
-    
-    // 配置管理表单
-    const configForm = document.getElementById('configForm');
-    const resetConfigBtn = document.getElementById('resetConfigBtn');
-    
-    if (configForm) {
-        configForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (window.configModule && window.configModule.saveConfig) {
-                window.configModule.saveConfig(e);
-            } else {
-                console.error('window.configModule.saveConfig is not available');
-            }
-        });
-    }
-    if (resetConfigBtn) {
-        resetConfigBtn.addEventListener('click', () => {
-            if (window.configModule && window.configModule.resetConfigForm) {
-                window.configModule.resetConfigForm();
-            } else {
-                console.error('window.configModule.resetConfigForm is not available');
-            }
-        });
-    }
-    
-    // 标签页切换
-    const navTabs = document.querySelectorAll('.nav-tab');
-    
-    if (navTabs) {
-        navTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                switchTab(tab.dataset.tab);
-                
-                // 当切换到配置标签页时，自动加载配置
-                if (tab.dataset.tab === 'config' && window.connectionModule && window.connectionModule.isConnected) {
-                    if (window.configModule && window.configModule.getConfig) {
-                        window.configModule.getConfig().catch(error => {
-                            console.error('获取配置失败:', error);
-                            showToast(`获取配置失败: ${error.message}`, 'error');
-                        });
-                    }
-                }
-                
-                // 当切换到日志标签页时，加载Server日志
-                if (tab.dataset.tab === 'logs' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 这里可以添加加载Server日志的逻辑
-                }
-                
-                // 当切换到Agent管理标签页时，加载相关数据
-                if (tab.dataset.tab === 'agent-management' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 默认显示对话标签页
+    // 连接与断开
+    document.getElementById('connectionForm')?.addEventListener('submit', (e) => { e.preventDefault(); window.connectionModule?.connectToBackend(); });
+    document.getElementById('disconnectBtn')?.addEventListener('click', () => window.connectionModule?.disconnectFromBackend());
+
+    // 直播控制
+    document.getElementById('startStreamBtn')?.addEventListener('click', () => window.streamModule?.startStream());
+    document.getElementById('stopStreamBtn')?.addEventListener('click', () => window.streamModule?.stopStream());
+    document.getElementById('restartStreamBtn')?.addEventListener('click', () => window.streamModule?.restartStream());
+
+    // Agent 记忆控制
+    document.getElementById('refreshInitMemoryBtn')?.addEventListener('click', () => window.agentModule?.refreshInitMemory());
+    document.getElementById('refreshTempMemoryBtn')?.addEventListener('click', () => window.agentModule?.refreshTempMemory());
+    document.getElementById('clearTempMemoryBtn')?.addEventListener('click', () => window.agentModule?.clearTempMemory());
+    document.getElementById('addTempMemoryBtn')?.addEventListener('click', showAddTempMemoryDialog);
+    document.getElementById('addInitMemoryItemBtn')?.addEventListener('click', showAddInitMemoryItemDialog);
+    document.getElementById('refreshCoreMemoryBtn')?.addEventListener('click', () => window.agentModule?.refreshCoreMemory());
+    document.getElementById('addCoreMemoryBlockBtn')?.addEventListener('click', showAddMemoryBlockDialog);
+    document.getElementById('addMemoryBlockForm')?.addEventListener('submit', (e) => window.agentModule?.addMemoryBlock(e));
+    document.getElementById('cancelAddMemoryBtn')?.addEventListener('click', hideAddMemoryBlockDialog);
+
+    // 配置管理
+    document.getElementById('saveConfigBtn')?.addEventListener('click', () => window.configModule?.saveConfig());
+
+    // 主标签页切换
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            switchTab(tabName);
+            if (window.connectionModule?.isConnected) {
+                if (tabName === 'config') window.configModule?.initializeConfigEditor();
+                if (tabName === 'agent-management') {
+                    // 当切换到Agent主tab时，默认显示第一个子tab并加载其内容
                     switchAgentTab('context');
-                    // 加载初始上下文数据
-                    if (window.agentModule && window.agentModule.refreshContext) {
-                        window.agentModule.refreshContext();
-                    }
-                }
-            });
-        });
-    }
-    
-    // Agent 标签页切换
-    const agentTabBtns = document.querySelectorAll('.agent-tab-btn');
-    
-    if (agentTabBtns) {
-        agentTabBtns.forEach(tab => {
-            tab.addEventListener('click', () => {
-                switchAgentTab(tab.dataset.agentTab);
-                
-                // 切换到不同Agent子标签页时加载对应数据
-                if (tab.dataset.agentTab === 'memory' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 加载初始记忆数据
-                    if (window.agentModule && window.agentModule.refreshInitMemory && window.agentModule.refreshTempMemory && window.agentModule.refreshCoreMemory) {
-                        window.agentModule.refreshInitMemory();
-                        window.agentModule.refreshTempMemory();
-                        window.agentModule.refreshCoreMemory();
-                    }
-                } else if (tab.dataset.agentTab === 'tools' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 加载新的工具页面
-                    if (window.toolsModule && window.toolsModule.initToolsPage) {
-                        window.toolsModule.initToolsPage();
-                    }
-                } else if (tab.dataset.agentTab === 'agent-logs' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 日志是流式更新的，这里可以加载历史日志（如果后端支持）
-                    // 暂时留空，因为日志主要靠实时推送
-                } else if (tab.dataset.agentTab === 'context' && window.connectionModule && window.connectionModule.isConnected) {
-                    // 加载初始上下文数据
-                    if (window.agentModule && window.agentModule.refreshContext) {
-                        window.agentModule.refreshContext();
-                    }
-                }
-            });
-        });
-    }
-    
-    // 当主标签页切换到Agent管理时，默认显示对话
-    const agentManagementTab = document.querySelector('[data-tab="agent-management"]');
-    
-    if (agentManagementTab) {
-        agentManagementTab.addEventListener('click', () => {
-            if (window.connectionModule && window.connectionModule.isConnected) {
-                // 切换到对话标签页
-                switchAgentTab('context');
-                // 加载初始上下文数据
-                if (window.agentModule && window.agentModule.refreshContext) {
-                    window.agentModule.refreshContext();
+                    window.agentModule?.refreshContext(); 
                 }
             }
         });
-    }
-    
-    // 模态对话框事件
-    if (addMemoryBlockForm) {
-        addMemoryBlockForm.addEventListener('submit', function(e) {
-            if (window.agentModule && window.agentModule.addMemoryBlock) {
-                window.agentModule.addMemoryBlock(e);
-            } else {
-                console.error('window.agentModule.addMemoryBlock is not available');
-            }
-        });
-    }
-    
-    if (cancelAddMemoryBtn) {
-        cancelAddMemoryBtn.addEventListener('click', hideAddMemoryBlockDialog);
-    }
-    
-    // 关闭对话框按钮
-    const closeDialogBtns = document.querySelectorAll('.close-btn');
-    if (closeDialogBtns) {
-        closeDialogBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                // 查找最近的模态对话框并隐藏
-                const dialog = btn.closest('.modal-dialog');
-                if (dialog) {
-                    dialog.classList.remove('show');
+    });
+
+    // Agent 子标签页切换 (使用Bootstrap事件)
+    document.querySelectorAll('#agent-nav-tabs button[data-bs-toggle="tab"]').forEach(tabEl => {
+        tabEl.addEventListener('shown.bs.tab', event => {
+            const tabName = event.target.dataset.bsTarget.replace('#', '').replace('-agent-tab', '');
+            if (window.connectionModule?.isConnected) {
+                if (tabName === 'memory') {
+                    window.agentModule?.refreshInitMemory();
+                    window.agentModule?.refreshTempMemory();
+                    window.agentModule?.refreshCoreMemory();
+                } else if (tabName === 'tools') {
+                    window.toolsModule?.initToolsPage();
+                } else if (tabName === 'context') {
+                    window.agentModule?.refreshContext();
                 }
-            });
-        });
-    }
-    
-    // 点击对话框背景关闭对话框
-    const addMemoryBlockDialog = document.getElementById('addMemoryBlockDialog');
-    if (addMemoryBlockDialog) {
-        addMemoryBlockDialog.addEventListener('click', (e) => {
-            if (e.target === addMemoryBlockDialog) {
-                hideAddMemoryBlockDialog();
             }
         });
-    }
-    
-    // 上下文显示模式切换
+    });
+
+    // 其他UI事件
+    document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', () => btn.closest('.modal-dialog')?.classList.remove('show'));
+    });
+    document.getElementById('addMemoryBlockDialog')?.addEventListener('click', (e) => {
+        if (e.target === addMemoryBlockDialog) hideAddMemoryBlockDialog();
+    });
     const contextViewMode = document.getElementById('contextViewMode');
-    const modeLabel = document.getElementById('modeLabel');
-    if (contextViewMode && modeLabel) {
-        contextViewMode.addEventListener('change', function() {
-            modeLabel.textContent = this.checked ? '上下文模式' : '对话模式';
-            // 重新渲染上下文显示
-            if (window.connectionModule && window.connectionModule.isConnected) {
-                // 使用重新渲染函数
-                if (window.agentModule && window.agentModule.rerenderContext) {
-                    window.agentModule.rerenderContext();
-                }
-            } else {
-                // 如果未连接，仍然需要更新显示
-                if (window.agentModule && window.agentModule.refreshContext) {
-                    window.agentModule.refreshContext();
-                }
-            }
+    if (contextViewMode) {
+        contextViewMode.addEventListener('change', () => {
+            document.getElementById('modeLabel').textContent = contextViewMode.checked ? '上下文模式' : '对话模式';
+            window.agentModule?.rerenderContext();
         });
     }
 }
 
-// 显示断连对话框
 function showDisconnectDialog() {
-    // 使用确认对话框显示断连信息，但只显示确定按钮
-    showConfirmDialog('与后端的连接已断开，请重新连接。').then(() => {
-        // 用户点击确定后，对话框会自动关闭
-    });
-    
-    // 为了只显示确定按钮，我们需要修改对话框的HTML
+    showConfirmDialog('与后端的连接已断开，请重新连接。').then(() => {});
     setTimeout(() => {
         const confirmDialog = document.getElementById('confirmDialog');
         if (confirmDialog) {
-            const cancelButton = confirmDialog.querySelector('.confirm-cancel');
-            const okButton = confirmDialog.querySelector('.confirm-ok');
-            
-            // 隐藏取消按钮
-            if (cancelButton) {
-                cancelButton.style.display = 'none';
-            }
-            
-            // 修改确定按钮文本
-            if (okButton) {
-                okButton.textContent = '确定';
-            }
-            
-            // 修改消息显示
-            const messageEl = confirmDialog.querySelector('.confirm-message');
-            if (messageEl) {
-                messageEl.textContent = '与后端的连接已断开，请重新连接。';
-            }
+            confirmDialog.querySelector('.confirm-cancel').style.display = 'none';
+            confirmDialog.querySelector('.confirm-ok').textContent = '确定';
+            confirmDialog.querySelector('.confirm-message').textContent = '与后端的连接已断开，请重新连接。';
         }
     }, 10);
 }
 
-// 导出函数供其他模块使用
+// 导出模块
 window.uiModule = {
     switchTab,
     switchAgentTab,

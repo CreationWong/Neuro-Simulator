@@ -110,56 +110,29 @@ class ConfigManager:
         self._update_callbacks = []
         self._initialized = True
 
-    def load_and_validate(self, config_path_str: str, example_path_str: str):
-        """Loads the main config file, handling first-run scenarios, and validates it."""
+    def load(self, config_path_str: str):
+        """
+        Loads the configuration from the given path, validates it, and sets it
+        on the manager instance.
+
+        Raises:
+            FileNotFoundError: If the config file does not exist.
+            ValueError: If the config file is empty.
+            pydantic.ValidationError: If the config file content does not match the AppSettings schema.
+        """
         config_path = Path(config_path_str)
-        example_path = Path(example_path_str)
 
-        # Scenario 1: Both config and example are missing in the working directory.
-        if not config_path.exists() and not example_path.exists():
-            try:
-                import importlib.resources
-                # For Python 3.9+, prefer importlib.resources.files
-                ref = importlib.resources.files('neuro_simulator') / 'config.yaml.example'
-                with importlib.resources.as_file(ref) as package_example_path:
-                    shutil.copy(package_example_path, example_path)
-                logging.info(f"Created '{example_path}' from package resource.")
-                logging.error(f"Configuration file '{config_path.name}' not found. A new '{example_path.name}' has been created. Please configure it and rename it to '{config_path.name}'.")
-                sys.exit(1)
-            except Exception as e:
-                logging.error(f"FATAL: Could not create config from package resources: {e}")
-                sys.exit(1)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Configuration file '{config_path}' not found.")
 
-        # Scenario 2: Config is missing, but example exists.
-        elif not config_path.exists() and example_path.exists():
-            logging.error(f"Configuration file '{config_path.name}' not found, but '{example_path.name}' exists. Please rename it to '{config_path.name}' after configuration.")
-            sys.exit(1)
-
-        # Scenario 3: Config exists, but example is missing.
-        elif config_path.exists() and not example_path.exists():
-            try:
-                import importlib.resources
-                # For Python 3.9+, prefer importlib.resources.files
-                ref = importlib.resources.files('neuro_simulator') / 'config.yaml.example'
-                with importlib.resources.as_file(ref) as package_example_path:
-                    shutil.copy(package_example_path, example_path)
-                logging.info(f"Created missing '{example_path.name}' from package resource.")
-            except Exception as e:
-                logging.warning(f"Could not create missing '{example_path.name}': {e}")
-
-        # Proceed with loading the config if it exists.
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                yaml_config = yaml.safe_load(f)
-                if yaml_config is None:
-                    raise ValueError(f"Configuration file '{config_path}' is empty.")
-            
-            self.settings = AppSettings.model_validate(yaml_config)
-            logging.info("Main configuration loaded successfully.")
-
-        except Exception as e:
-            logging.error(f"Error loading or parsing {config_path}: {e}")
-            sys.exit(1) # Exit if the main config is invalid
+        with open(config_path, 'r', encoding='utf-8') as f:
+            yaml_config = yaml.safe_load(f)
+            if yaml_config is None:
+                raise ValueError(f"Configuration file '{config_path}' is empty.")
+        
+        # This will raise ValidationError on failure
+        self.settings = AppSettings.model_validate(yaml_config)
+        logging.info("Configuration loaded and validated successfully.")
 
     def save_settings(self):
         """Saves the current configuration to config.yaml while preserving comments and formatting."""
@@ -312,9 +285,6 @@ class ConfigManager:
         model to ensure sub-models are correctly instantiated, and then
         notifying callbacks.
         """
-        # Prevent API keys from being updated from the panel
-        new_settings_data.pop('api_keys', None)
-
         try:
             # 1. Dump the current settings model to a dictionary.
             current_settings_dict = self.settings.model_dump()

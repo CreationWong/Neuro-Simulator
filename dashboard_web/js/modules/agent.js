@@ -412,7 +412,6 @@ function addMessageToContext(contextOutput, msg, isRawMode) {
     
     const timestampDisplay = new Date(msg.timestamp).toLocaleString();
     
-    // The new "isRawMode" is now the prompt view, which is not handled by this function.
     // This function is now only for conversation mode.
     if (isRawMode) {
         // This block is now legacy, as raw mode is replaced by prompt mode.

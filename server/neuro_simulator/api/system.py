@@ -13,17 +13,6 @@ from ..utils.process import process_manager
 router = APIRouter(tags=["System & Utilities"])
 
 
-# --- Utility function to filter config for frontend ---
-def filter_config_for_frontend(settings):
-    """Filters the full settings object to remove sensitive fields before sending to the frontend."""
-    # Create a dictionary representation of the settings
-    config_dict = settings.model_dump()
-    
-    # Remove sensitive fields
-    config_dict.pop('api_keys', None)
-    
-    return config_dict
-
 
 # --- Auth Dependency ---
 

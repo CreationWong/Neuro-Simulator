@@ -237,11 +237,11 @@ header h1 {
   background-color: var(--twitch-dark-bg);
 }
 
-.tab-content {
+.main-tab-content {
   display: none;
 }
 
-.tab-content.active {
+.main-tab-content.active {
   display: block;
 }
 
@@ -501,31 +501,35 @@ header h1 {
 }
 
 /* --- Agent 控制样式 --- */
-.agent-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--twitch-border-color);
-  margin-bottom: 20px;
+/* --- Agent Control Tabs (Bootstrap Overrides) --- */
+.nav-tabs {
+    border-bottom: 1px solid var(--twitch-border-color);
+    margin-bottom: 20px;
 }
 
-.agent-tab-btn {
-  padding: 10px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  color: var(--twitch-secondary-text-color);
-  border-bottom: 3px solid transparent;
-  transition: all 0.2s;
+.nav-tabs .nav-link {
+    background: none;
+    border: none;
+    color: var(--twitch-secondary-text-color);
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    padding: 10px 20px;
+    font-weight: 500;
 }
 
-.agent-tab-btn:hover {
-  color: var(--twitch-text-color);
-  background-color: var(--twitch-hover-bg);
+.nav-tabs .nav-link:hover {
+    color: var(--twitch-text-color);
+    background-color: var(--twitch-hover-bg);
+    border-color: transparent; /* Prevent bootstrap's default hover border */
 }
 
-.agent-tab-btn.active {
-  color: var(--twitch-purple);
-  border-bottom-color: var(--twitch-purple);
+.nav-tabs .nav-link.active {
+    color: var(--twitch-purple);
+    border-bottom-color: var(--twitch-purple);
+    background-color: transparent; /* Override bootstrap's active background */
+    border-top: none;
+    border-left: none;
+    border-right: none;
 }
 
 .agent-tab-content {

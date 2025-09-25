@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>𝐯𝐞𝐝𝐚𝐥𝟗𝟖𝟕 𝐒𝐢𝐦𝐮𝐥𝐚𝐭𝐨𝐫</title>
-    <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@json-editor/json-editor@2.10.0/dist/jsoneditor.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
     <!-- 横幅提示容器 -->
@@ -77,11 +80,11 @@
                     <li class="nav-tab" data-tab="logs">
                         <span>日志</span>
                     </li>
-                    <li class="nav-tab" id="agentManagementTab" style="display: none;" data-tab="agent-management">
+                    <li class="nav-tab" id="agentManagementTab" data-tab="agent-management">
                         <span>Agent</span>
                     </li>
-                    <li class="nav-tab" id="chatbotManagementTab" style="display: none;" data-tab="chatbot-management">
-                        <span>ChatBot管理</span>
+                    <li class="nav-tab" id="chatbotManagementTab" data-tab="chatbot-management">
+                        <span>ChatBot</span>
                     </li>
                 </ul>
             </nav>
@@ -89,7 +92,7 @@
             <!-- 内容区域 -->
             <div class="content-area">
                 <!-- 连接设置区域 -->
-                <section class="tab-content active" id="connection-tab">
+                <section class="main-tab-content active" id="connection-tab">
                     <div class="card">
                         <h2>连接设置</h2>
                         <form id="connectionForm">
@@ -110,7 +113,7 @@
                 </section>
 
                 <!-- 控制标签页 -->
-                <section id="control-tab" class="tab-content">
+                <section id="control-tab" class="main-tab-content">
                     <div class="card">
                         <h2>直播控制</h2>
                         <div class="stream-status">
@@ -125,137 +128,18 @@
                 </section>
 
                 <!-- 配置管理区域 -->
-                <section class="tab-content" id="config-tab">
+                <section class="main-tab-content" id="config-tab">
                     <div class="card">
                         <h2>配置管理</h2>
-                        <div class="config-info">
-                            <p>注意：API密钥、主播昵称、TTS设置和服务器设置不会在此面板中显示或修改。</p>
-                        </div>
-                        <form id="configForm">
-                            <!-- Stream Metadata Section (除了streamer_nickname) -->
-                            <div class="config-section">
-                                <h3>直播元数据</h3>
-                                <div class="form-group">
-                                    <label for="stream_title">直播标题:</label>
-                                    <input type="text" id="stream_title" name="stream_metadata.stream_title" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label for="stream_category">直播分类:</label>
-                                    <input type="text" id="stream_category" name="stream_metadata.stream_category" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label for="stream_tags">直播标签 (逗号分隔):</label>
-                                    <input type="text" id="stream_tags" name="stream_metadata.stream_tags" class="form-control">
-                                </div>
-                            </div>
-
-                            <!-- Neuro Behavior Section -->
-                            <div class="config-section">
-                                <h3>Neuro行为设置</h3>
-                                <div class="form-group">
-                                    <label for="input_chat_sample_size">输入聊天样本数量:</label>
-                                    <input type="number" id="input_chat_sample_size" name="neuro_behavior.input_chat_sample_size" class="form-control" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="post_speech_cooldown_sec">说话后冷却时间 (秒):</label>
-                                    <input type="number" id="post_speech_cooldown_sec" name="neuro_behavior.post_speech_cooldown_sec" class="form-control" step="0.1" min="0">
-                                </div>
-                                <div class="form-group">
-                                    <label for="initial_greeting">初始问候语:</label>
-                                    <textarea id="initial_greeting" name="neuro_behavior.initial_greeting" class="form-control" rows="3"></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Agent Configuration Section -->
-                            <div class="config-section">
-                                <h3>Agent设置（仅当使用内建Agent时有效）</h3>
-                                <div class="form-group">
-                                    <label for="agent_provider">LLM提供商:</label>
-                                    <select id="agent_provider" name="agent.agent_provider" class="form-control">
-                                        <option value="gemini">Gemini</option>
-                                        <option value="openai">OpenAI</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="agent_model">模型:</label>
-                                    <input type="text" id="agent_model" name="agent.agent_model" class="form-control">
-                                </div>
-                            </div>
-
-                            <!-- Audience Simulation Section -->
-                            <div class="config-section">
-                                <h3>观众模拟设置</h3>
-                                <div class="form-group">
-                                    <label for="llm_provider">LLM提供商:</label>
-                                    <select id="llm_provider" name="audience_simulation.llm_provider" class="form-control">
-                                        <option value="gemini">Gemini</option>
-                                        <option value="openai">OpenAI</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="gemini_model">Gemini模型:</label>
-                                    <input type="text" id="gemini_model" name="audience_simulation.gemini_model" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label for="openai_model">OpenAI模型:</label>
-                                    <input type="text" id="openai_model" name="audience_simulation.openai_model" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label for="llm_temperature">LLM温度:</label>
-                                    <input type="number" id="llm_temperature" name="audience_simulation.llm_temperature" class="form-control" step="0.1" min="0" max="2">
-                                </div>
-                                <div class="form-group">
-                                    <label for="chat_generation_interval_sec">聊天生成间隔 (秒):</label>
-                                    <input type="number" id="chat_generation_interval_sec" name="audience_simulation.chat_generation_interval_sec" class="form-control" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="chats_per_batch">每批聊天数量:</label>
-                                    <input type="number" id="chats_per_batch" name="audience_simulation.chats_per_batch" class="form-control" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="max_output_tokens">最大输出Token数:</label>
-                                    <input type="number" id="max_output_tokens" name="audience_simulation.max_output_tokens" class="form-control" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="username_blocklist">用户名黑名单 (逗号分隔):</label>
-                                    <input type="text" id="username_blocklist" name="audience_simulation.username_blocklist" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label for="username_pool">用户名池 (逗号分隔):</label>
-                                    <input type="text" id="username_pool" name="audience_simulation.username_pool" class="form-control">
-                                </div>
-                            </div>
-
-                            <!-- Performance Section -->
-                            <div class="config-section">
-                                <h3>性能设置</h3>
-                                <div class="form-group">
-                                    <label for="neuro_input_queue_max_size">Neuro输入队列最大大小:</label>
-                                    <input type="number" id="neuro_input_queue_max_size" name="performance.neuro_input_queue_max_size" class="form-control" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="audience_chat_buffer_max_size">观众聊天缓冲区最大大小:</label>
-                                    <input type="number" id="audience_chat_buffer_max_size" name="performance.audience_chat_buffer_max_size" class="form-control" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="initial_chat_backlog_limit">初始聊天积压限制:</label>
-                                    <input type="number" id="initial_chat_backlog_limit" name="performance.initial_chat_backlog_limit" class="form-control" min="1">
-                                </div>
-                            </div>
-
-                            <div class="form-actions">
-                                <button type="button" id="resetConfigBtn" class="btn secondary">重置</button>
-                                <button type="submit" id="saveConfigBtn" class="btn primary">保存配置</button>
-                            </div>
-                        </form>
-                        <div class="config-warning">
-                            <p>警告：如果配置文件被修改或添加了新条目，此面板可能不会显示所有设置。请检查后端日志以获取更多信息。</p>
+                        <div id="config-editor-container"></div>
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button type="button" id="saveConfigBtn" class="btn primary">保存配置</button>
                         </div>
                     </div>
                 </section>
 
                 <!-- 日志标签页 -->
-                <section id="logs-tab" class="tab-content">
+                <section id="logs-tab" class="main-tab-content">
                     <div class="card">
                         <h2>Server日志</h2>
                         <div id="serverLogsOutput" class="messages-output"></div>
@@ -263,98 +147,108 @@
                 </section>
 
                 <!-- Agent管理标签页 -->
-                <section id="agent-management-tab" class="tab-content">
+                <section id="agent-management-tab" class="main-tab-content">
                     <div class="card">
-                        <div class="agent-tabs">
-                            <button class="agent-tab-btn active" data-agent-tab="context">对话</button>
-                            <button class="agent-tab-btn" data-agent-tab="memory">记忆</button>
-                            <button class="agent-tab-btn" data-agent-tab="tools">工具</button>
-                            <button class="agent-tab-btn" data-agent-tab="agent-logs">日志</button>
-                        </div>
+                        <ul class="nav nav-tabs" id="agent-nav-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="context-tab-btn" data-bs-toggle="tab" data-bs-target="#context-agent-tab" type="button" role="tab" aria-controls="context-agent-tab" aria-selected="true">对话</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="memory-tab-btn" data-bs-toggle="tab" data-bs-target="#memory-agent-tab" type="button" role="tab" aria-controls="memory-agent-tab" aria-selected="false">记忆</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="tools-tab-btn" data-bs-toggle="tab" data-bs-target="#tools-agent-tab" type="button" role="tab" aria-controls="tools-agent-tab" aria-selected="false">工具</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="agent-logs-tab-btn" data-bs-toggle="tab" data-bs-target="#agent-logs-agent-tab" type="button" role="tab" aria-controls="agent-logs-agent-tab" aria-selected="false">日志</button>
+                            </li>
+                        </ul>
                         
-                        <!-- 对话 Tab -->
-                        <div class="agent-tab-content active" id="context-agent-tab">
-                            <div class="agent-controls">
-                                <label class="switch">
-                                    <input type="checkbox" id="contextViewMode">
-                                    <span class="slider"></span>
-                                </label>
-                                <span>切换显示模式：<span id="modeLabel">对话模式</span></span>
-                            </div>
-                            <div id="contextOutput" class="memory-output"></div>
-                        </div>
-                        
-                        <!-- 记忆 Tab -->
-                        <div class="agent-tab-content" id="memory-agent-tab">
-                            <div class="memory-section">
-                                <h3>初始化记忆 (Init Memory)</h3>
+                        <div class="tab-content" id="agent-tab-content">
+                            <!-- 对话 Tab -->
+                            <div class="tab-pane fade show active" id="context-agent-tab" role="tabpanel" aria-labelledby="context-tab-btn">
                                 <div class="agent-controls">
-                                    <button id="refreshInitMemoryBtn" class="btn secondary">刷新</button>
-                                    <button id="addInitMemoryItemBtn" class="btn primary">添加</button>
+                                    <label class="switch">
+                                        <input type="checkbox" id="contextViewMode">
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span>切换显示模式：<span id="modeLabel">对话模式</span></span>
                                 </div>
-                                <div id="initMemoryOutput" class="memory-output"></div>
+                                <div id="contextOutput" class="memory-output"></div>
                             </div>
                             
-                            <div class="memory-section">
-                                <h3>临时记忆 (Temp Memory)</h3>
-                                <div class="agent-controls">
-                                    <button id="refreshTempMemoryBtn" class="btn secondary">刷新</button>
-                                    <button id="addTempMemoryBtn" class="btn primary">添加</button>
-                                    <button id="clearTempMemoryBtn" class="btn danger">清空</button>
+                            <!-- 记忆 Tab -->
+                            <div class="tab-pane fade" id="memory-agent-tab" role="tabpanel" aria-labelledby="memory-tab-btn">
+                                <div class="memory-section">
+                                    <h3>初始化记忆 (Init Memory)</h3>
+                                    <div class="agent-controls">
+                                        <button id="refreshInitMemoryBtn" class="btn secondary">刷新</button>
+                                        <button id="addInitMemoryItemBtn" class="btn primary">添加</button>
+                                    </div>
+                                    <div id="initMemoryOutput" class="memory-output"></div>
                                 </div>
-                                <div id="tempMemoryOutput" class="memory-output"></div>
+                                
+                                <div class="memory-section">
+                                    <h3>临时记忆 (Temp Memory)</h3>
+                                    <div class="agent-controls">
+                                        <button id="refreshTempMemoryBtn" class="btn secondary">刷新</button>
+                                        <button id="addTempMemoryBtn" class="btn primary">添加</button>
+                                        <button id="clearTempMemoryBtn" class="btn danger">清空</button>
+                                    </div>
+                                    <div id="tempMemoryOutput" class="memory-output"></div>
+                                </div>
+                                
+                                <div class="memory-section">
+                                    <h3>核心记忆 (Core Memory)</h3>
+                                    <div class="agent-controls">
+                                        <button id="refreshCoreMemoryBtn" class="btn secondary">刷新</button>
+                                        <button id="addCoreMemoryBlockBtn" class="btn primary">添加记忆块</button>
+                                    </div>
+                                    <div id="coreMemoryOutput" class="memory-output"></div>
+                                </div>
                             </div>
                             
-                            <div class="memory-section">
-                                <h3>核心记忆 (Core Memory)</h3>
-                                <div class="agent-controls">
-                                    <button id="refreshCoreMemoryBtn" class="btn secondary">刷新</button>
-                                    <button id="addCoreMemoryBlockBtn" class="btn primary">添加记忆块</button>
-                                </div>
-                                <div id="coreMemoryOutput" class="memory-output"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- 工具 Tab -->
-                        <div class="agent-tab-content" id="tools-agent-tab">
-                            <div class="card">
-                                <h3>可用工具管理</h3>
-                                <p class="description">在这里为 Agent 分配可用的工具标签。Neuro Agent 负责与观众互动，Memory Agent 负责在后台整理记忆。</p>
-                                <div class="agent-controls">
-                                    <button id="reloadToolsBtn" class="btn secondary">重载工具</button>
-                                    <button id="saveToolAllocationsBtn" class="btn primary">保存分配</button>
-                                </div>
-                                <div id="allToolsContainer" class="tools-management-container">
-                                    <!-- All available tools will be rendered here by JavaScript -->
-                                    <p>正在加载工具...</p>
-                                </div>
-                            </div>
-                        
-                            <div class="card-container-horizontal">
+                            <!-- 工具 Tab -->
+                            <div class="tab-pane fade" id="tools-agent-tab" role="tabpanel" aria-labelledby="tools-tab-btn">
                                 <div class="card">
-                                    <h3>Neuro Agent 工具集</h3>
-                                    <div id="neuroAgentTools" class="tools-display-container">
-                                        <!-- Neuro Agent's tools will be rendered here -->
+                                    <h3>可用工具管理</h3>
+                                    <p class="description">在这里为 Agent 分配可用的工具标签。Neuro Agent 负责与观众互动，Memory Agent 负责在后台整理记忆。</p>
+                                    <div class="agent-controls">
+                                        <button id="reloadToolsBtn" class="btn secondary">重载工具</button>
+                                        <button id="saveToolAllocationsBtn" class="btn primary">保存分配</button>
+                                    </div>
+                                    <div id="allToolsContainer" class="tools-management-container">
+                                        <!-- All available tools will be rendered here by JavaScript -->
+                                        <p>正在加载工具...</p>
                                     </div>
                                 </div>
-                                <div class="card">
-                                    <h3>Memory Agent 工具集</h3>
-                                    <div id="memoryAgentTools" class="tools-display-container">
-                                        <!-- Memory Agent's tools will be rendered here -->
+                            
+                                <div class="card-container-horizontal">
+                                    <div class="card">
+                                        <h3>Neuro Agent 工具集</h3>
+                                        <div id="neuroAgentTools" class="tools-display-container">
+                                            <!-- Neuro Agent's tools will be rendered here -->
+                                        </div>
+                                    </div>
+                                    <div class="card">
+                                        <h3>Memory Agent 工具集</h3>
+                                        <div id="memoryAgentTools" class="tools-display-container">
+                                            <!-- Memory Agent's tools will be rendered here -->
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <!-- 日志 Tab -->
-                        <div class="agent-tab-content" id="agent-logs-agent-tab">
-                            <div id="agentLogsOutput" class="messages-output"></div>
+                            
+                            <!-- 日志 Tab -->
+                            <div class="tab-pane fade" id="agent-logs-agent-tab" role="tabpanel" aria-labelledby="agent-logs-tab-btn">
+                                <div id="agentLogsOutput" class="messages-output"></div>
+                            </div>
                         </div>
                     </div>
                 </section>
 
                 <!-- ChatBot管理标签页 -->
-                <section id="chatbot-management-tab" class="tab-content">
+                <section id="chatbot-management-tab" class="main-tab-content">
                     <div class="card">
                         <h2>ChatBot管理</h2>
                         <p>此功能尚未实现。</p>

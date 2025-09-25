@@ -482,23 +482,22 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             response["payload"] = status
 
         # Config Management Actions
+        elif action == "get_settings_schema":
+            response["payload"] = config_manager.settings.model_json_schema()
+
         elif action == "get_configs":
-            from ..api.system import filter_config_for_frontend
-            configs = filter_config_for_frontend(config_manager.settings)
-            response["payload"] = configs
+            response["payload"] = config_manager.settings.model_dump()
 
         elif action == "update_configs":
-            from ..api.system import filter_config_for_frontend
             await config_manager.update_settings(payload)
-            updated_configs = filter_config_for_frontend(config_manager.settings)
+            updated_configs = config_manager.settings.model_dump()
             response["payload"] = updated_configs
             await connection_manager.broadcast_to_admins({"type": "config_updated", "payload": updated_configs})
 
         elif action == "reload_configs":
             await config_manager.update_settings({})
             response["payload"] = {"status": "success", "message": "Configuration reloaded"}
-            from ..api.system import filter_config_for_frontend
-            updated_configs = filter_config_for_frontend(config_manager.settings)
+            updated_configs = config_manager.settings.model_dump()
             await connection_manager.broadcast_to_admins({"type": "config_updated", "payload": updated_configs})
 
         # Other Agent Actions
