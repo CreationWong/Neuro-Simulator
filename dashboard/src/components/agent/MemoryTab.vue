@@ -15,8 +15,8 @@
             >
               <v-list-item-subtitle class="value-display"><pre>{{ value }}</pre></v-list-item-subtitle>
               <template v-slot:append>
-                <v-btn @click="openInitMemoryDialog(key, value)" icon="mdi-pencil" size="x-small" variant="text"></v-btn>
-                <v-btn @click="deleteInitMemoryItem(key as string)" icon="mdi-delete" size="x-small" variant="text" color="error"></v-btn>
+                <v-btn @click="openInitMemoryDialog(key.toString(), value)" icon="mdi-pencil" size="x-small" variant="text"></v-btn>
+                <v-btn @click="deleteInitMemoryItem(key.toString())" icon="mdi-delete" size="x-small" variant="text" color="error"></v-btn>
               </template>
             </v-list-item>
           </v-list>
