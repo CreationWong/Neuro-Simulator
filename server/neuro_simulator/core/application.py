@@ -9,7 +9,6 @@ import re
 import time
 import os
 from typing import List
-
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketState
@@ -24,6 +23,13 @@ from ..services.builtin import BuiltinAgentWrapper
 
 # --- API Routers ---
 from ..api.system import router as system_router
+
+# --- Additional Imports for SPA Hosting ---
+import os
+from importlib.resources import files # Modern way to find package resources
+from fastapi.responses import FileResponse
+from starlette.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # --- Services and Utilities ---
 from ..services.audio import synthesize_audio_segment
@@ -222,6 +228,43 @@ async def neuro_response_cycle():
 @app.on_event("startup")
 async def startup_event():
     """Actions to perform on application startup."""
+    # --- Mount Frontend ---
+    # This logic is placed here to run at runtime, ensuring all package paths are finalized.
+    from fastapi.responses import FileResponse
+    from starlette.staticfiles import StaticFiles
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    from importlib.resources import files
+
+    class SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):
+            try:
+                return await super().get_response(path, scope)
+            except (StarletteHTTPException) as ex:
+                if ex.status_code == 404:
+                    return await super().get_response("index.html", scope)
+                else:
+                    raise ex
+    try:
+        # Production/Standard install: find frontend in the package
+        frontend_dir_traversable = files('neuro_simulator').joinpath('dashboard')
+        if not frontend_dir_traversable.is_dir(): raise FileNotFoundError
+        frontend_dir = str(frontend_dir_traversable)
+        logger.info(f"Found frontend via package resources (production mode): '{frontend_dir}'")
+    except (ModuleNotFoundError, FileNotFoundError):
+        # Editable/Development install: fall back to relative path from source
+        logger.info("Could not find frontend via package resources, falling back to development mode path.")
+        dev_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'dashboard', 'dist'))
+        if os.path.isdir(dev_path):
+            frontend_dir = dev_path
+            logger.info(f"Found frontend via relative path (development mode): '{frontend_dir}'")
+        else:
+            frontend_dir = None
+
+    if frontend_dir:
+        app.mount("/", SPAStaticFiles(directory=frontend_dir, html=True), name="dashboard")
+    else:
+        logger.error("Frontend directory not found in either production or development locations.")
+
     # 1. Configure logging first
     configure_server_logging()
 

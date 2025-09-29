@@ -43,13 +43,4 @@ async def health_check():
         "timestamp": time.time()
     }
 
-@router.get("/")
-async def root():
-    """Returns basic information about the API."""
-    return {
-        "message": "Neuro-Sama Simulator Backend",
-        "version": "2.0",
-        "api_docs": "/docs",
-    }
-
 

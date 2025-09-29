@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=77.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "neuro_simulator"
@@ -51,8 +51,9 @@ dev = [
     "flake8",
 ]
 
-[tool.setuptools.package-data]
-neuro_simulator = ["config.yaml.example", "assets/*", "agent/*.txt"]
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
 
-[tool.setuptools.packages.find]
-include = ["neuro_simulator*"]
+[tool.hatch.build.targets.wheel]
+sources = ["server"]
+force-include = { "dashboard/dist" = "neuro_simulator/dashboard" }
