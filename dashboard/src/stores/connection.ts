@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef } from 'vue';
+import router from '@/router';
 import { useStreamStore } from './stream';
 import { useLogStore } from './logs';
 import { useAgentStore } from './agent';
@@ -13,6 +14,7 @@ interface PendingRequest {
 
 export const useConnectionStore = defineStore('connection', () => {
   const isConnected = ref(false);
+  const isIntegrated = ref(false);
   const statusText = ref('未连接');
   const backendUrl = ref(localStorage.getItem('backendUrl') || '');
   const password = ref(localStorage.getItem('password') || '');
@@ -22,16 +24,13 @@ export const useConnectionStore = defineStore('connection', () => {
   let requestCounter = 0;
 
   async function connectToBackend(): Promise<boolean> {
-    if (!backendUrl.value) {
-      console.warn('Backend URL is not set.');
-      return false;
-    }
     if (isConnected.value || ws.value) {
       await disconnectFromBackend();
     }
     statusText.value = '连接中...';
     try {
-      const healthUrl = new URL('/api/system/health', backendUrl.value).toString();
+      const url = backendUrl.value || window.location.origin;
+      const healthUrl = new URL('/api/system/health', url).toString();
       const headers: HeadersInit = { 'Content-Type': 'application/json' };
       if (password.value) {
         headers['X-API-Token'] = password.value;
@@ -48,11 +47,14 @@ export const useConnectionStore = defineStore('connection', () => {
       await connectWebSocket();
       isConnected.value = true;
       statusText.value = '已连接';
-      localStorage.setItem('backendUrl', backendUrl.value);
-      localStorage.setItem('password', password.value);
+      if (backendUrl.value) {
+        localStorage.setItem('backendUrl', backendUrl.value);
+        localStorage.setItem('password', password.value);
+      }
       console.log('连接成功！');
       const configStore = useConfigStore();
       await configStore.fetchConfig();
+      await router.push('/control');
       return true;
     } catch (error: any) {
       console.error('连接失败:', error);
@@ -68,7 +70,8 @@ export const useConnectionStore = defineStore('connection', () => {
 
   function connectWebSocket() {
     return new Promise<void>((resolve, reject) => {
-      const wsUrl = new URL('/ws/admin', backendUrl.value).toString().replace(/^http/, 'ws');
+      const url = backendUrl.value || window.location.origin;
+      const wsUrl = new URL('/ws/admin', url).toString().replace(/^http/, 'ws');
       const webSocket = new WebSocket(wsUrl);
       webSocket.onopen = () => {
         console.log('管理WebSocket连接已建立');
@@ -168,8 +171,35 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  async function initializeConnection() {
+    try {
+      const response = await fetch('/api/system/health');
+      if (response.ok) {
+        console.log('Integrated mode detected. Auto-connecting...');
+        isIntegrated.value = true;
+        statusText.value = '检测到集成模式，正在连接...';
+        backendUrl.value = '';
+        password.value = '';
+        localStorage.removeItem('backendUrl');
+        localStorage.removeItem('password');
+        await connectToBackend();
+        return;
+      }
+    } catch (e) {
+      console.log('Probe for integrated mode failed, assuming standalone mode.');
+    }
+
+    if (backendUrl.value) {
+      console.log('Standalone mode: attempting to connect to stored URL.');
+      await connectToBackend();
+    }
+  }
+
+  initializeConnection();
+
   return {
     isConnected,
+    isIntegrated,
     statusText,
     backendUrl,
     password,
