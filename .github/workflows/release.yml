@@ -27,12 +27,12 @@ jobs:
         run: echo "VERSION=${GITHUB_REF_NAME#server-v}" >> $GITHUB_OUTPUT
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      
+
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -63,7 +63,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
 
@@ -96,7 +96,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF_NAME#client-v}" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
