@@ -60,12 +60,11 @@ def main():
         copy_if_not_exists(package_source_path / "agent" / "memory" / "init_memory.json", path_manager.path_manager.init_memory_path)
         copy_if_not_exists(package_source_path / "agent" / "memory" / "temp_memory.json", path_manager.path_manager.temp_memory_path)
 
-        # Copy default assets directory
-        source_assets_dir = package_source_path / "assets"
-        destination_assets_dir = path_manager.path_manager.assets_dir
-        if not destination_assets_dir.exists():
-            shutil.copytree(source_assets_dir, destination_assets_dir)
-            logging.info(f"Copied default asset directory to {destination_assets_dir}")
+        # Copy default video asset if it doesn't exist
+        copy_if_not_exists(
+            package_source_path / "assets" / "neuro_start.mp4",
+            path_manager.path_manager.assets_dir / "neuro_start.mp4"
+        )
 
     except Exception as e:
         logging.warning(f"Could not copy all default files: {e}")
