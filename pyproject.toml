@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuro_simulator"
-version = "0.5.2"
+version = "0.5.3"
 description = "Neuro Simulator Server"
 readme = "README.md"
 authors = [{ name = "Moha-Master", email = "hongkongreporter@outlook.com" }]
