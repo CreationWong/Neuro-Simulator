@@ -1,3 +1,4 @@
+
 <template>
   <v-app>
     <v-app-bar app>
@@ -5,6 +6,11 @@
       <v-toolbar-title class="title-text">vedal987 🐢 Simulator</v-toolbar-title>
 
       <v-spacer></v-spacer>
+
+      <v-btn-toggle v-model="locale" rounded="0" variant="outlined" density="compact" mandatory class="mr-4">
+        <v-btn value="en">EN</v-btn>
+        <v-btn value="zh">ZH</v-btn>
+      </v-btn-toggle>
 
       <v-chip
         :color="statusColor"
@@ -23,7 +29,7 @@
           <template v-slot:prepend>
             <v-icon>{{ item.icon }}</v-icon>
           </template>
-          <v-list-item-title>{{ item.title }}</v-list-item-title>
+          <v-list-item-title>{{ t(item.title) }}</v-list-item-title>
         </v-list-item>
       </v-list>
 
@@ -45,11 +51,11 @@
   <!-- Disconnection Dialog -->
   <v-dialog v-model="connectionStore.wasUnexpectedlyDisconnected" persistent max-width="400">
     <v-card>
-      <v-card-title class="text-h5">连接已断开</v-card-title>
-      <v-card-text>与后端的连接已意外断开，请重新连接。</v-card-text>
+      <v-card-title class="text-h5">{{ t('Connection Lost') }}</v-card-title>
+      <v-card-text>{{ t('The connection to the backend was unexpectedly lost. Please reconnect.') }}</v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="primary" variant="flat" @click="handleReconnectRedirect">返回连接页面</v-btn>
+        <v-btn color="primary" variant="flat" @click="handleReconnectRedirect">{{ t('Go to Connection Page') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -60,18 +66,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useConnectionStore } from '@/stores/connection';
 import { useConfigStore } from '@/stores/config';
 import { useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 
+const { t, locale } = useI18n();
+
 const drawer = ref(true); // Sidebar is open by default
 
 const allNavItems = [
-  { title: '连接', icon: 'mdi-connection', to: '/' },
-  { title: '控制', icon: 'mdi-gamepad-variant', to: '/control' },
-  { title: '配置', icon: 'mdi-cog', to: '/config' },
-  { title: '日志', icon: 'mdi-file-document-outline', to: '/logs' },
+  { title: 'Connection', icon: 'mdi-connection', to: '/' },
+  { title: 'Control', icon: 'mdi-gamepad-variant', to: '/control' },
+  { title: 'Configuration', icon: 'mdi-cog', to: '/config' },
+  { title: 'Logs', icon: 'mdi-file-document-outline', to: '/logs' },
   { title: 'Agent', icon: 'mdi-robot', to: '/agent', name: 'agent' },
   { title: 'ChatBot', icon: 'mdi-forum', to: '/chatbot' },
 ];
@@ -90,8 +99,8 @@ const visibleNavItems = computed(() => {
 
 const statusColor = computed(() => {
   const status = connectionStore.statusText;
-  if (status === '已连接') return 'success';
-  if (status === '连接中...') return 'warning';
+  if (status === '已连接' || status === 'Connected') return 'success';
+  if (status === '连接中...' || status === 'Connecting...') return 'warning';
   return 'error';
 });
 

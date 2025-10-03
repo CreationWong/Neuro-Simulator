@@ -4,7 +4,7 @@
     <v-text-field
       v-if="propKey === 'provider_id'"
       v-model="modelValue"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       persistent-hint
       variant="outlined"
@@ -16,7 +16,7 @@
     <v-text-field
       v-else-if="isType('integer') || isType('number')"
       v-model.number="modelValue"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       type="number"
       persistent-hint
@@ -28,7 +28,7 @@
     <v-text-field
       v-else-if="isType('string') && propSchema.format === 'password'"
       v-model="modelValue"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       type="password"
       persistent-hint
@@ -40,7 +40,7 @@
     <v-textarea
       v-else-if="isType('string') && propSchema.format === 'text-area'"
       v-model="modelValue"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       persistent-hint
       variant="outlined"
@@ -50,7 +50,7 @@
     <v-text-field
       v-else-if="isType('string') && !propSchema.enum && !isProviderId"
       v-model="modelValue"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       persistent-hint
       variant="outlined"
@@ -61,7 +61,7 @@
     <v-switch
       v-if="isType('boolean')"
       v-model="modelValue"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       persistent-hint
       color="primary"
@@ -73,7 +73,7 @@
       v-if="propSchema.enum"
       v-model="modelValue"
       :items="propSchema.enum"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       persistent-hint
       variant="outlined"
@@ -87,7 +87,7 @@
       :items="providerItems"
       item-title="display_name"
       item-value="provider_id"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       persistent-hint
       variant="outlined"
@@ -97,26 +97,25 @@
 
     <!-- Array of Objects Renderer -->
     <div v-else-if="isObjectArray">
-      <h3 class="text-h6 mb-2">{{ propSchema.title || propKey }}</h3>
-      <p v-if="propSchema.description" class="text-caption mb-4">{{ propSchema.description }}</p>
+      
       <v-card v-for="(item, index) in modelValue" :key="item.provider_id || index" class="mb-4" variant="outlined">
         <v-card-title class="d-flex justify-space-between align-center text-body-1">
-          <span>{{ item.display_name || 'Item ' + (index + 1) }}</span>
+          <span>{{ item.display_name || t('Item') + ' ' + (index + 1) }}</span>
           <div>
             <v-btn icon="mdi-pencil" size="small" variant="text" @click="openEditDialog(item, index)"></v-btn>
             <v-btn icon="mdi-delete" size="small" variant="text" @click="deleteItem(index)"></v-btn>
           </div>
         </v-card-title>
         <v-card-text v-if="item.provider_type || item.model_name">
-          <p v-if="item.provider_type" class="text-body-2">Provider Type: {{ item.provider_type }}</p>
-          <p v-if="item.model_name" class="text-body-2">Model: {{ item.model_name }}</p>
+          <p v-if="item.provider_type" class="text-body-2">{{ t('Provider Type') }}: {{ item.provider_type }}</p>
+          <p v-if="item.model_name" class="text-body-2">{{ t('Model Name') }}: {{ item.model_name }}</p>
         </v-card-text>
       </v-card>
-      <v-btn color="primary" @click="openAddDialog" block>Add {{ itemSchema.title || 'Item' }}</v-btn>
+      <v-btn color="primary" @click="openAddDialog" block>{{ t('Add') }} {{ t(itemSchema.title || 'Item') }}</v-btn>
 
       <!-- Dialog for Add/Edit -->
       <v-dialog v-model="dialog" max-width="800px" persistent>
-        <v-card :title="(isEditing ? 'Edit' : 'Add') + ' ' + (itemSchema.title || 'Item')">
+        <v-card :title="t(isEditing ? 'Edit' : 'Add') + ' ' + t(itemSchema.title || 'Item')">
           <v-card-text>
             <div v-for="key in Object.keys(itemSchema.properties || {})" :key="key">
               <FieldRenderer 
@@ -130,8 +129,8 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text @click="dialog = false">Cancel</v-btn>
-            <v-btn color="primary" @click="saveItem">Save</v-btn>
+            <v-btn text @click="dialog = false">{{ t('Cancel') }}</v-btn>
+            <v-btn color="primary" @click="saveItem">{{ t('Save') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -141,7 +140,7 @@
     <v-combobox
       v-else-if="isType('array')"
       v-model="modelValue"
-      :label="propSchema.title || propKey"
+      :label="t(propSchema.title || propKey)"
       :hint="propSchema.description"
       persistent-hint
       chips
@@ -156,8 +155,11 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive, defineAsyncComponent } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useConfigStore } from '@/stores/config';
 import { v4 as uuidv4 } from 'uuid';
+
+const { t } = useI18n();
 
 // Using defineAsyncComponent to avoid circular reference
 const FieldRenderer = defineAsyncComponent(() => import('@/components/config/FieldRenderer.vue'));
