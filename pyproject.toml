@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuro_simulator"
-version = "0.5.4"
+version = "0.6.0"
 description = "Neuro Simulator Server"
 readme = "README.md"
 authors = [{ name = "Moha-Master", email = "hongkongreporter@outlook.com" }]
@@ -26,7 +26,6 @@ dependencies = [
     "uvicorn",
     "google-genai",
     "azure-cognitiveservices-speech",
-    "letta-client",
     "openai",
     "pyyaml",
     "pydantic",

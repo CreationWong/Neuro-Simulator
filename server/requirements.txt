@@ -2,7 +2,7 @@ fastapi
 uvicorn
 google-genai
 azure-cognitiveservices-speech
-letta-client
+
 openai
 pyyaml
 pydantic

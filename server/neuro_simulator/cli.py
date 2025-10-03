@@ -48,8 +48,8 @@ def main():
                 shutil.copy(src, dest)
                 logging.info(f"Copied default file to {dest}")
 
-        # Copy config.yaml.example
-        copy_if_not_exists(package_source_path / "config.yaml.example", work_dir / "config.yaml.example")
+        # Copy config.yaml if it doesn't exist
+        copy_if_not_exists(package_source_path / "config.yaml", work_dir / "config.yaml")
 
         # Copy prompts
         copy_if_not_exists(package_source_path / "agent" / "neuro_prompt.txt", path_manager.path_manager.neuro_prompt_path)
@@ -77,10 +77,6 @@ def main():
     main_config_path = path_manager.path_manager.working_dir / "config.yaml"
     try:
         config_manager.load(str(main_config_path))
-    except FileNotFoundError:
-        logging.error(f"FATAL: Configuration file '{main_config_path.name}' not found.")
-        logging.error(f"If this is your first time, please rename 'config.yaml.example' to 'config.yaml' after filling it out.")
-        sys.exit(1)
     except ValidationError as e:
         logging.error(f"FATAL: Configuration error in '{main_config_path.name}':")
         logging.error(e)

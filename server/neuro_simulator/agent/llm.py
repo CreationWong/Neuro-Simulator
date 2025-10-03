@@ -33,33 +33,37 @@ class LLMClient:
 
         logger.info("First use of built-in agent's LLMClient, performing initialization...")
         settings = config_manager.settings
-        provider = settings.agent.agent_provider.lower()
-        
-        if provider == "gemini":
-            api_key = settings.api_keys.gemini_api_key
-            if not api_key:
-                raise ValueError("GEMINI_API_KEY is not set in configuration for the agent.")
-            
-            self.client = genai.Client(api_key=api_key)
-            self.model_name = settings.agent.agent_model
+
+        provider_id = settings.neuro.llm_provider_id
+        if not provider_id:
+            raise ValueError("LLM Provider ID is not set for the agent.")
+
+        provider_config = next((p for p in settings.llm_providers if p.provider_id == provider_id), None)
+        if not provider_config:
+            raise ValueError(f"LLM Provider with ID '{provider_id}' not found in configuration.")
+
+        provider_type = provider_config.provider_type.lower()
+        self.model_name = provider_config.model_name
+
+        if provider_type == "gemini":
+            if not provider_config.api_key:
+                raise ValueError(f"API key for Gemini provider '{provider_config.display_name}' is not set.")
+            self.client = genai.Client(api_key=provider_config.api_key)
             self._generate_func = self._generate_gemini
             
-        elif provider == "openai":
-            api_key = settings.api_keys.openai_api_key
-            if not api_key:
-                raise ValueError("OPENAI_API_KEY is not set in configuration for the agent.")
-            
-            self.model_name = settings.agent.agent_model
+        elif provider_type == "openai":
+            if not provider_config.api_key:
+                raise ValueError(f"API key for OpenAI provider '{provider_config.display_name}' is not set.")
             self.client = AsyncOpenAI(
-                api_key=api_key, 
-                base_url=settings.api_keys.openai_api_base_url
+                api_key=provider_config.api_key, 
+                base_url=provider_config.base_url
             )
             self._generate_func = self._generate_openai
         else:
-            raise ValueError(f"Unsupported agent provider in config: {settings.agent.agent_provider}")
+            raise ValueError(f"Unsupported provider type in agent config: {provider_type}")
             
         self._initialized = True
-        logger.info(f"Agent LLM client initialized. Provider: {provider.upper()}, Model: {self.model_name}")
+        logger.info(f"Agent LLM client initialized. Provider: {provider_type.upper()}, Model: {self.model_name}")
 
     async def _generate_gemini(self, prompt: str, max_tokens: int) -> str:
         """Generates text using the Gemini model."""

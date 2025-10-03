@@ -18,7 +18,6 @@ from .config import config_manager, AppSettings
 from ..core.agent_factory import create_agent
 from ..agent.core import Agent as LocalAgent
 from ..chatbot.core import ChatbotAgent
-from ..services.letta import LettaAgent
 from ..services.builtin import BuiltinAgentWrapper
 
 # --- API Routers ---
@@ -71,7 +70,7 @@ app.include_router(system_router)
 
 # --- Background Task Definitions ---
 
-chatbot_agent: ChatbotAgent = None
+chatbot: ChatbotAgent = None
 
 async def broadcast_events_task():
     """Broadcasts events from the live_stream_manager's queue to all clients."""
@@ -87,7 +86,7 @@ async def broadcast_events_task():
 
 async def fetch_and_process_audience_chats():
     """Generates a batch of audience chat messages using the new ChatbotAgent."""
-    if not chatbot_agent:
+    if not chatbot:
         return
     try:
         # Get context for the chatbot
@@ -96,7 +95,7 @@ async def fetch_and_process_audience_chats():
         recent_history = get_recent_audience_chats_for_chatbot(limit=10)
 
         # Generate messages
-        generated_messages = await chatbot_agent.generate_chat_messages(
+        generated_messages = await chatbot.generate_chat_messages(
             neuro_speech=context_message,
             recent_history=recent_history
         )
@@ -125,8 +124,8 @@ async def generate_audience_chat_task():
             
             asyncio.create_task(fetch_and_process_audience_chats())
             
-            # Use the interval from the new chatbot_agent config
-            await asyncio.sleep(config_manager.settings.chatbot_agent.generation_interval_sec)
+            # Use the interval from the new chatbot config
+            await asyncio.sleep(config_manager.settings.chatbot.generation_interval_sec)
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -148,20 +147,14 @@ async def neuro_response_cycle():
                 app_state.last_superchat_time = time.time()
                 await connection_manager.broadcast({"type": "processing_superchat", "data": sc})
 
-                # Agent-specific payload generation for superchats
-                if isinstance(agent, LettaAgent):
-                    selected_chats = [
-                        {"role": "system", "content": "=== RANDOM 10 MSG IN CHATROOM ===\nNO MSG FETCH DUE TO UNPROCESSED HIGHLIGHTED MESSAGE"},
-                        {"role": "system", "content": f"=== HIGHLIGHTED MESSAGE ===\n{sc['username']}: {sc['text']}"}
-                    ]
-                else: # For BuiltinAgent and any other future agents
-                    selected_chats = [{'username': sc['username'], 'text': sc['text']}]
+                # For BuiltinAgent and any other future agents
+                selected_chats = [{'username': sc['username'], 'text': sc['text']}]
 
                 # Clear the regular input queue to prevent immediate follow-up with normal chats
                 get_all_neuro_input_chats()
             else:
                 if is_first_response:
-                    add_to_neuro_input_queue({"username": "System", "text": config_manager.settings.neuro_behavior.initial_greeting})
+                    add_to_neuro_input_queue({"username": "System", "text": config_manager.settings.neuro.initial_greeting})
                     is_first_response = False
                 elif is_neuro_input_queue_empty():
                     await asyncio.sleep(1)
@@ -170,7 +163,7 @@ async def neuro_response_cycle():
                 current_queue_snapshot = get_all_neuro_input_chats()
                 if not current_queue_snapshot:
                     continue
-                sample_size = min(config_manager.settings.neuro_behavior.input_chat_sample_size, len(current_queue_snapshot))
+                sample_size = min(config_manager.settings.neuro.input_chat_sample_size, len(current_queue_snapshot))
                 selected_chats = random.sample(current_queue_snapshot, sample_size)
             
             if not selected_chats:
@@ -192,7 +185,12 @@ async def neuro_response_cycle():
             sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', response_text.replace('\n', ' ')) if s.strip()]
             if not sentences: continue
 
-            synthesis_tasks = [synthesize_audio_segment(s) for s in sentences]
+            tts_id = config_manager.settings.neuro.tts_provider_id
+            if not tts_id:
+                logger.warning("TTS Provider ID is not set for the agent. Skipping speech synthesis.")
+                continue
+
+            synthesis_tasks = [synthesize_audio_segment(s, tts_provider_id=tts_id) for s in sentences]
             synthesis_results = await asyncio.gather(*synthesis_tasks, return_exceptions=True)
             
             speech_packages = [
@@ -210,7 +208,7 @@ async def neuro_response_cycle():
             await connection_manager.broadcast({"type": "neuro_speech_segment", "is_end": True})
             live_stream_manager.set_neuro_speaking_status(False)
             
-            await asyncio.sleep(config_manager.settings.neuro_behavior.post_speech_cooldown_sec)
+            await asyncio.sleep(config_manager.settings.neuro.post_speech_cooldown_sec)
 
         except asyncio.TimeoutError:
             logger.warning("Agent response timed out, skipping this cycle.")
@@ -271,10 +269,7 @@ async def startup_event():
     # 2. Initialize queues now that config is loaded
     initialize_queues()
 
-    # 3. Initialize the new Chatbot Agent
-    global chatbot_agent
-    chatbot_agent = ChatbotAgent()
-    await chatbot_agent.initialize()
+    # 3. Chatbot Agent will be initialized on stream start.
 
     # 4. Register callbacks
     async def metadata_callback(settings: AppSettings):
@@ -285,7 +280,7 @@ async def startup_event():
     # 5. Initialize main agent (which will load its own configs)
     try:
         await create_agent()
-        logger.info(f"Successfully initialized agent type: {config_manager.settings.agent_type}")
+        logger.info(f"Successfully initialized agent.")
     except Exception as e:
         logger.critical(f"Agent initialization failed on startup: {e}", exc_info=True)
     
@@ -305,9 +300,9 @@ async def websocket_stream_endpoint(websocket: WebSocket):
     await connection_manager.connect(websocket)
     try:
         await connection_manager.send_personal_message(live_stream_manager.get_initial_state_for_client(), websocket)
-        await connection_manager.send_personal_message({"type": "update_stream_metadata", **config_manager.settings.stream_metadata.model_dump()}, websocket)
+        await connection_manager.send_personal_message({"type": "update_stream_metadata", **config_manager.settings.stream.model_dump()}, websocket)
         
-        initial_chats = get_recent_audience_chats(config_manager.settings.performance.initial_chat_backlog_limit)
+        initial_chats = get_recent_audience_chats(config_manager.settings.server.initial_chat_backlog_limit)
         for chat in initial_chats:
             await connection_manager.send_personal_message({"type": "chat_message", **chat, "is_user_message": False}, websocket)
             await asyncio.sleep(0.01)
@@ -494,6 +489,23 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
 
         # Stream Control Actions
         elif action == "start_stream":
+            # Validate that required providers are set before starting
+            agent_cfg = config_manager.settings.neuro
+            chatbot_cfg = config_manager.settings.chatbot
+            if not agent_cfg.llm_provider_id:
+                raise ValueError("Agent (Neuro) does not have an LLM Provider configured.")
+            if not agent_cfg.tts_provider_id:
+                raise ValueError("Agent (Neuro) does not have a TTS Provider configured.")
+            if not chatbot_cfg.llm_provider_id:
+                raise ValueError("Chatbot does not have an LLM Provider configured.")
+
+            # Initialize chatbot agent on first stream start if not already initialized
+            global chatbot
+            if chatbot is None:
+                logger.info("Initializing ChatbotAgent for the first time...")
+                chatbot = ChatbotAgent()
+                await chatbot.initialize()
+
             logger.info("Start stream action received. Resetting agent memory before starting processes...")
             await agent.reset_memory()
             if not process_manager.is_running:
@@ -549,34 +561,28 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             response["payload"] = context
 
         elif action == "get_last_prompt":
-            # This is specific to the builtin agent, as Letta doesn't expose its prompt.
-            agent_instance = getattr(agent, 'agent_instance', agent)
-            if not isinstance(agent_instance, LocalAgent):
-                 response["payload"] = {"prompt": "The active agent does not support prompt generation introspection."}
-            else:
-                try:
-                    # 1. Get the recent history from the agent itself
-                    history = await agent_instance.get_neuro_history(limit=10)
-                    
-                    # 2. Reconstruct the 'messages' list that _build_neuro_prompt expects
-                    messages_for_prompt = []
-                    for entry in history:
-                        if entry.get('role') == 'user':
-                            # Content is in the format "username: text"
-                            content = entry.get('content', '')
-                            parts = content.split(':', 1)
-                            if len(parts) == 2:
-                                messages_for_prompt.append({'username': parts[0].strip(), 'text': parts[1].strip()})
-                            elif content: # Handle cases where there's no colon
-                                messages_for_prompt.append({'username': 'user', 'text': content})
+            try:
+                # 1. Get the recent history from the agent itself
+                history = await agent.get_message_history(limit=10)
+                
+                # 2. Reconstruct the 'messages' list that _build_neuro_prompt expects
+                messages_for_prompt = []
+                for entry in history:
+                    if entry.get('role') == 'user':
+                        # Content is in the format "username: text"
+                        content = entry.get('content', '')
+                        parts = content.split(':', 1)
+                        if len(parts) == 2:
+                            messages_for_prompt.append({'username': parts[0].strip(), 'text': parts[1].strip()})
+                        elif content: # Handle cases where there's no colon
+                            messages_for_prompt.append({'username': 'user', 'text': content})
 
-                    # 3. Build the prompt using the agent's own internal logic
-                    prompt = await agent_instance._build_neuro_prompt(messages_for_prompt)
-                    response["payload"] = {"prompt": prompt}
-                except Exception as e:
-                    logger.error(f"Error generating last prompt: {e}", exc_info=True)
-                    response["payload"] = {"prompt": f"Failed to generate prompt: {e}"}
-
+                # 3. Build the prompt using the agent's own internal logic
+                prompt = await agent.build_neuro_prompt(messages_for_prompt)
+                response["payload"] = {"prompt": prompt}
+            except Exception as e:
+                logger.error(f"Error generating last prompt: {e}", exc_info=True)
+                response["payload"] = {"prompt": f"Failed to generate prompt: {e}"}
         elif action == "reset_agent_memory":
             await agent.reset_memory()
             response["payload"] = {"status": "success"}
@@ -598,6 +604,3 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
         if request_id:
             response["payload"] = {"status": "error", "message": str(e)}
             await websocket.send_json(response)
-
-
-

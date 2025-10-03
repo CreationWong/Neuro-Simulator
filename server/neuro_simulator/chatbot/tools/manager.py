@@ -1,5 +1,7 @@
 # neuro_simulator/chatbot/tools/manager.py
-"""The central tool manager for the chatbot agent."""
+"""
+The central tool manager for the chatbot agent.
+"""
 
 import importlib
 import inspect
@@ -56,18 +58,18 @@ class ChatbotToolManager:
     def _load_allocations(self):
         """Loads tool allocations from JSON files, creating defaults if they don't exist."""
         default_allocations = {
-            "chatbot_agent": ["post_chat_message"],
+            "chatbot": ["post_chat_message"],
             "chatbot_memory_agent": ["add_temp_memory"] # Add more memory tools later
         }
 
         # Load actor agent allocations
-        if path_manager.chatbot_agent_tools_path.exists():
-            with open(path_manager.chatbot_agent_tools_path, 'r', encoding='utf-8') as f:
-                self.agent_tool_allocations['chatbot_agent'] = json.load(f)
+        if path_manager.chatbot_tools_path.exists():
+            with open(path_manager.chatbot_tools_path, 'r', encoding='utf-8') as f:
+                self.agent_tool_allocations['chatbot'] = json.load(f)
         else:
-            self.agent_tool_allocations['chatbot_agent'] = default_allocations['chatbot_agent']
-            with open(path_manager.chatbot_agent_tools_path, 'w', encoding='utf-8') as f:
-                json.dump(default_allocations['chatbot_agent'], f, indent=2)
+            self.agent_tool_allocations['chatbot'] = default_allocations['chatbot']
+            with open(path_manager.chatbot_tools_path, 'w', encoding='utf-8') as f:
+                json.dump(default_allocations['chatbot'], f, indent=2)
 
         # Load thinker agent allocations
         if path_manager.chatbot_memory_agent_tools_path.exists():

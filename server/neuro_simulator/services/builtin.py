@@ -113,5 +113,8 @@ class BuiltinAgentWrapper(BaseAgent):
         return result
 
     # Context/Message History
+    async def build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
+        return await self.agent_instance._build_neuro_prompt(messages)
+
     async def get_message_history(self, limit: int = 20) -> List[Dict[str, Any]]:
         return await self.agent_instance.get_neuro_history(limit)

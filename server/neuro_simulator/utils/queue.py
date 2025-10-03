@@ -30,11 +30,11 @@ def initialize_queues():
     # Re-initialize the deques with the correct maxlen
     audience_chat_buffer = deque(
         audience_chat_buffer, 
-        maxlen=settings.performance.audience_chat_buffer_max_size
+        maxlen=settings.server.audience_chat_buffer_max_size
     )
     neuro_input_queue = deque(
         neuro_input_queue,
-        maxlen=settings.performance.neuro_input_queue_max_size
+        maxlen=settings.neuro.neuro_input_queue_max_size
     )
 
 def clear_all_queues():

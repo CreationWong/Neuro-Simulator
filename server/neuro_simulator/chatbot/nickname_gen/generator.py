@@ -50,7 +50,7 @@ class NicknameGenerator:
         if not self.base_adjectives or not self.base_nouns:
             logger.warning("Base adjective or noun pools are empty. Nickname generation quality will be affected.")
 
-        if config_manager.settings.chatbot_agent.nickname_generation.enable_dynamic_pool:
+        if config_manager.settings.chatbot.nickname_generation.enable_dynamic_pool:
             await self._populate_dynamic_pools()
         
         logger.info("NicknameGenerator initialized.")
@@ -58,7 +58,7 @@ class NicknameGenerator:
     async def _populate_dynamic_pools(self):
         """Uses an LLM to generate and populate the dynamic word pools."""
         logger.info("Attempting to populate dynamic nickname pools using LLM...")
-        pool_size = config_manager.settings.chatbot_agent.nickname_generation.dynamic_pool_size
+        pool_size = config_manager.settings.chatbot.nickname_generation.dynamic_pool_size
         try:
             adj_prompt = f"Generate a list of {pool_size} diverse, cool-sounding English adjectives for online usernames. Output only the words, one per line."
             noun_prompt = f"Generate a list of {pool_size} diverse, cool-sounding English nouns for online usernames. Output only the words, one per line."

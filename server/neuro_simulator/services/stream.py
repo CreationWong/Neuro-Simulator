@@ -63,7 +63,7 @@ class LiveStreamManager:
         """Puts the stream metadata into the event queue for broadcasting."""
         metadata_event = {
             "type": "update_stream_metadata",
-            **config_manager.settings.stream_metadata.model_dump()
+            **config_manager.settings.stream.model_dump()
         }
         await self.event_queue.put(metadata_event)
 

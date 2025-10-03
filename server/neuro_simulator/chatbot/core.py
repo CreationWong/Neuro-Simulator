@@ -63,7 +63,7 @@ class ChatbotAgent:
              package_source_dir = Path(__file__).parent.parent
 
         files_to_copy = {
-            "chatbot/prompts/chatbot_prompt.txt": path_manager.chatbot_agent_prompt_path,
+            "chatbot/prompts/chatbot_prompt.txt": path_manager.chatbot_prompt_path,
             "chatbot/prompts/memory_prompt.txt": path_manager.chatbot_memory_agent_prompt_path,
             "chatbot/memory/init_memory.json": path_manager.chatbot_init_memory_path,
             "chatbot/memory/core_memory.json": path_manager.chatbot_core_memory_path,
@@ -132,17 +132,17 @@ class ChatbotAgent:
 
     async def _build_chatbot_prompt(self, neuro_speech: str, recent_history: List[Dict[str, str]]) -> str:
         """Builds the prompt for the Chatbot (Actor) LLM."""
-        with open(path_manager.chatbot_agent_prompt_path, 'r', encoding='utf-8') as f:
+        with open(path_manager.chatbot_prompt_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
         
-        tool_descriptions = self._format_tool_schemas_for_prompt('chatbot_agent')
+        tool_descriptions = self._format_tool_schemas_for_prompt('chatbot')
         init_memory_text = json.dumps(self.memory_manager.init_memory, indent=2)
         core_memory_text = json.dumps(self.memory_manager.core_memory, indent=2)
         temp_memory_text = json.dumps(self.memory_manager.temp_memory, indent=2)
         recent_history_text = "\n".join([f"{msg.get('role')}: {msg.get('content')}" for msg in recent_history])
 
         from ..core.config import config_manager
-        chats_per_batch = config_manager.settings.chatbot_agent.chats_per_batch
+        chats_per_batch = config_manager.settings.chatbot.chats_per_batch
 
         return prompt_template.format(
             tool_descriptions=tool_descriptions,
@@ -186,20 +186,20 @@ class ChatbotAgent:
             params = tool_call.get("params", {})
             result = await self.tool_manager.execute_tool(tool_name, **params)
             
-            if agent_name == 'chatbot_agent' and tool_name == "post_chat_message" and result.get("status") == "success":
+            if agent_name == 'chatbot' and tool_name == "post_chat_message" and result.get("status") == "success":
                 text_to_post = result.get("text_to_post", "")
                 if text_to_post:
                     nickname = self.nickname_generator.generate_nickname()
                     message = {"username": nickname, "text": text_to_post}
                     generated_messages.append(message)
-                    await self._append_to_history(path_manager.chatbot_agent_history_path, {'role': 'assistant', 'content': f"{nickname}: {text_to_post}"})
+                    await self._append_to_history(path_manager.chatbot_history_path, {'role': 'assistant', 'content': f"{nickname}: {text_to_post}"})
         logger.info(f"Returning generated messages: {generated_messages}")
         return generated_messages
 
     async def generate_chat_messages(self, neuro_speech: str, recent_history: List[Dict[str, str]]) -> List[Dict[str, str]]:
         """The main actor loop to generate chat messages."""
         for entry in recent_history:
-            await self._append_to_history(path_manager.chatbot_agent_history_path, entry)
+            await self._append_to_history(path_manager.chatbot_history_path, entry)
         
         prompt = await self._build_chatbot_prompt(neuro_speech, recent_history)
         response_text = await self.chatbot_llm.generate(prompt)
@@ -208,7 +208,7 @@ class ChatbotAgent:
         tool_calls = self._parse_tool_calls(response_text)
         if not tool_calls: return []
 
-        messages = await self._execute_tool_calls(tool_calls, 'chatbot_agent')
+        messages = await self._execute_tool_calls(tool_calls, 'chatbot')
         
         self.turn_counter += 1
         if self.turn_counter >= self.reflection_threshold:
@@ -220,7 +220,7 @@ class ChatbotAgent:
         """The main thinker loop to consolidate memories."""
         logger.info("Chatbot is reflecting on recent conversations...")
         self.turn_counter = 0
-        history = await self._read_history(path_manager.chatbot_agent_history_path, limit=50)
+        history = await self._read_history(path_manager.chatbot_history_path, limit=50)
         if len(history) < self.reflection_threshold:
             return
 

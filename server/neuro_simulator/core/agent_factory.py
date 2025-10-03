@@ -19,32 +19,23 @@ config_manager.register_update_callback(_reset_agent_on_config_update)
 
 async def create_agent() -> BaseAgent:
     """
-    Factory function to create and initialize an agent instance based on the configuration.
+    Factory function to create and initialize the agent instance.
     Returns a cached instance unless the configuration has changed.
     """
     global _agent_instance
     if _agent_instance is not None:
         return _agent_instance
 
-    agent_type = config_manager.settings.agent_type
-    logger.info(f"Creating new agent instance of type: {agent_type}")
+    logger.info(f"Creating new agent instance...")
     
-    if agent_type == "builtin":
-        from ..services.builtin import BuiltinAgentWrapper, initialize_builtin_agent
-        
-        agent_impl = await initialize_builtin_agent()
-        
-        if agent_impl is None:
-            raise RuntimeError("Failed to initialize the Builtin agent implementation.")
-        
-        _agent_instance = BuiltinAgentWrapper(agent_impl)
-
-    elif agent_type == "letta":
-        from ..services.letta import LettaAgent
-        _agent_instance = LettaAgent()
+    from ..services.builtin import BuiltinAgentWrapper, initialize_builtin_agent
     
-    else:
-        raise ValueError(f"Unknown agent type: {agent_type}")
+    agent_impl = await initialize_builtin_agent()
+    
+    if agent_impl is None:
+        raise RuntimeError("Failed to initialize the Builtin agent implementation.")
+    
+    _agent_instance = BuiltinAgentWrapper(agent_impl)
 
     await _agent_instance.initialize()
     

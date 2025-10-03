@@ -31,18 +31,18 @@ class PathManager:
         self.core_memory_path = self.shared_memories_dir / "core_memory.json"
         self.temp_memory_path = self.shared_memories_dir / "temp_memory.json"
 
-        # --- Chatbot Agent Paths ---
+        # --- Chatbot Paths ---
         self.chatbot_root_dir = self.working_dir / "chatbot"
-        self.chatbot_agent_dir = self.chatbot_root_dir / "chatbot"
+        self.chatbot_dir = self.chatbot_root_dir / "chatbot"
         self.chatbot_memory_agent_dir = self.chatbot_root_dir / "memory_agent"
         self.chatbot_memories_dir = self.chatbot_root_dir / "memories"
         self.chatbot_tools_dir = self.chatbot_root_dir / "tools"
         self.chatbot_builtin_tools_dir = self.chatbot_tools_dir / "builtin_tools"
         self.chatbot_nickname_data_dir = self.chatbot_root_dir / "nickname_gen" / "data"
 
-        self.chatbot_agent_prompt_path = self.chatbot_agent_dir / "chatbot_prompt.txt"
-        self.chatbot_agent_tools_path = self.chatbot_agent_dir / "tools.json"
-        self.chatbot_agent_history_path = self.chatbot_agent_dir / "history.jsonl"
+        self.chatbot_prompt_path = self.chatbot_dir / "chatbot_prompt.txt"
+        self.chatbot_tools_path = self.chatbot_dir / "tools.json"
+        self.chatbot_history_path = self.chatbot_dir / "history.jsonl"
 
         self.chatbot_memory_agent_prompt_path = self.chatbot_memory_agent_dir / "memory_prompt.txt"
         self.chatbot_memory_agent_tools_path = self.chatbot_memory_agent_dir / "tools.json"
@@ -63,7 +63,7 @@ class PathManager:
             self.user_tools_dir,
             self.builtin_tools_dir,
             self.chatbot_root_dir,
-            self.chatbot_agent_dir,
+            self.chatbot_dir,
             self.chatbot_memory_agent_dir,
             self.chatbot_memories_dir,
             self.chatbot_tools_dir,

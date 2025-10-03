@@ -34,65 +34,73 @@ def _remove_emoji(text: str) -> str:
     )
     return emoji_pattern.sub(r'', text).strip()
 
-async def synthesize_audio_segment(text: str, voice_name: str = None, pitch: float = None) -> tuple[str, float]:
+async def synthesize_audio_segment(text: str, tts_provider_id: str) -> tuple[str, float]:
     """
-    Synthesizes audio using Azure TTS.
+    Synthesizes audio using a configured TTS provider.
     Returns a Base64 encoded audio string and the audio duration in seconds.
     """
     # Clean emojis from the text before synthesis
     text = _remove_emoji(text)
     if not text:
-        # If text is empty after cleaning, no need to synthesize.
         return "", 0.0
 
-    azure_key = config_manager.settings.api_keys.azure_speech_key
-    azure_region = config_manager.settings.api_keys.azure_speech_region
-    
-    if not azure_key or not azure_region:
-        raise ValueError("Azure Speech Key or Region is not set in the configuration.")
+    # Find the specified TTS provider in the configuration
+    provider_config = next((p for p in config_manager.settings.tts_providers if p.provider_id == tts_provider_id), None)
 
-    final_voice_name = voice_name if voice_name is not None else config_manager.settings.tts.voice_name
-    final_pitch = pitch if pitch is not None else config_manager.settings.tts.voice_pitch
+    if not provider_config:
+        raise ValueError(f"TTS Provider with ID '{tts_provider_id}' not found in configuration.")
 
-    speech_config = speechsdk.SpeechConfig(subscription=azure_key, region=azure_region)
-    speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3)
+    # --- Dispatch based on provider type ---
+    # Currently, only Azure is supported.
+    if provider_config.provider_type == 'azure':
+        if not provider_config.api_key or not provider_config.region:
+            raise ValueError(f"Azure TTS provider '{provider_config.display_name}' is missing API key or region.")
 
-    pitch_percent = int((final_pitch - 1.0) * 100)
-    pitch_ssml_value = f"+{pitch_percent}%" if pitch_percent >= 0 else f"{pitch_percent}%"
-    
-    escaped_text = html.escape(text)
+        # Hardcoded voice and pitch as per design
+        voice_name = "en-US-AshleyNeural"
+        pitch = 1.25
 
-    ssml_string = f"""
-    <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
-        <voice name="{final_voice_name}">
-            <prosody pitch="{pitch_ssml_value}">
-                {escaped_text}
-            </prosody>
-        </voice>
-    </speak>
-    """
-    
-    synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
+        speech_config = speechsdk.SpeechConfig(subscription=provider_config.api_key, region=provider_config.region)
+        speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3)
 
-    def _perform_synthesis_sync():
-        return synthesizer.speak_ssml_async(ssml_string).get()
+        pitch_percent = int((pitch - 1.0) * 100)
+        pitch_ssml_value = f"+{pitch_percent}%" if pitch_percent >= 0 else f"{pitch_percent}%"
+        
+        escaped_text = html.escape(text)
 
-    try:
-        result = await asyncio.to_thread(_perform_synthesis_sync)
+        ssml_string = f"""
+        <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+            <voice name="{voice_name}">
+                <prosody pitch="{pitch_ssml_value}">
+                    {escaped_text}
+                </prosody>
+            </voice>
+        </speak>
+        """
+        
+        synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
 
-        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            audio_data = result.audio_data
-            encoded_audio = base64.b64encode(audio_data).decode('utf-8')
-            audio_duration_sec = result.audio_duration.total_seconds()
-            logger.info(f"TTS synthesis completed: '{text[:30]}...' (Duration: {audio_duration_sec:.2f}s)")
-            return encoded_audio, audio_duration_sec
-        else:
-            cancellation_details = result.cancellation_details
-            error_message = f"TTS synthesis failed (Reason: {cancellation_details.reason}). Text: '{text}'"
-            if cancellation_details.error_details:
-                error_message += f" | Details: {cancellation_details.error_details}"
-            logger.error(error_message)
-            raise Exception(error_message)
-    except Exception as e:
-        logger.error(f"An exception occurred during the Azure TTS SDK call: {e}", exc_info=True)
-        raise
+        def _perform_synthesis_sync():
+            return synthesizer.speak_ssml_async(ssml_string).get()
+
+        try:
+            result = await asyncio.to_thread(_perform_synthesis_sync)
+
+            if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+                audio_data = result.audio_data
+                encoded_audio = base64.b64encode(audio_data).decode('utf-8')
+                audio_duration_sec = result.audio_duration.total_seconds()
+                logger.info(f"TTS synthesis completed: '{text[:30]}...' (Duration: {audio_duration_sec:.2f}s)")
+                return encoded_audio, audio_duration_sec
+            else:
+                cancellation_details = result.cancellation_details
+                error_message = f"TTS synthesis failed (Reason: {cancellation_details.reason}). Text: '{text}'"
+                if cancellation_details.error_details:
+                    error_message += f" | Details: {cancellation_details.error_details}"
+                logger.error(error_message)
+                raise Exception(error_message)
+        except Exception as e:
+            logger.error(f"An exception occurred during the Azure TTS SDK call: {e}", exc_info=True)
+            raise
+    else:
+        raise NotImplementedError(f"TTS provider type '{provider_config.provider_type}' is not supported.")
