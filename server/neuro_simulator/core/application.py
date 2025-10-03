@@ -258,8 +258,35 @@ async def startup_event():
         else:
             frontend_dir = None
 
+    # --- Mount Client Frontend ---
+    # Mount the client frontend at /client path (more specific) - MOUNT THIS FIRST
+    try:
+        # Production/Standard install: find client frontend in the package
+        client_frontend_dir_traversable = files('neuro_simulator').joinpath('client')
+        if not client_frontend_dir_traversable.is_dir(): raise FileNotFoundError
+        client_frontend_dir = str(client_frontend_dir_traversable)
+        logger.info(f"Found client frontend via package resources (production mode): '{client_frontend_dir}'")
+    except (ModuleNotFoundError, FileNotFoundError):
+        # Editable/Development install: fall back to relative path from source
+        logger.info("Could not find client frontend via package resources, falling back to development mode path.")
+        dev_client_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'client', 'dist'))
+        if os.path.isdir(dev_client_path):
+            client_frontend_dir = dev_client_path
+            logger.info(f"Found client frontend via relative path (development mode): '{client_frontend_dir}'")
+        else:
+            client_frontend_dir = None
+
+    if client_frontend_dir:
+        app.mount("/client", SPAStaticFiles(directory=client_frontend_dir, html=True), name="client")
+        logger.info("Client frontend mounted at /client")
+    else:
+        logger.error("Client frontend directory not found in either production or development locations.")
+
+    # --- Mount Dashboard Frontend ---
+    # Mount the dashboard frontend at / path (more general) - MOUNT THIS AFTER
     if frontend_dir:
         app.mount("/", SPAStaticFiles(directory=frontend_dir, html=True), name="dashboard")
+        logger.info("Dashboard frontend mounted at /")
     else:
         logger.error("Frontend directory not found in either production or development locations.")
 

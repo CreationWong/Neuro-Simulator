@@ -35,3 +35,17 @@ class CustomBuildHook(BuildHookInterface):
         stderr.write("\n### npm run build\n")
         subprocess.run([npm, "run", "build"], check=True, cwd=dashboard_dir)
 
+        stderr.write("\n>>> Building client frontend\n")
+        
+        client_dir = os.path.join(self.root, 'client')
+        if not os.path.isdir(client_dir):
+            stderr.write(f">>> Client directory not found at {client_dir}\n")
+            # Note: This does not raise an error to allow building server-only in some scenarios
+            return
+
+        stderr.write("### npm install\n")
+        subprocess.run([npm, "install"], check=True, cwd=client_dir)
+
+        stderr.write("\n### npm run build\n")
+        subprocess.run([npm, "run", "build"], check=True, cwd=client_dir)
+

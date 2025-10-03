@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuro_simulator"
-version = "0.6.0"
+version = "0.6.1"
 description = "Neuro Simulator Server"
 readme = "README.md"
 authors = [{ name = "Moha-Master", email = "hongkongreporter@outlook.com" }]
@@ -55,4 +55,4 @@ path = "hatch_build.py"
 
 [tool.hatch.build.targets.wheel]
 sources = ["server"]
-force-include = { "dashboard/dist" = "neuro_simulator/dashboard" }
+force-include = { "dashboard/dist" = "neuro_simulator/dashboard", "client/dist" = "neuro_simulator/client" }
