@@ -19,7 +19,7 @@ import { MuteButton } from '../ui/muteButton';
 import { getLatestReplayVideo, buildBilibiliIframeUrl } from '../services/bilibiliService';
 
 export class AppInitializer {
-    private wsClient: WebSocketClient;
+    private wsClient: WebSocketClient | null;
     private audioPlayer: AudioPlayer;
     private videoPlayer: VideoPlayer;
     private neuroAvatar: NeuroAvatar;
@@ -48,21 +48,9 @@ export class AppInitializer {
         
         this.currentSettings = SettingsModal.getSettings();
         this.settingsModal = new SettingsModal((newSettings) => this.handleSettingsUpdate(newSettings));
-        
-        const backendWsUrl = this.currentSettings.backendUrl 
-            ? `${this.currentSettings.backendUrl}/ws/stream`
-            : '';
 
-        const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
-        
-        this.wsClient = new WebSocketClient({
-            url: backendWsUrl,
-            autoReconnect: true,
-            maxReconnectAttempts: this.currentSettings.reconnectAttempts,
-            onMessage: universalMessageHandler,
-            onOpen: () => this.goOnline(),
-            onDisconnect: () => this.goOffline(),
-        });
+        // 初始化 wsClient 为 null，等待 start 方法中的探测逻辑
+        this.wsClient = null;
 
         this.audioPlayer = new AudioPlayer();
         this.videoPlayer = new VideoPlayer();
@@ -90,17 +78,14 @@ export class AppInitializer {
         if (this.isStarted) return;
         this.isStarted = true;
 
+        // First, probe for an integrated server
+        this.probeForIntegratedServer();
+
+        // Then start the layout manager and go offline
         this.layoutManager.start();
-        this.goOffline(); // Start in offline state
-        
+        this.goOffline(); // Start in offline state, connection status will update UI via goOnline
         this.updateUiWithSettings();
-        
-        if (this.wsClient.getUrl()) {
-            this.wsClient.connect();
-        } else {
-            console.warn("Backend URL is not configured. Opening settings modal.");
-            this.settingsModal.open();
-        }
+        // Connection logic is handled by probeForIntegratedServer
     }
 
     private setupSettingsModalTrigger(): void {
@@ -142,21 +127,106 @@ export class AppInitializer {
         
         this.updateUiWithSettings();
 
-        const newUrl = newSettings.backendUrl ? `${newSettings.backendUrl}/ws/stream` : '';
-        this.wsClient.updateOptions({
-            url: newUrl,
-            maxReconnectAttempts: newSettings.reconnectAttempts,
-        });
+        if (this.wsClient) {
+            const newUrl = newSettings.backendUrl ? `${newSettings.backendUrl}/ws/stream` : '';
+            this.wsClient.updateOptions({
+                url: newUrl,
+                maxReconnectAttempts: newSettings.reconnectAttempts,
+            });
 
-        this.wsClient.disconnect();
-        
-        setTimeout(() => {
-            if(this.wsClient.getUrl()) {
-                this.wsClient.connect();
-            } else {
-                console.warn("Cannot connect: Backend URL is empty after update.");
+            this.wsClient.disconnect();
+            
+            setTimeout(() => {
+                if(this.wsClient && this.wsClient.getUrl()) {
+                    this.wsClient.connect();
+                } else {
+                    console.warn("Cannot connect: Backend URL is empty after update or WebSocket client not ready.");
+                }
+            }, 500);
+        } else {
+            console.warn("WebSocket client not initialized, cannot update settings.");
+        }
+    }
+
+    private initWebSocketClient(backendUrl: string): void {
+        const url = backendUrl ? `${backendUrl}/ws/stream` : '';
+        const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
+
+        // If wsClient already exists, update its configuration; otherwise, create a new instance
+        if (this.wsClient) {
+            this.wsClient.updateOptions({
+                url: url,
+                autoReconnect: true,
+                maxReconnectAttempts: this.currentSettings.reconnectAttempts,
+                onMessage: universalMessageHandler,
+                onOpen: () => this.goOnline(),
+                onDisconnect: () => this.goOffline(),
+            });
+            // If the new URL is valid, disconnect the old connection and try the new one
+            if (url) {
+                this.wsClient.disconnect();
+                setTimeout(() => {
+                    this.wsClient!.connect();
+                }, 500);
             }
-        }, 500);
+        } else {
+            this.wsClient = new WebSocketClient({
+                url: url,
+                autoReconnect: true,
+                maxReconnectAttempts: this.currentSettings.reconnectAttempts,
+                onMessage: universalMessageHandler,
+                onOpen: () => this.goOnline(),
+                onDisconnect: () => this.goOffline(),
+            });
+        }
+    }
+
+    private async probeForIntegratedServer(): Promise<void> {
+        // First, load the currently stored settings
+        const storedSettings = SettingsModal.getSettings();
+        console.log("Probing for integrated server. Stored settings:", storedSettings);
+
+        // Try to connect to the local Server's health check endpoint
+        try {
+            // Construct the health check URL using the current page's origin
+            const healthUrl = new URL('/api/system/health', window.location.origin).toString();
+            console.log("Probing integrated server at:", healthUrl);
+
+            const response = await fetch(healthUrl);
+
+            if (response.ok) {
+                console.log("Integrated server detected via health check. Auto-connecting...");
+                // 1. Set to integrated mode, using the current origin
+                const integratedBackendUrl = window.location.origin;
+                // 2. Update the current settings' backendUrl
+                this.currentSettings = { ...this.currentSettings, backendUrl: integratedBackendUrl };
+                // 3. Save to localStorage for future use
+                localStorage.setItem('neuro_settings', JSON.stringify(this.currentSettings));
+                // 4. Initialize or update the WebSocket client
+                this.initWebSocketClient(integratedBackendUrl);
+                // 5. Try to connect if the client and URL are valid
+                if (this.wsClient && integratedBackendUrl) {
+                    this.wsClient.connect();
+                }
+                return; // Success, exit
+            } else {
+                console.log("Health check failed, not an integrated server. Status:", response.status);
+            }
+        } catch (error) {
+            console.log("Failed to probe for integrated server, assuming standalone mode.", error);
+        }
+
+        // If probing fails, fall back to using the stored settings
+        console.log("Falling back to stored backend URL:", storedSettings.backendUrl);
+        this.initWebSocketClient(storedSettings.backendUrl);
+
+        // Attempt to connect if the client and URL are valid
+        if (this.wsClient && storedSettings.backendUrl) {
+            this.wsClient.connect();
+        } else if (!storedSettings.backendUrl) {
+            console.warn("Backend URL is not configured via probe or stored settings. Opening settings modal.");
+            this.settingsModal.open();
+        }
     }
 
     private updateUiWithSettings(): void {
@@ -366,7 +436,11 @@ export class AppInitializer {
             username: this.currentSettings.username,
             ...payload
         };
-        this.wsClient.send(message);
+        if (this.wsClient) {
+            this.wsClient.send(message);
+        } else {
+            console.warn("Cannot send message: WebSocket client is not initialized.");
+        }
     }
 
     private showStreamContent(): void {
