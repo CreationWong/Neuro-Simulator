@@ -4,14 +4,14 @@
 
 *本临时README和所有代码均由AI生成*
 
-Neuro Simulator 是一个模拟 Neuro-sama 直播的项目  
-它通过调用 Letta（一个为 LLM 添加自主记忆功能的项目），也可使用自带的有记忆 Agent，配合其他 LLM 服务生成的模拟观众，模拟一场 Neuro-sama 的 Just Chatting 直播  
-它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的 Twitch vedal987 频道观看体验  
+Neuro Simulator 是一个模拟 Neuro-sama 直播的项目。  
+它通过使用自带的有记忆 Agent，~~也可调用 Letta（一个为 LLM 添加自主记忆功能的项目）~~，以及相同构造的 Chatbot Agent 作为虚拟观众，模拟一场 Neuro-sama 的 Just Chatting 直播。  
+它能生成实时的虚拟聊天内容，并通过 TTS 合成语音，提供沉浸式的 Twitch vedal987 频道观看体验。  
 
 ## 特性
 
-和其他大佬的类似项目不同，本项目的重点在于尽可能模拟 Neuro-sama 在 Twitch 上的 Tuesday Stream，因此不会有太多的自定义部分  
-后续有低成本低性能方法实现 Evil 音色模仿的时候，可能加入 Evil 的 Just Chatting 乃至各种主题的 Twin Stream
+和其他类似的 AI Vtuber 项目不同，本项目旨在尽可能模拟 Neuro-sama 于 Twitch 上的 Tuesday Stream，因此在 Vtuber 部分不会有太多的自定义部分，也不会考虑引入 Neuro/Evil 以外的 Live2D。  
+后续有低成本低性能方法实现 Evil 音色模仿的时候，可能加入 Evil Neuro。
 
 ### 预览
 
@@ -23,44 +23,44 @@ Neuro Simulator 是一个模拟 Neuro-sama 直播的项目
 
 ### 核心亮点
 
-- **多客户端支持**：支持多个客户端连接，实时广播内容
-- **配置热重载**：通过 Web 控制面板修改和热重载配置
-- **双 Agent 模式**：支持 Letta Agent 和内建 Agent，提供更多自定义选项
-- **Agent 记忆管理**：内建 Agent 支持多种记忆类型（初始化记忆、核心记忆、临时记忆、上下文）
+- **多客户端支持**：支持多个客户端连接，实时广播内容。
+- **配置热重载**：通过 Web 控制面板实时修改和热重载配置。
+- ~~**双 Agent 模式**：支持 Letta Agent 和内建 Agent，提供更多自定义选项~~ 对 Letta Agent 的支持暂时下线，后续有缘再见。
 
 ## 快速开始
 
-1.  **准备外部服务**：确保你拥有必要的 API 密钥，包括 LLM（Gemini/OpenAI）和 Azure TTS；如果使用 Letta，也请注册好相关的 API
-2.  **安装服务端**：
+1.  **准备外部服务**：确保你拥有必要的 API 密钥，包括 LLM（Gemini/OpenAI）和 Azure TTS；~~如果使用 Letta，也请注册好相关的 API 。~~
+2.  **安装服务端**：已上传至 PyPi 作为可用 pip 安装的软件包，你可以用任何一个 pip 安装到全局或 venv 中。
     ```bash
     pip install neuro-simulator
     ```
+    推荐使用 pipx，可以在不更改系统 Python 依赖的情况下直接安装为全局软件。
+
 3.  **运行服务端**：
     ```bash
     neuro
     ```
-    记得填写好配置目录中的 `config.yaml`
-      - 不指定 `--dir` 则自动创建和默认使用 `~/.config/neuro-simulator/` 作为工作目录
-      - 在默认或指定目录及需要的文件不存在时，程序会自动用自带模板复制一份到工作目录下
+    现在无需手动填写 `config.yaml`，程序在启动时会自动创建一份包含默认设置的配置文件，只需在管理面板中填写和为 Agent 分配 API 服务商即可。
+      - 不指定 `--dir, -D` 则自动创建和默认使用 `~/.config/neuro-simulator/` 作为工作目录。
+      - 程序会在工作目录下自动生成文件夹结构，拷贝需要的文件到目录内，保持程序包本体只读。
 
-4.  **安装客户端**：
-    ```bash
-    cd client
-    npm install
-    ```
-5.  **运行客户端**：
-    ```bash
-    npm run dev
-    ```
-6.  **部署控制面板**：
-    ```bash
-    cd dashboard_web
-    python -m http.server 8080
-    ```
+    程序启动后，如果工作正常，会默认在 `http://127.0.0.1:8000` 提供对外服务，你可以在设置中修改这个端口。
+
+4.  **打开管理面板**：现在程序已经内置管理面板，直接在浏览器中打开 `http://127.0.0.1:8000` 即可，内置面板会自动连接到服务端。
+
+    **配置流程**：
+      1. 在管理面板中打开“配置”页面。
+      2. 在“LLM服务商”中添加一个以上的选项。
+      3. 在“TTS服务商”中添加一个以上的 Azure TTS 服务。
+      4. 在“Neuro”中分配一个 LLM 服务商和一个 TTS 服务商。
+      5. 在“Chatbot”中分配一个 LLM 服务商。
+
+5.  **打开客户端**：现在程序已经内置客户端，在浏览器中访问 `<http协议>://<服务端地址>/client/` 服务商即可。  
+    但是这种方式下自动从哔哩哔哩获取最近回放的功能似乎不工作，需要对哔哩哔哩 API 进行反代。如果你安装了 nodejs，则可以使用 npm 运行开发服务器的方式使用客户端。
 
 更多更复杂或者更简单的使用方式，请参见三个部分的详细文档
 
-## 项目结构
+## 项目结构（稍微过时，待更新）
 
 ```
 Neuro-Simulator/
@@ -80,7 +80,6 @@ Neuro-Simulator/
 
 - [服务端 README](server/README.md)
 - [客户端 README](client/README.md)
-- [控制面板 README](dashboard_web/README.md)
 
 ## 开发计划和已实现功能
 
@@ -104,7 +103,7 @@ Neuro-Simulator/
         - [ ] 模块化热插拔工具
         - [ ] 连接到 MCP 服务器
         - [ ] 兼容 Offical [Neuro SDK](https://github.com/VedalAI/neuro-sdk)
-    - [ ] 拉起和对话 Evil Agent
+    - [ ] 拉起 Evil Agent 并进行对话
   - [ ] Evil Agent 模块，~~卖掉了~~ 待 Neuro Agent 完善、有低成本低性能方法实现 Evil 音色模仿的时候加入
   - [ ] 对 Neuroverse 更多成员的 AI Agent 复现，进而允许 Neuro Agent 向其发送 DM（语音聊天可能不太现实）
   - [x] Chatbot 模块
@@ -113,8 +112,8 @@ Neuro-Simulator/
       - [x] prompt 编辑
       - [x] 调用 Gemini 和 OpenAI API 格式的LLM
       - [x] 基于 Neuro Agent 的上一句内容而做出 Reaction
-      - [ ] ~~在 prompt 中包含直播标题等更多信息~~ 将在更详细的 Chatbot Agent 中实现
-      - [x] ~~实现更长的上下文~~ 将在更详细的 Chatbot Agent 中实现
+      - [ ] ~~在 prompt 中包含直播标题等更多信息~~ 将在更强大的 Chatbot Agent 中实现
+      - [x] ~~实现更长的上下文~~ 将在更强大的 Chatbot Agent 中实现
     - [x] Chatbot Agent
       - [x] 更好的用户名生成逻辑
       - [x] 更长的上下文，包括自身输出和 Neuro Agent 内容
@@ -134,7 +133,7 @@ Neuro-Simulator/
   - [x] TTS 合成和推送
     - [x] Azure TTS
     - [ ] 待定 TTS
-    - [ ] 剔除 Emoji 等特殊字符
+    - [X] 剔除 Emoji 等特殊字符
   - [x] 进行直播和直播环节
     - [x] Just Chatting 单人直播
       - [x] Neuro Stream
@@ -154,8 +153,8 @@ Neuro-Simulator/
     - [x] 直播标题和标签等信息
   - [ ] 在非直播的空闲时间自动获取真实世界中 Neuro 的近期直播内容，更新完善记忆内容（不是微调训练）
   - [ ] 对 Ollama 等本地 LLM 的优化
-  - [ ] 服务端内嵌管理面板
-    - [ ] Web 控制面板
+  - [x] 服务端托管管理面板
+    - [x] Web 控制面板
     - [ ] 使用 PyInquiry 的命令行面板
 - 客户端
   - [ ] 仅包含直播区域的客户端，适用于希望使用 OBS 或其他软件推流画面的用户
@@ -200,6 +199,7 @@ Neuro-Simulator/
     - [ ] 真实的主播首页竖屏模式界面（目前沿用针对竖屏优化过的横屏样式）
     - [ ] 下滑的更多主播信息
     - [ ] 其他次级页面
+  - [x] 服务端托管客户端
   - [ ] 更多客户端（若实现原生客户端则弃用 tauri）
     - [x] 可托管的 Web 静态页面
     - [x] Windows 客户端
@@ -223,7 +223,6 @@ Neuro-Simulator/
       - [x] 对话方式展现
       - [x] 上下文方式展现
       - [x] 实时更新
-      - [x] 更好的界面
       - [ ] 可视化展现 Agent 的详细执行流程
     - [x] 实时日志查看
       - [ ] 按照等级进行日志筛选 
@@ -233,7 +232,6 @@ Neuro-Simulator/
       - [ ] 工具管理取决于服务端开发进度
 - 杂项，有一些可能永远不会实现，有一些可能很快就能完成
   - [ ] 一键启动器和整合包，适用于不需要分开部署的情况，或者面向普通小白用户
-  - [ ] 把三个项目模块整合为一个
   - [ ] 基于静态立绘制作的简易Live2D，能动就行
   - [x] 目前不会考虑语音输入
 

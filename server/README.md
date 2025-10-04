@@ -2,11 +2,11 @@
 
 *本临时README由AI自动生成*
 
-这是 Neuro Simulator 的服务端，负责处理直播逻辑、AI 交互、TTS 合成等核心功能
+这是 Neuro Simulator 的服务端，负责处理直播逻辑、AI 交互、TTS 合成等核心功能。
 
 ## 功能特性
 
-- **动态观众**：调用无状态LLM，动态生成观众聊天内容，支持 Gemini 和 OpenAI API
+- **动态观众**：调用LLM，基于直播内容动态生成 Chat
 - **配置管理**：支持通过 API 动态修改和热重载配置
 - **外部控制**：完全使用外部API端点操控服务端运行
 
@@ -15,7 +15,7 @@
 ``` main
 neuro_simulator/
 ├── __init__.py
-├── cli.py               # 命令行启动脚本
+├── cli.py
 ├── agent/
 │   ├── __init__.py
 │   ├── core.py
@@ -49,7 +49,6 @@ neuro_simulator/
 │   ├── audience.py
 │   ├── audio.py
 │   ├── builtin.py
-│   ├── letta.py
 │   └── stream.py
 └── utils/
     ├── __init__.py
@@ -61,11 +60,10 @@ neuro_simulator/
 ```
 
 ``` workin'dir
-working_dir_example/     # 工作目录结构，请将这个目录重命名和复制到你想要的位置（推荐放到~/.config/neuro-simulator）
+working_dir_example/     # 工作目录结构，供你参考
 ├── assets/              # 媒体文件夹，如缺失会使用自带资源覆盖
 │   └── neuro_start.mp4  # 用来计算Start Soon长度，仅读取时长,请和客户端的视频保持一致
-├── config.yaml          # 由用户手工创建的配置文件
-├── config.yaml.example  # 自动生成的配置文件模板，必须手动重命名和填写
+├── config.yaml          # 系统配置文件，由服务端自动管理，无需手动填写
 └── agents/              # Agent相关文件夹
     ├── memories/        # Agent记忆文件夹
     │   ├── core_memory.json
@@ -85,34 +83,35 @@ working_dir_example/     # 工作目录结构，请将这个目录重命名和�
 
 ## 安装与配置
 
-1. 复制一份 `../docs/working_dir_example` 到你想要的位置，作为配置文件目录.
-   - 程序会在未指定 `--dir` 的情况下自动生成一个工作目录，路径为 `~/.config/neuro-simulator/`
-2. 然后进入配置文件目录，复制 `config.yaml.example` 到 `config.yaml`
-3. 编辑 `config.yaml` 文件，填入必要的 API 密钥和配置项：
-   - 如果使用 Letta Agent，需要配置 Letta Token 和 Agent ID
-   - Gemini/OpenAI API Key（用于观众聊天生成和 Agent）
-   - Azure TTS Key 和 Region
+1. 自己找一个最好是空的文件夹作为工作目录。
+   - 程序会在未指定 `--dir, -D` 的情况下自动生成一个工作目录，路径为 `~/.config/neuro-simulator/`。
+2. 启动程序，按照外面那个 README 中的方式完成配置。
 
-可以自行替换 `$dir/assets/neuro_start.mp4` 为其它视频文件，但记得手动替换 client 中的同名文件
+3. 可以自行替换 `$dir/assets/neuro_start.mp4` 为其它视频文件，但记得手动替换 client 中的同名文件。
 
 ### Agent配置
 
-服务端支持两种Agent类型：
-1. **Letta Agent**：需要配置 Letta Cloud 或自托管的 Letta Server
-2. **内建 Agent**：使用服务端自带的 Agent，支持 Gemini 和OpenAI API
+服务端支持两种 Agent 类型：
+~~1. **Letta Agent**：需要配置 Letta Cloud 或自托管的 Letta Server~~ 暂时下线，后会有期。
+2. **内建 Agent**：使用服务端自带的 Agent，支持 Gemini 和OpenAI API。
 
-在 `config.yaml` 中通过 `agent_type` 字段选择使用的 Agent 类型：
-- `agent_type: "letta"`：使用 Letta Agent
-- `agent_type: "builtin"`：使用内建 Agent
-
-当使用内建Agent时，还需要配置：
-- `agent.agent_provider`：选择"gemini"或"openai"
-- `agent.agent_model`：指定具体的模型名称
+不管用的是什么 Agent，在管理面板中配置和分配好服务商相关就行了。
 
 ### 直接安装方式（无需二次开发）
 
 若无需二次开发，可以直接使用 pip 安装：
 ```bash
+# 直接使用 pip 安装为全局软件：
+pip install neuro-simulator
+```
+
+```bash
+# 系统 Python 环境不宜变动时，建议使用 pipx 安装为全局软件
+pipx install neuro-simulator
+```
+
+```bash
+# 使用 venv 方式安装：
 python3 -m venv venv
 # Windows
 venv/Scripts/pip install neuro-simulator
@@ -132,6 +131,7 @@ venv/Scripts/pip install -e .
 # macOS/Linux
 venv/bin/pip install -e .
 ```
+安装时会自动构建 Dashboard 和 Client，请确保系统安装了 Node.js。
 
 ### 运行服务
 
@@ -142,43 +142,33 @@ neuro
 # 指定工作目录
 neuro -D /path/to/your/config
 
-# 指定主机和端口
+# 指定监听地址和端口
 neuro -H 0.0.0.0 -P 8080
 
 # 组合使用
 neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
 ```
 
-服务默认运行在 `http://127.0.0.1:8000`
+手动指定的监听地址和端口会覆盖配置文件中的设置。
+
+如果没有指定，服务默认遵循配置文件中的设置，运行在 `http://127.0.0.1:8000`。
 
 ## API 接口
 
-服务端的主要管理和控制功能已统一迁移至 WebSocket 接口 `/ws/admin`。原有的 HTTP API 仅保留 `/api/system/health` 用于建立 WS 连接前的健康检查
-
-- `/ws/admin`: 用于控制面板的管理接口，提供直播控制、配置管理、日志监控、Agent交互等所有功能，详细规范请参阅 `WEBSOCKET_API.md`
-- `/ws/stream`: 客户端使用的直播接口
-- `/api/system/health`: 健康检查接口
-- `/docs`: 自动生成的API文档 (Swagger UI)
+- `/ws/admin`: 用于控制面板的管理接口，提供直播控制、配置管理、日志监控、Agent交互等所有功能，详细规范请参阅 `WEBSOCKET_API.md`。
+- `/ws/stream`: 客户端使用的直播接口。
+- `/api/system/health`: 健康检查接口。
 
 ## 配置说明
 
-配置文件 `config.yaml` 包含以下主要配置项：
-
-- `api_keys` - 各种服务的 API 密钥
-- `stream_metadata` - 直播元数据（标题、分类、标签等）
-- `neuro_behavior` - Neuro 行为设置
-- `audience_simulation` - 观众模拟设置
-- `tts` - TTS 语音合成设置
-- `performance` - 性能相关设置
-- `server` - 服务器设置（主机、端口、CORS 等）
+配置文件 `config.yaml` 现在一般无需手动编辑，所有配置项在管理面板中均可进行可视化配置。
 
 有关配置文件的完整示例，请参阅项目根目录下的 `docs/working_dir_example/` 文件夹
 
 ## 安全说明
 
-1. 通过 `panel_password` 配置项可以设置控制面板访问密码
-2. 敏感配置项（如 API 密钥）不会通过 API 接口暴露
-3. 支持 CORS，仅允许预配置的来源访问
+服务端具有 CORS 配置，仅允许预配置的来源访问。如果莫名其妙地连不上服务端（尤其是在外网环境中），可以检查和更改此项设置。  
+公网部署请务必更改管理密钥，建议更改端口为非常规端口以避免爆破。我们的程序只是能用就行的水平，永远不要相信它的安保性能。
 
 ## 故障排除
 
@@ -186,3 +176,7 @@ neuro -D /path/to/your/config -H 0.0.0.0 -P 8080
 - 检查网络连接是否正常
 - 查看日志文件获取错误信息
 - 确保端口未被其他程序占用
+
+> 都是些 AI 生成的垃圾话，看看就好
+
+*作为看这篇💩文档的奖励，如果你需要使用外部面板而不是服务器自托管面板，可以直接使用我部署的 https://dashboard.neuro.jiahui.cafe 连接到你的服务端，但是不保证始终能用，而且请配置好 CORS*
