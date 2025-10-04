@@ -14,8 +14,8 @@ export default defineConfig({
     // 为调试构建生成 sourcemap
     sourcemap: !!process.env.TAURI_DEBUG,
   },
-  // 设置基础路径，使构建后的资源引用正确（当应用部署在子路径如 /client 时）
-  base: './', // 使用相对路径基础，这样在任何子路径下都能正确引用资源
+  // 设置应用的基础路径
+  base: '/',
   // Tauri 需要一个固定的端口来连接前端开发服务器
   server: {
     port: 5173,
