@@ -68,6 +68,14 @@ app.add_middleware(
 
 app.include_router(system_router)
 
+
+# --- Redirect for trailing slash on dashboard ---
+from fastapi.responses import RedirectResponse
+@app.get("/dashboard", include_in_schema=False)
+async def redirect_dashboard_to_trailing_slash():
+    return RedirectResponse(url="/dashboard/")
+
+
 # --- Background Task Definitions ---
 
 chatbot: ChatbotAgent = None
@@ -258,8 +266,16 @@ async def startup_event():
         else:
             frontend_dir = None
 
+    # --- Mount Dashboard Frontend ---
+    # Mount the dashboard frontend at /dashboard path (more specific) - MOUNT THIS FIRST
+    if frontend_dir:
+        app.mount("/dashboard", SPAStaticFiles(directory=frontend_dir, html=True), name="dashboard")
+        logger.info("Dashboard frontend mounted at /dashboard")
+    else:
+        logger.error("Frontend directory not found in either production or development locations.")
+
     # --- Mount Client Frontend ---
-    # Mount the client frontend at /client path (more specific) - MOUNT THIS FIRST
+    # Mount the client frontend at / path (more general) - MOUNT THIS AFTER
     try:
         # Production/Standard install: find client frontend in the package
         client_frontend_dir_traversable = files('neuro_simulator').joinpath('client')
@@ -277,18 +293,10 @@ async def startup_event():
             client_frontend_dir = None
 
     if client_frontend_dir:
-        app.mount("/client", SPAStaticFiles(directory=client_frontend_dir, html=True), name="client")
-        logger.info("Client frontend mounted at /client")
+        app.mount("/", SPAStaticFiles(directory=client_frontend_dir, html=True), name="client")
+        logger.info("Client frontend mounted at /")
     else:
         logger.error("Client frontend directory not found in either production or development locations.")
-
-    # --- Mount Dashboard Frontend ---
-    # Mount the dashboard frontend at / path (more general) - MOUNT THIS AFTER
-    if frontend_dir:
-        app.mount("/", SPAStaticFiles(directory=frontend_dir, html=True), name="dashboard")
-        logger.info("Dashboard frontend mounted at /")
-    else:
-        logger.error("Frontend directory not found in either production or development locations.")
 
     # 1. Configure logging first
     configure_server_logging()
