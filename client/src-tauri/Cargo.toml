@@ -1,10 +1,10 @@
 [package]
 name = "neuro-simulator"
-version = "0.1.0"
+version = "0.2.11"
 description = "Neuro Simulator Tauri Client"
-authors = ["you"]
-license = ""
-repository = ""
+authors = ["Moha-Master"]
+license = "MIT"
+repository = "https://github.com/Moha-Master/Neuro-Simulator"
 edition = "2021"
 [lib]
 name = "neuro_lib"
