@@ -40,11 +40,22 @@ class WebSocketManager:
             await self.send_personal_message(message, connection)
 
     async def broadcast_to_admins(self, message: dict):
+        dead_connections = []
         for connection in self.admin_connections:
             try:
-                await connection.send_json(message)
+                if connection.client_state == WebSocketState.CONNECTED:
+                    await connection.send_json(message)
+                else:
+                    dead_connections.append(connection)
+            except (WebSocketDisconnect, ConnectionResetError):
+                dead_connections.append(connection)
             except Exception as e:
                 logger.error(f"Failed to send message to admin connection: {e}")
+                dead_connections.append(connection)
+
+        for connection in dead_connections:
+            if connection in self.admin_connections:
+                self.admin_connections.remove(connection)
 
 # Global singleton instance
 connection_manager = WebSocketManager()

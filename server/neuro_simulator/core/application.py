@@ -69,6 +69,63 @@ app.add_middleware(
 app.include_router(system_router)
 
 
+# --- Bilibili API Proxy ---
+import httpx
+from fastapi import Request, Response
+
+@app.api_route("/bilibili-api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_bilibili(request: Request, path: str):
+    """
+    Reverse proxies requests from /bilibili-api/{path} to https://api.bilibili.com/{path}.
+    This is necessary to bypass CORS restrictions on the Bilibili API when the client
+    is served directly from the backend.
+    """
+    async with httpx.AsyncClient() as client:
+        # Construct the target URL
+        url = f"https://api.bilibili.com/{path}"
+        
+        # Prepare headers for the outgoing request.
+        # Do NOT forward all headers from the client. Instead, create a clean
+        # request with only the headers Bilibili is known to require,
+        # mimicking the working Nginx configuration. This prevents potentially
+        # problematic client headers from being passed through.
+        headers = {
+            'Host': 'api.bilibili.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
+            'Origin': 'https://www.bilibili.com'
+        }
+
+        # Read the body of the incoming request
+        body = await request.body()
+
+        # Make the proxied request
+        try:
+            response = await client.request(
+                method=request.method,
+                url=url,
+                content=body,
+                headers=headers,
+                params=request.query_params,
+                timeout=20.0 # Add a reasonable timeout
+            )
+            
+            # Filter headers for the response to the client
+            response_headers = {k: v for k, v in response.headers.items() if k.lower() not in [
+                'content-encoding', 'content-length', 'transfer-encoding', 'connection'
+            ]}
+
+            # Return the response from the Bilibili API to the client
+            return Response(
+                content=response.content,
+                status_code=response.status_code,
+                headers=response_headers
+            )
+        except httpx.RequestError as e:
+            logger.error(f"Bilibili proxy request failed: {e}")
+            return Response(content=f"Failed to proxy request to Bilibili API: {e}", status_code=502)
+
+
 # --- Redirect for trailing slash on dashboard ---
 from fastapi.responses import RedirectResponse
 @app.get("/dashboard", include_in_schema=False)
@@ -234,6 +291,23 @@ async def neuro_response_cycle():
 @app.on_event("startup")
 async def startup_event():
     """Actions to perform on application startup."""
+    # --- Custom Exception Handler for Benign Connection Errors ---
+    # This is to suppress the benign "ConnectionResetError" that asyncio's Proactor
+    # event loop on Windows logs when a client disconnects abruptly. This error is
+    # not catchable at the application level, so we handle it here.
+    loop = asyncio.get_event_loop()
+
+    def custom_exception_handler(loop, context):
+        exception = context.get("exception")
+        if isinstance(exception, ConnectionResetError):
+            logger.debug(f"Suppressing benign ConnectionResetError: {context.get('message')}")
+        else:
+            # If it's not the error we want to suppress, call the default handler.
+            # This ensures other important errors are still logged.
+            loop.default_exception_handler(context)
+
+    loop.set_exception_handler(custom_exception_handler)
+
     # --- Mount Frontend ---
     # This logic is placed here to run at runtime, ensuring all package paths are finalized.
     from fastapi.responses import FileResponse
@@ -360,7 +434,7 @@ async def websocket_stream_endpoint(websocket: WebSocket):
                 if sc_message["text"]:
                     app_state.superchat_queue.append(sc_message)
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, ConnectionResetError):
         pass
     finally:
         connection_manager.disconnect(websocket)
@@ -371,37 +445,45 @@ async def websocket_admin_endpoint(websocket: WebSocket):
     # Add the new admin client to a dedicated list
     connection_manager.admin_connections.append(websocket)
     try:
-        # Send initial state
-        for log_entry in list(server_log_queue): await websocket.send_json({"type": "server_log", "data": log_entry})
-        for log_entry in list(agent_log_queue): await websocket.send_json({"type": "agent_log", "data": log_entry})
-        
-        agent = await create_agent()
-        initial_context = await agent.get_message_history()
-        await websocket.send_json({"type": "agent_context", "action": "update", "messages": initial_context})
-        
-        # Send initial stream status
-        status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
-        await websocket.send_json({"type": "stream_status", "payload": status})
-        
+        # Wrap initial state sending in its own try-except block.
+        try:
+            # Send initial state
+            for log_entry in list(server_log_queue): await websocket.send_json({"type": "server_log", "data": log_entry})
+            for log_entry in list(agent_log_queue): await websocket.send_json({"type": "agent_log", "data": agent_log_queue.popleft()})
+            
+            agent = await create_agent()
+            initial_context = await agent.get_message_history()
+            await websocket.send_json({"type": "agent_context", "action": "update", "messages": initial_context})
+            
+            # Send initial stream status
+            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+            await websocket.send_json({"type": "stream_status", "payload": status})
+        except (WebSocketDisconnect, ConnectionResetError):
+            # If client disconnects during initial send, just exit the function.
+            # The 'finally' block will ensure cleanup.
+            return
+
         # Main loop for receiving messages from the client and pushing log updates
         while websocket.client_state == WebSocketState.CONNECTED:
-            # Check for incoming messages
             try:
-                raw_data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
-                data = json.loads(raw_data)
-                await handle_admin_ws_message(websocket, data)
-            except asyncio.TimeoutError:
-                pass # No message received, continue to push logs
+                # Check for incoming messages
+                try:
+                    raw_data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+                    data = json.loads(raw_data)
+                    await handle_admin_ws_message(websocket, data)
+                except asyncio.TimeoutError:
+                    pass # No message received, continue to push logs
 
-            # Push log updates
-            if server_log_queue: await websocket.send_json({"type": "server_log", "data": server_log_queue.popleft()})
-            if agent_log_queue: await websocket.send_json({"type": "agent_log", "data": agent_log_queue.popleft()})
-            await asyncio.sleep(0.1)
-            
-    except WebSocketDisconnect:
-        pass
+                # Push log updates
+                if server_log_queue: await websocket.send_json({"type": "server_log", "data": server_log_queue.popleft()})
+                if agent_log_queue: await websocket.send_json({"type": "agent_log", "data": agent_log_queue.popleft()})
+                await asyncio.sleep(0.1)
+            except (WebSocketDisconnect, ConnectionResetError):
+                # Client disconnected, break the loop to allow cleanup.
+                break
     finally:
-        connection_manager.admin_connections.remove(websocket)
+        if websocket in connection_manager.admin_connections:
+            connection_manager.admin_connections.remove(websocket)
         logger.info("Admin WebSocket client disconnected.")
 
 async def handle_admin_ws_message(websocket: WebSocket, data: dict):

@@ -2,6 +2,7 @@ fastapi
 uvicorn
 google-genai
 azure-cognitiveservices-speech
+httpx
 
 openai
 pyyaml
