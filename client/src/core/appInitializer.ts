@@ -388,8 +388,15 @@ export class AppInitializer {
                 this.streamInfoDisplay.update(message as StreamMetadataMessage);
                 break;
             case 'play_welcome_video':
-                this.currentPhase = 'initializing';
-                this.videoPlayer.showAndPlayVideo(parseFloat(message.progress as any));
+                const progress = parseFloat(message.progress as any);
+                // If we are not in the offline phase, the stream is already active, so just seek.
+                if (this.currentPhase !== 'offline') {
+                    this.videoPlayer.seekTo(progress);
+                } else {
+                    // This is the first play command.
+                    this.currentPhase = 'initializing';
+                    this.videoPlayer.showAndPlayVideo(progress);
+                }
                 break;
             case 'start_avatar_intro':
                 this.currentPhase = 'avatar_intro';
