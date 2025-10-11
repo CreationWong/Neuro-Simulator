@@ -18,9 +18,9 @@
     ]
   },
   "productName": "Neuro Simulator",
-  "mainBinaryName": "Neuro Simulator",
-  "version": "0.1.0",
-  "identifier": "com.tauri.neuro.simulator",
+  "mainBinaryName": "neuro",
+  "version": "0.2.14",
+  "identifier": "cafe.jiahui.neuro",
   "plugins": {},
   "app": {
     "withGlobalTauri": true,
@@ -29,7 +29,7 @@
         "fullscreen": false,
         "height": 720,
         "resizable": true,
-        "title": "sub Neuro Sama plz",
+        "title": "neuro.exe",
         "width": 1280,
         "minWidth": 400,
         "minHeight": 600,

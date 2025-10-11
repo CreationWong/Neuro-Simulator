@@ -376,6 +376,10 @@ export class AppInitializer {
 
         switch (message.type) {
             case 'offline':
+                // --- MODIFIED: Remove class on offline ---
+                if (window.__TAURI__) {
+                    document.body.classList.remove('stream-live-view');
+                }
                 this.goOffline();
                 break;
             case 'model_spin':
@@ -406,6 +410,10 @@ export class AppInitializer {
                 });
                 break;
             case 'enter_live_phase':
+                // --- MODIFIED: Add class on live ---
+                if (window.__TAURI__) {
+                    document.body.classList.add('stream-live-view');
+                }
                 this.currentPhase = 'live';
                 this.videoPlayer.hide();
                 this.neuroAvatar.setStage('step2'); 

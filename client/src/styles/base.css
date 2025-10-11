@@ -375,3 +375,28 @@ body {
   height: 1.2em;
   object-fit: contain;
 }
+
+/* --- Tauri Live View specific styles --- */
+.stream-live-view #twitch-header,
+.stream-live-view #stream-info,
+.stream-live-view #chat-sidebar,
+.stream-live-view #show-chat-button,
+.stream-live-view #mute-button {
+    display: none !important;
+}
+
+.stream-live-view #main-content-wrapper,
+.stream-live-view #stream-and-info-container,
+.stream-live-view #stream-display-viewport,
+.stream-live-view #stream-display-area {
+    width: 100vw;
+    height: 100vh;
+    padding: 0;
+    margin: 0;
+    border: none;
+    max-height: 100vh;
+}
+
+.stream-live-view body {
+    overflow: hidden;
+}
