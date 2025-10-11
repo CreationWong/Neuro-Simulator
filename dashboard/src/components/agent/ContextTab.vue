@@ -10,11 +10,11 @@
     </div>
 
     <div v-if="isPromptMode" class="context-prompt-view">
-      <pre>{{ agentStore.agentContext }}</pre>
+      <pre>{{ agentStore.agentPrompt }}</pre>
     </div>
 
     <div v-else class="context-conversation-view">
-       <div v-for="(msg, index) in agentStore.agentContext" :key="index" class="message-item">
+       <div v-for="(msg, index) in agentStore.agentHistory" :key="index" class="message-item">
          <!-- Detailed message rendering will go here -->
          <p><strong>{{ msg.role }}:</strong> {{ msg.content }}</p>
        </div>
@@ -38,17 +38,15 @@ async function refreshContext() {
   if (isPromptMode.value) {
     try {
       const response = await connectionStore.sendAdminWsMessage('get_last_prompt');
-      // The store will be updated by the websocket message handler, 
-      // but we can also update it directly here for immediate feedback.
-      agentStore.agentContext = response.prompt;
+      agentStore.setAgentPrompt(response.prompt);
     } catch (error) {
       console.error('获取最新Prompt失败:', error);
-      agentStore.agentContext = `获取提示词失败: ${error}`;
+      agentStore.setAgentPrompt(`获取提示词失败: ${error}`);
     }
   } else {
     try {
-      const contextMessages = await connectionStore.sendAdminWsMessage('get_agent_context');
-      agentStore.agentContext = contextMessages;
+      // Request the context, the store will be updated by the websocket handler
+      await connectionStore.sendAdminWsMessage('get_agent_context');
     } catch (error) {
       console.error('获取上下文失败:', error);
     }

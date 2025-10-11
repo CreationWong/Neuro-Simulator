@@ -5,7 +5,8 @@ export const useAgentStore = defineStore('agent', () => {
   const coreMemory = ref<any>({});
   const tempMemory = ref<any[]>([]);
   const initMemory = ref<any>({});
-  const agentContext = ref<any>([]); // Can be an array of messages or a string for the prompt
+  const agentHistory = ref<any[]>([]);
+  const agentPrompt = ref<string>('');
 
   function handleCoreMemoryUpdate(payload: any) {
     coreMemory.value = payload;
@@ -19,28 +20,24 @@ export const useAgentStore = defineStore('agent', () => {
     initMemory.value = payload;
   }
 
-  function handleAgentContextUpdate(payload: any) {
-    // The payload can be the array of messages from get_agent_context
-    // or the response from get_last_prompt
-    if (typeof payload === 'string') {
-      agentContext.value = payload;
-    } else if (Array.isArray(payload)) {
-      agentContext.value = payload;
-    } else if (payload.prompt) { // Handling the direct response from get_last_prompt
-        agentContext.value = payload.prompt;
-    } else if (payload.messages) { // Handling the direct response from get_agent_context
-        agentContext.value = payload.messages;
-    }
+  function handleAgentHistoryUpdate(payload: any[]) {
+    agentHistory.value = payload;
+  }
+
+  function setAgentPrompt(prompt: string) {
+    agentPrompt.value = prompt;
   }
 
   return {
     coreMemory,
     tempMemory,
     initMemory,
-    agentContext,
+    agentHistory,
+    agentPrompt,
     handleCoreMemoryUpdate,
     handleTempMemoryUpdate,
     handleInitMemoryUpdate,
-    handleAgentContextUpdate,
+    handleAgentHistoryUpdate,
+    setAgentPrompt,
   };
 });

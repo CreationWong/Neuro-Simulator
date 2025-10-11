@@ -159,7 +159,7 @@ export const useConnectionStore = defineStore('connection', () => {
           case 'core_memory_updated': agentStore.handleCoreMemoryUpdate(message.payload); break;
           case 'temp_memory_updated': agentStore.handleTempMemoryUpdate(message.payload); break;
           case 'init_memory_updated': agentStore.handleInitMemoryUpdate(message.payload); break;
-          case 'agent_context': agentStore.handleAgentContextUpdate(message.messages); break;
+          case 'agent_context': agentStore.handleAgentHistoryUpdate(message.messages); break;
           case 'config_updated': configStore.handleConfigUpdate(message.payload); break;
           case 'available_tools_updated': toolsStore.handleAvailableToolsUpdate(message.payload.tools); break;
           case 'agent_tool_allocations_updated': toolsStore.handleAllocationsUpdate(message.payload.allocations); break;

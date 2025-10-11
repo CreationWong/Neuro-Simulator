@@ -4,7 +4,7 @@
       <div class="overlay-content">
         <v-icon size="x-large" class="mb-4">mdi-server-network</v-icon>
         <h2 class="text-h5">已自动连接服务端</h2>
-        <p class="text-body-1">内置面板无需手动连接</p>
+        <p class="text-body-1">内置面板无需手动连接，意外断连请刷新</p>
       </div>
     </div>
 
