@@ -3,8 +3,9 @@
 
 from typing import Dict, Any, List
 
-from neuro_simulator.agent.tools.base import BaseTool
-from neuro_simulator.agent.memory.manager import MemoryManager
+from neuro_simulator.neuro.tools.base import BaseTool
+from neuro_simulator.neuro.memory.manager import MemoryManager
+
 
 class DeleteCoreMemoryBlockTool(BaseTool):
     """Tool to delete an existing core memory block."""
@@ -37,8 +38,8 @@ class DeleteCoreMemoryBlockTool(BaseTool):
             raise ValueError("The 'block_id' parameter is required.")
 
         await self.memory_manager.delete_core_memory_block(block_id=block_id)
-        
+
         return {
             "status": "success",
-            "message": f"Core memory block '{block_id}' has been deleted."
+            "message": f"Core memory block '{block_id}' has been deleted.",
         }

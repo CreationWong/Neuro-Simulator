@@ -3,8 +3,9 @@
 
 from typing import Dict, Any, List
 
-from neuro_simulator.agent.tools.base import BaseTool
-from neuro_simulator.agent.memory.manager import MemoryManager
+from neuro_simulator.neuro.tools.base import BaseTool
+from neuro_simulator.neuro.memory.manager import MemoryManager
+
 
 class GetCoreMemoryBlocksTool(BaseTool):
     """Tool to retrieve all core memory blocks."""

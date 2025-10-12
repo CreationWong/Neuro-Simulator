@@ -2,19 +2,18 @@
 """API endpoints for system, config, and utility functions."""
 
 import time
-from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status, Request
 
-from ..core.config import AppSettings, config_manager
+from ..core.config import config_manager
 from ..utils.process import process_manager
 
 
 router = APIRouter(tags=["System & Utilities"])
 
 
-
 # --- Auth Dependency ---
+
 
 async def get_api_token(request: Request):
     """FastAPI dependency to check for the API token in headers."""
@@ -30,17 +29,16 @@ async def get_api_token(request: Request):
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+
 # --- System Endpoints ---
+
 
 @router.get("/api/system/health")
 async def health_check():
     """Provides a simple health check of the server."""
-    from ..utils.process import process_manager
     return {
         "status": "healthy",
         "backend_running": True,
         "process_manager_running": process_manager.is_running,
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
-
-

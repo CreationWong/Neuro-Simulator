@@ -8,25 +8,22 @@ import random
 import re
 import time
 import os
-from typing import List
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+import httpx
 from starlette.websockets import WebSocketState
 
 # --- Core Imports ---
 from .config import config_manager, AppSettings
 from ..core.agent_factory import create_agent
-from ..agent.core import Agent as LocalAgent
 from ..chatbot.core import ChatbotAgent
-from ..services.builtin import BuiltinAgentWrapper
 
 # --- API Routers ---
 from ..api.system import router as system_router
 
 # --- Additional Imports for SPA Hosting ---
-import os
-from importlib.resources import files # Modern way to find package resources
-from fastapi.responses import FileResponse
+from importlib.resources import files  # Modern way to find package resources
 from starlette.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -54,12 +51,13 @@ logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
 app = FastAPI(
     title="Neuro-Sama Simulator API",
     version="2.0.0",
-    description="Backend for the Neuro-Sama digital being simulator."
+    description="Backend for the Neuro-Sama digital being simulator.",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config_manager.settings.server.client_origins + ["http://localhost:8080", "https://dashboard.live.jiahui.cafe"],
+    allow_origins=config_manager.settings.server.client_origins
+    + ["http://localhost:8080", "https://dashboard.live.jiahui.cafe"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,10 +68,12 @@ app.include_router(system_router)
 
 
 # --- Bilibili API Proxy ---
-import httpx
-from fastapi import Request, Response
 
-@app.api_route("/bilibili-api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+
+@app.api_route(
+    "/bilibili-api/{path:path}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+)
 async def proxy_bilibili(request: Request, path: str):
     """
     Reverse proxies requests from /bilibili-api/{path} to https://api.bilibili.com/{path}.
@@ -83,17 +83,17 @@ async def proxy_bilibili(request: Request, path: str):
     async with httpx.AsyncClient() as client:
         # Construct the target URL
         url = f"https://api.bilibili.com/{path}"
-        
+
         # Prepare headers for the outgoing request.
         # Do NOT forward all headers from the client. Instead, create a clean
         # request with only the headers Bilibili is known to require,
         # mimicking the working Nginx configuration. This prevents potentially
         # problematic client headers from being passed through.
         headers = {
-            'Host': 'api.bilibili.com',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer': 'https://www.bilibili.com/',
-            'Origin': 'https://www.bilibili.com'
+            "Host": "api.bilibili.com",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Referer": "https://www.bilibili.com/",
+            "Origin": "https://www.bilibili.com",
         }
 
         # Read the body of the incoming request
@@ -107,27 +107,38 @@ async def proxy_bilibili(request: Request, path: str):
                 content=body,
                 headers=headers,
                 params=request.query_params,
-                timeout=20.0 # Add a reasonable timeout
+                timeout=20.0,  # Add a reasonable timeout
             )
-            
+
             # Filter headers for the response to the client
-            response_headers = {k: v for k, v in response.headers.items() if k.lower() not in [
-                'content-encoding', 'content-length', 'transfer-encoding', 'connection'
-            ]}
+            response_headers = {
+                k: v
+                for k, v in response.headers.items()
+                if k.lower()
+                not in [
+                    "content-encoding",
+                    "content-length",
+                    "transfer-encoding",
+                    "connection",
+                ]
+            }
 
             # Return the response from the Bilibili API to the client
             return Response(
                 content=response.content,
                 status_code=response.status_code,
-                headers=response_headers
+                headers=response_headers,
             )
         except httpx.RequestError as e:
             logger.error(f"Bilibili proxy request failed: {e}")
-            return Response(content=f"Failed to proxy request to Bilibili API: {e}", status_code=502)
+            return Response(
+                content=f"Failed to proxy request to Bilibili API: {e}", status_code=502
+            )
 
 
 # --- Redirect for trailing slash on dashboard ---
-from fastapi.responses import RedirectResponse
+
+
 @app.get("/dashboard", include_in_schema=False)
 async def redirect_dashboard_to_trailing_slash():
     return RedirectResponse(url="/dashboard/")
@@ -136,6 +147,7 @@ async def redirect_dashboard_to_trailing_slash():
 # --- Background Task Definitions ---
 
 chatbot: ChatbotAgent = None
+
 
 async def broadcast_events_task():
     """Broadcasts events from the live_stream_manager's queue to all clients."""
@@ -149,6 +161,7 @@ async def broadcast_events_task():
         except Exception as e:
             logger.error(f"Error in broadcast_events_task: {e}", exc_info=True)
 
+
 async def fetch_and_process_audience_chats():
     """Generates a batch of audience chat messages using the new ChatbotAgent."""
     if not chatbot:
@@ -156,46 +169,57 @@ async def fetch_and_process_audience_chats():
     try:
         # Get context for the chatbot
         current_neuro_speech = app_state.neuro_last_speech
-        context_message = current_neuro_speech if current_neuro_speech else "The stream is starting! Let's say hello and get the hype going!"
+        context_message = (
+            current_neuro_speech
+            if current_neuro_speech
+            else "The stream is starting! Let's say hello and get the hype going!"
+        )
         recent_history = get_recent_audience_chats_for_chatbot(limit=10)
 
         # Generate messages
         generated_messages = await chatbot.generate_chat_messages(
-            neuro_speech=context_message,
-            recent_history=recent_history
+            neuro_speech=context_message, recent_history=recent_history
         )
-        
+
         if not generated_messages:
             return
 
         # Process and broadcast generated messages
-        for chat in generated_messages: 
+        for chat in generated_messages:
             add_to_audience_buffer(chat)
             add_to_neuro_input_queue(chat)
-            broadcast_message = {"type": "chat_message", **chat, "is_user_message": False}
+            broadcast_message = {
+                "type": "chat_message",
+                **chat,
+                "is_user_message": False,
+            }
             await connection_manager.broadcast(broadcast_message)
             # Stagger the messages slightly to feel more natural
             await asyncio.sleep(random.uniform(0.2, 0.8))
-            
+
     except Exception as e:
-        logger.error(f"Error in new fetch_and_process_audience_chats: {e}", exc_info=True)
+        logger.error(
+            f"Error in new fetch_and_process_audience_chats: {e}", exc_info=True
+        )
+
 
 async def generate_audience_chat_task():
     """Periodically triggers the audience chat generation task."""
     while True:
         try:
             # Wait until the live phase starts
-            # await app_state.live_phase_started_event.wait() 
-            
+            # await app_state.live_phase_started_event.wait()
+
             asyncio.create_task(fetch_and_process_audience_chats())
-            
+
             # Use the interval from the new chatbot config
             await asyncio.sleep(config_manager.settings.chatbot.generation_interval_sec)
         except asyncio.CancelledError:
             break
         except Exception as e:
             logger.error(f"Error in generate_audience_chat_task: {e}", exc_info=True)
-            await asyncio.sleep(10) # Avoid fast-looping on persistent errors
+            await asyncio.sleep(10)  # Avoid fast-looping on persistent errors
+
 
 async def neuro_response_cycle():
     """The core response loop for the agent."""
@@ -207,72 +231,114 @@ async def neuro_response_cycle():
         try:
             selected_chats = []
             # Superchat logic
-            if app_state.superchat_queue and (time.time() - app_state.last_superchat_time > 10):
+            if app_state.superchat_queue and (
+                time.time() - app_state.last_superchat_time > 10
+            ):
                 sc = app_state.superchat_queue.popleft()
                 app_state.last_superchat_time = time.time()
-                await connection_manager.broadcast({"type": "processing_superchat", "data": sc})
+                await connection_manager.broadcast(
+                    {"type": "processing_superchat", "data": sc}
+                )
 
                 # For BuiltinAgent and any other future agents
-                selected_chats = [{'username': sc['username'], 'text': sc['text']}]
+                selected_chats = [{"username": sc["username"], "text": sc["text"]}]
 
                 # Clear the regular input queue to prevent immediate follow-up with normal chats
                 get_all_neuro_input_chats()
             else:
                 if is_first_response:
-                    add_to_neuro_input_queue({"username": "System", "text": config_manager.settings.neuro.initial_greeting})
+                    add_to_neuro_input_queue(
+                        {
+                            "username": "System",
+                            "text": config_manager.settings.neuro.initial_greeting,
+                        }
+                    )
                     is_first_response = False
                 elif is_neuro_input_queue_empty():
                     await asyncio.sleep(1)
                     continue
-                
+
                 current_queue_snapshot = get_all_neuro_input_chats()
                 if not current_queue_snapshot:
                     continue
-                sample_size = min(config_manager.settings.neuro.input_chat_sample_size, len(current_queue_snapshot))
+                sample_size = min(
+                    config_manager.settings.neuro.input_chat_sample_size,
+                    len(current_queue_snapshot),
+                )
                 selected_chats = random.sample(current_queue_snapshot, sample_size)
-            
+
             if not selected_chats:
                 continue
-            
-            response_result = await asyncio.wait_for(agent.process_and_respond(selected_chats), timeout=20.0)
-            
+
+            response_result = await asyncio.wait_for(
+                agent.process_and_respond(selected_chats), timeout=20.0
+            )
+
             response_text = response_result.get("final_response", "").strip()
             if not response_text:
                 continue
 
             # Push updated agent context to admin clients immediately after processing
             updated_context = await agent.get_message_history()
-            await connection_manager.broadcast_to_admins({"type": "agent_context", "action": "update", "messages": updated_context})
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "agent_context",
+                    "action": "update",
+                    "messages": updated_context,
+                }
+            )
 
             async with app_state.neuro_last_speech_lock:
                 app_state.neuro_last_speech = response_text
 
-            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', response_text.replace('\n', ' ')) if s.strip()]
-            if not sentences: continue
+            sentences = [
+                s.strip()
+                for s in re.split(r"(?<=[.!?])\s+", response_text.replace("\n", " "))
+                if s.strip()
+            ]
+            if not sentences:
+                continue
 
             tts_id = config_manager.settings.neuro.tts_provider_id
             if not tts_id:
-                logger.warning("TTS Provider ID is not set for the agent. Skipping speech synthesis.")
+                logger.warning(
+                    "TTS Provider ID is not set for the agent. Skipping speech synthesis."
+                )
                 continue
 
-            synthesis_tasks = [synthesize_audio_segment(s, tts_provider_id=tts_id) for s in sentences]
-            synthesis_results = await asyncio.gather(*synthesis_tasks, return_exceptions=True)
-            
+            synthesis_tasks = [
+                synthesize_audio_segment(s, tts_provider_id=tts_id) for s in sentences
+            ]
+            synthesis_results = await asyncio.gather(
+                *synthesis_tasks, return_exceptions=True
+            )
+
             speech_packages = [
-                {"segment_id": i, "text": sentences[i], "audio_base64": res[0], "duration": res[1]}
-                for i, res in enumerate(synthesis_results) if not isinstance(res, Exception)
+                {
+                    "segment_id": i,
+                    "text": sentences[i],
+                    "audio_base64": res[0],
+                    "duration": res[1],
+                }
+                for i, res in enumerate(synthesis_results)
+                if not isinstance(res, Exception)
             ]
 
-            if not speech_packages: continue
+            if not speech_packages:
+                continue
 
             live_stream_manager.set_neuro_speaking_status(True)
             for package in speech_packages:
-                await connection_manager.broadcast({"type": "neuro_speech_segment", **package, "is_end": False})
-                await asyncio.sleep(package['duration'])
-            
-            await connection_manager.broadcast({"type": "neuro_speech_segment", "is_end": True})
+                await connection_manager.broadcast(
+                    {"type": "neuro_speech_segment", **package, "is_end": False}
+                )
+                await asyncio.sleep(package["duration"])
+
+            await connection_manager.broadcast(
+                {"type": "neuro_speech_segment", "is_end": True}
+            )
             live_stream_manager.set_neuro_speaking_status(False)
-            
+
             await asyncio.sleep(config_manager.settings.neuro.post_speech_cooldown_sec)
 
         except asyncio.TimeoutError:
@@ -286,7 +352,9 @@ async def neuro_response_cycle():
             live_stream_manager.set_neuro_speaking_status(False)
             await asyncio.sleep(10)
 
+
 # --- Application Lifecycle Events ---
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -300,7 +368,9 @@ async def startup_event():
     def custom_exception_handler(loop, context):
         exception = context.get("exception")
         if isinstance(exception, ConnectionResetError):
-            logger.debug(f"Suppressing benign ConnectionResetError: {context.get('message')}")
+            logger.debug(
+                f"Suppressing benign ConnectionResetError: {context.get('message')}"
+            )
         else:
             # If it's not the error we want to suppress, call the default handler.
             # This ensures other important errors are still logged.
@@ -310,67 +380,94 @@ async def startup_event():
 
     # --- Mount Frontend ---
     # This logic is placed here to run at runtime, ensuring all package paths are finalized.
-    from fastapi.responses import FileResponse
-    from starlette.staticfiles import StaticFiles
-    from starlette.exceptions import HTTPException as StarletteHTTPException
-    from importlib.resources import files
 
     class SPAStaticFiles(StaticFiles):
         async def get_response(self, path: str, scope):
             try:
                 return await super().get_response(path, scope)
-            except (StarletteHTTPException) as ex:
+            except StarletteHTTPException as ex:
                 if ex.status_code == 404:
                     return await super().get_response("index.html", scope)
                 else:
                     raise ex
+
     try:
         # Production/Standard install: find frontend in the package
-        frontend_dir_traversable = files('neuro_simulator').joinpath('dashboard')
-        if not frontend_dir_traversable.is_dir(): raise FileNotFoundError
+        frontend_dir_traversable = files("neuro_simulator").joinpath("dashboard")
+        if not frontend_dir_traversable.is_dir():
+            raise FileNotFoundError
         frontend_dir = str(frontend_dir_traversable)
-        logger.info(f"Found frontend via package resources (production mode): '{frontend_dir}'")
+        logger.info(
+            f"Found frontend via package resources (production mode): '{frontend_dir}'"
+        )
     except (ModuleNotFoundError, FileNotFoundError):
         # Editable/Development install: fall back to relative path from source
-        logger.info("Could not find frontend via package resources, falling back to development mode path.")
-        dev_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'dashboard', 'dist'))
+        logger.info(
+            "Could not find frontend via package resources, falling back to development mode path."
+        )
+        dev_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__), "..", "..", "..", "dashboard", "dist"
+            )
+        )
         if os.path.isdir(dev_path):
             frontend_dir = dev_path
-            logger.info(f"Found frontend via relative path (development mode): '{frontend_dir}'")
+            logger.info(
+                f"Found frontend via relative path (development mode): '{frontend_dir}'"
+            )
         else:
             frontend_dir = None
 
     # --- Mount Dashboard Frontend ---
     # Mount the dashboard frontend at /dashboard path (more specific) - MOUNT THIS FIRST
     if frontend_dir:
-        app.mount("/dashboard", SPAStaticFiles(directory=frontend_dir, html=True), name="dashboard")
+        app.mount(
+            "/dashboard",
+            SPAStaticFiles(directory=frontend_dir, html=True),
+            name="dashboard",
+        )
         logger.info("Dashboard frontend mounted at /dashboard")
     else:
-        logger.error("Frontend directory not found in either production or development locations.")
+        logger.error(
+            "Frontend directory not found in either production or development locations."
+        )
 
     # --- Mount Client Frontend ---
     # Mount the client frontend at / path (more general) - MOUNT THIS AFTER
     try:
         # Production/Standard install: find client frontend in the package
-        client_frontend_dir_traversable = files('neuro_simulator').joinpath('client')
-        if not client_frontend_dir_traversable.is_dir(): raise FileNotFoundError
+        client_frontend_dir_traversable = files("neuro_simulator").joinpath("client")
+        if not client_frontend_dir_traversable.is_dir():
+            raise FileNotFoundError
         client_frontend_dir = str(client_frontend_dir_traversable)
-        logger.info(f"Found client frontend via package resources (production mode): '{client_frontend_dir}'")
+        logger.info(
+            f"Found client frontend via package resources (production mode): '{client_frontend_dir}'"
+        )
     except (ModuleNotFoundError, FileNotFoundError):
         # Editable/Development install: fall back to relative path from source
-        logger.info("Could not find client frontend via package resources, falling back to development mode path.")
-        dev_client_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'client', 'dist'))
+        logger.info(
+            "Could not find client frontend via package resources, falling back to development mode path."
+        )
+        dev_client_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", "client", "dist")
+        )
         if os.path.isdir(dev_client_path):
             client_frontend_dir = dev_client_path
-            logger.info(f"Found client frontend via relative path (development mode): '{client_frontend_dir}'")
+            logger.info(
+                f"Found client frontend via relative path (development mode): '{client_frontend_dir}'"
+            )
         else:
             client_frontend_dir = None
 
     if client_frontend_dir:
-        app.mount("/", SPAStaticFiles(directory=client_frontend_dir, html=True), name="client")
+        app.mount(
+            "/", SPAStaticFiles(directory=client_frontend_dir, html=True), name="client"
+        )
         logger.info("Client frontend mounted at /")
     else:
-        logger.error("Client frontend directory not found in either production or development locations.")
+        logger.error(
+            "Client frontend directory not found in either production or development locations."
+        )
 
     # 1. Configure logging first
     configure_server_logging()
@@ -386,22 +483,25 @@ async def startup_event():
         await chatbot.initialize()
         logger.info("Successfully initialized ChatbotAgent.")
     except Exception as e:
-        logger.critical(f"ChatbotAgent initialization failed on startup: {e}", exc_info=True)
+        logger.critical(
+            f"ChatbotAgent initialization failed on startup: {e}", exc_info=True
+        )
 
     # 4. Register callbacks
     async def metadata_callback(settings: AppSettings):
         await live_stream_manager.broadcast_stream_metadata()
-    
+
     config_manager.register_update_callback(metadata_callback)
-    
+
     # 5. Initialize main agent (which will load its own configs)
     try:
         await create_agent()
-        logger.info(f"Successfully initialized agent.")
+        logger.info("Successfully initialized agent.")
     except Exception as e:
         logger.critical(f"Agent initialization failed on startup: {e}", exc_info=True)
-    
+
     logger.info("FastAPI application has started.")
+
 
 @app.on_event("shutdown")
 def shutdown_event():
@@ -410,34 +510,57 @@ def shutdown_event():
         process_manager.stop_live_processes()
     logger.info("FastAPI application has shut down.")
 
+
 # --- WebSocket Endpoints ---
+
 
 @app.websocket("/ws/stream")
 async def websocket_stream_endpoint(websocket: WebSocket):
     await connection_manager.connect(websocket)
     try:
-        await connection_manager.send_personal_message(live_stream_manager.get_initial_state_for_client(), websocket)
-        await connection_manager.send_personal_message({"type": "update_stream_metadata", **config_manager.settings.stream.model_dump()}, websocket)
-        
-        initial_chats = get_recent_audience_chats(config_manager.settings.server.initial_chat_backlog_limit)
+        await connection_manager.send_personal_message(
+            live_stream_manager.get_initial_state_for_client(), websocket
+        )
+        await connection_manager.send_personal_message(
+            {
+                "type": "update_stream_metadata",
+                **config_manager.settings.stream.model_dump(),
+            },
+            websocket,
+        )
+
+        initial_chats = get_recent_audience_chats(
+            config_manager.settings.server.initial_chat_backlog_limit
+        )
         for chat in initial_chats:
-            await connection_manager.send_personal_message({"type": "chat_message", **chat, "is_user_message": False}, websocket)
+            await connection_manager.send_personal_message(
+                {"type": "chat_message", **chat, "is_user_message": False}, websocket
+            )
             await asyncio.sleep(0.01)
-        
+
         while True:
             raw_data = await websocket.receive_text()
             data = json.loads(raw_data)
             if data.get("type") == "user_message":
-                user_message = {"username": data.get("username", "User"), "text": data.get("text", "").strip()}
+                user_message = {
+                    "username": data.get("username", "User"),
+                    "text": data.get("text", "").strip(),
+                }
                 if user_message["text"]:
                     add_to_audience_buffer(user_message)
                     add_to_neuro_input_queue(user_message)
-                    await connection_manager.broadcast({"type": "chat_message", **user_message, "is_user_message": True})
+                    await connection_manager.broadcast(
+                        {
+                            "type": "chat_message",
+                            **user_message,
+                            "is_user_message": True,
+                        }
+                    )
             elif data.get("type") == "superchat":
                 sc_message = {
                     "username": data.get("username", "User"),
                     "text": data.get("text", "").strip(),
-                    "sc_type": data.get("sc_type", "bits")
+                    "sc_type": data.get("sc_type", "bits"),
                 }
                 if sc_message["text"]:
                     app_state.superchat_queue.append(sc_message)
@@ -446,6 +569,7 @@ async def websocket_stream_endpoint(websocket: WebSocket):
         pass
     finally:
         connection_manager.disconnect(websocket)
+
 
 @app.websocket("/ws/admin")
 async def websocket_admin_endpoint(websocket: WebSocket):
@@ -456,15 +580,30 @@ async def websocket_admin_endpoint(websocket: WebSocket):
         # Wrap initial state sending in its own try-except block.
         try:
             # Send initial state
-            for log_entry in list(server_log_queue): await websocket.send_json({"type": "server_log", "data": log_entry})
-            for log_entry in list(agent_log_queue): await websocket.send_json({"type": "agent_log", "data": agent_log_queue.popleft()})
-            
+            for log_entry in list(server_log_queue):
+                await websocket.send_json({"type": "server_log", "data": log_entry})
+            for log_entry in list(agent_log_queue):
+                await websocket.send_json(
+                    {"type": "agent_log", "data": agent_log_queue.popleft()}
+                )
+
             agent = await create_agent()
             initial_context = await agent.get_message_history()
-            await websocket.send_json({"type": "agent_context", "action": "update", "messages": initial_context})
-            
+            await websocket.send_json(
+                {
+                    "type": "agent_context",
+                    "action": "update",
+                    "messages": initial_context,
+                }
+            )
+
             # Send initial stream status
-            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+            status = {
+                "is_running": process_manager.is_running,
+                "backend_status": "running"
+                if process_manager.is_running
+                else "stopped",
+            }
             await websocket.send_json({"type": "stream_status", "payload": status})
         except (WebSocketDisconnect, ConnectionResetError):
             # If client disconnects during initial send, just exit the function.
@@ -476,15 +615,23 @@ async def websocket_admin_endpoint(websocket: WebSocket):
             try:
                 # Check for incoming messages
                 try:
-                    raw_data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+                    raw_data = await asyncio.wait_for(
+                        websocket.receive_text(), timeout=0.01
+                    )
                     data = json.loads(raw_data)
                     await handle_admin_ws_message(websocket, data)
                 except asyncio.TimeoutError:
-                    pass # No message received, continue to push logs
+                    pass  # No message received, continue to push logs
 
                 # Push log updates
-                if server_log_queue: await websocket.send_json({"type": "server_log", "data": server_log_queue.popleft()})
-                if agent_log_queue: await websocket.send_json({"type": "agent_log", "data": agent_log_queue.popleft()})
+                if server_log_queue:
+                    await websocket.send_json(
+                        {"type": "server_log", "data": server_log_queue.popleft()}
+                    )
+                if agent_log_queue:
+                    await websocket.send_json(
+                        {"type": "agent_log", "data": agent_log_queue.popleft()}
+                    )
                 await asyncio.sleep(0.1)
             except (WebSocketDisconnect, ConnectionResetError):
                 # Client disconnected, break the loop to allow cleanup.
@@ -494,12 +641,13 @@ async def websocket_admin_endpoint(websocket: WebSocket):
             connection_manager.admin_connections.remove(websocket)
         logger.info("Admin WebSocket client disconnected.")
 
+
 async def handle_admin_ws_message(websocket: WebSocket, data: dict):
     """Handles incoming messages from the admin WebSocket."""
     action = data.get("action")
     payload = data.get("payload", {})
     request_id = data.get("request_id")
-    
+
     agent = await create_agent()
     response = {"type": "response", "request_id": request_id, "payload": {}}
 
@@ -508,7 +656,7 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
         if action == "get_core_memory_blocks":
             blocks = await agent.get_memory_blocks()
             response["payload"] = blocks
-        
+
         elif action == "get_core_memory_block":
             block = await agent.get_memory_block(**payload)
             response["payload"] = block
@@ -518,21 +666,27 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             response["payload"] = {"status": "success", "block_id": block_id}
             # Broadcast the update to all admins
             updated_blocks = await agent.get_memory_blocks()
-            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
+            await connection_manager.broadcast_to_admins(
+                {"type": "core_memory_updated", "payload": updated_blocks}
+            )
 
         elif action == "update_core_memory_block":
             await agent.update_memory_block(**payload)
             response["payload"] = {"status": "success"}
             # Broadcast the update to all admins
             updated_blocks = await agent.get_memory_blocks()
-            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
+            await connection_manager.broadcast_to_admins(
+                {"type": "core_memory_updated", "payload": updated_blocks}
+            )
 
         elif action == "delete_core_memory_block":
             await agent.delete_memory_block(**payload)
             response["payload"] = {"status": "success"}
             # Broadcast the update to all admins
             updated_blocks = await agent.get_memory_blocks()
-            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": updated_blocks})
+            await connection_manager.broadcast_to_admins(
+                {"type": "core_memory_updated", "payload": updated_blocks}
+            )
 
         # Temp Memory Actions
         elif action == "get_temp_memory":
@@ -543,19 +697,25 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             await agent.add_temp_memory(**payload)
             response["payload"] = {"status": "success"}
             updated_temp_mem = await agent.get_temp_memory()
-            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+            await connection_manager.broadcast_to_admins(
+                {"type": "temp_memory_updated", "payload": updated_temp_mem}
+            )
 
         elif action == "delete_temp_memory_item":
             await agent.delete_temp_memory_item(**payload)
             response["payload"] = {"status": "success"}
             updated_temp_mem = await agent.get_temp_memory()
-            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+            await connection_manager.broadcast_to_admins(
+                {"type": "temp_memory_updated", "payload": updated_temp_mem}
+            )
 
         elif action == "clear_temp_memory":
             await agent.clear_temp_memory()
             response["payload"] = {"status": "success"}
             updated_temp_mem = await agent.get_temp_memory()
-            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": updated_temp_mem})
+            await connection_manager.broadcast_to_admins(
+                {"type": "temp_memory_updated", "payload": updated_temp_mem}
+            )
 
         # Init Memory Actions
         elif action == "get_init_memory":
@@ -566,47 +726,60 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             await agent.update_init_memory(**payload)
             response["payload"] = {"status": "success"}
             updated_init_mem = await agent.get_init_memory()
-            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+            await connection_manager.broadcast_to_admins(
+                {"type": "init_memory_updated", "payload": updated_init_mem}
+            )
 
         elif action == "update_init_memory_item":
             await agent.update_init_memory_item(**payload)
             response["payload"] = {"status": "success"}
             updated_init_mem = await agent.get_init_memory()
-            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+            await connection_manager.broadcast_to_admins(
+                {"type": "init_memory_updated", "payload": updated_init_mem}
+            )
 
         elif action == "delete_init_memory_key":
             await agent.delete_init_memory_key(**payload)
             response["payload"] = {"status": "success"}
             updated_init_mem = await agent.get_init_memory()
-            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": updated_init_mem})
+            await connection_manager.broadcast_to_admins(
+                {"type": "init_memory_updated", "payload": updated_init_mem}
+            )
 
         # Tool Actions
         elif action == "get_all_tools":
-            agent_instance = getattr(agent, 'agent_instance', agent)
+            agent_instance = getattr(agent, "agent_instance", agent)
             all_tools = agent_instance.tool_manager.get_all_tool_schemas()
             response["payload"] = {"tools": all_tools}
 
         elif action == "get_agent_tool_allocations":
-            agent_instance = getattr(agent, 'agent_instance', agent)
+            agent_instance = getattr(agent, "agent_instance", agent)
             allocations = agent_instance.tool_manager.get_allocations()
             response["payload"] = {"allocations": allocations}
 
         elif action == "set_agent_tool_allocations":
-            agent_instance = getattr(agent, 'agent_instance', agent)
+            agent_instance = getattr(agent, "agent_instance", agent)
             allocations_payload = payload.get("allocations", {})
             agent_instance.tool_manager.set_allocations(allocations_payload)
             response["payload"] = {"status": "success"}
             # Broadcast the update to all admins
             updated_allocations = agent_instance.tool_manager.get_allocations()
-            await connection_manager.broadcast_to_admins({"type": "agent_tool_allocations_updated", "payload": {"allocations": updated_allocations}})
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "agent_tool_allocations_updated",
+                    "payload": {"allocations": updated_allocations},
+                }
+            )
 
         elif action == "reload_tools":
-            agent_instance = getattr(agent, 'agent_instance', agent)
+            agent_instance = getattr(agent, "agent_instance", agent)
             agent_instance.tool_manager.reload_tools()
             response["payload"] = {"status": "success"}
             # Broadcast an event to notify UI to refresh tool lists
             all_tools = agent_instance.tool_manager.get_all_tool_schemas()
-            await connection_manager.broadcast_to_admins({"type": "available_tools_updated", "payload": {"tools": all_tools}})
+            await connection_manager.broadcast_to_admins(
+                {"type": "available_tools_updated", "payload": {"tools": all_tools}}
+            )
 
         elif action == "execute_tool":
             result = await agent.execute_tool(**payload)
@@ -618,13 +791,19 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             agent_cfg = config_manager.settings.neuro
             chatbot_cfg = config_manager.settings.chatbot
             if not agent_cfg.llm_provider_id:
-                raise ValueError("Agent (Neuro) does not have an LLM Provider configured.")
+                raise ValueError(
+                    "Agent (Neuro) does not have an LLM Provider configured."
+                )
             if not agent_cfg.tts_provider_id:
-                raise ValueError("Agent (Neuro) does not have a TTS Provider configured.")
+                raise ValueError(
+                    "Agent (Neuro) does not have a TTS Provider configured."
+                )
             if not chatbot_cfg.llm_provider_id:
                 raise ValueError("Chatbot does not have an LLM Provider configured.")
 
-            logger.info("Start stream action received. Resetting agent memory before starting processes...")
+            logger.info(
+                "Start stream action received. Resetting agent memory before starting processes..."
+            )
             await agent.reset_memory()
             if chatbot:
                 await chatbot.initialize_runtime_components()
@@ -632,16 +811,30 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
                 process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream started"}
             # Broadcast stream status update
-            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
-            await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
+            status = {
+                "is_running": process_manager.is_running,
+                "backend_status": "running"
+                if process_manager.is_running
+                else "stopped",
+            }
+            await connection_manager.broadcast_to_admins(
+                {"type": "stream_status", "payload": status}
+            )
 
         elif action == "stop_stream":
             if process_manager.is_running:
                 await process_manager.stop_live_processes()
             response["payload"] = {"status": "success", "message": "Stream stopped"}
             # Broadcast stream status update
-            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
-            await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
+            status = {
+                "is_running": process_manager.is_running,
+                "backend_status": "running"
+                if process_manager.is_running
+                else "stopped",
+            }
+            await connection_manager.broadcast_to_admins(
+                {"type": "stream_status", "payload": status}
+            )
 
         elif action == "restart_stream":
             await process_manager.stop_live_processes()
@@ -649,11 +842,23 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream restarted"}
             # Broadcast stream status update
-            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
-            await connection_manager.broadcast_to_admins({"type": "stream_status", "payload": status})
+            status = {
+                "is_running": process_manager.is_running,
+                "backend_status": "running"
+                if process_manager.is_running
+                else "stopped",
+            }
+            await connection_manager.broadcast_to_admins(
+                {"type": "stream_status", "payload": status}
+            )
 
         elif action == "get_stream_status":
-            status = {"is_running": process_manager.is_running, "backend_status": "running" if process_manager.is_running else "stopped"}
+            status = {
+                "is_running": process_manager.is_running,
+                "backend_status": "running"
+                if process_manager.is_running
+                else "stopped",
+            }
             response["payload"] = status
 
         # Config Management Actions
@@ -667,13 +872,20 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             await config_manager.update_settings(payload)
             updated_configs = config_manager.settings.model_dump()
             response["payload"] = updated_configs
-            await connection_manager.broadcast_to_admins({"type": "config_updated", "payload": updated_configs})
+            await connection_manager.broadcast_to_admins(
+                {"type": "config_updated", "payload": updated_configs}
+            )
 
         elif action == "reload_configs":
             await config_manager.update_settings({})
-            response["payload"] = {"status": "success", "message": "Configuration reloaded"}
+            response["payload"] = {
+                "status": "success",
+                "message": "Configuration reloaded",
+            }
             updated_configs = config_manager.settings.model_dump()
-            await connection_manager.broadcast_to_admins({"type": "config_updated", "payload": updated_configs})
+            await connection_manager.broadcast_to_admins(
+                {"type": "config_updated", "payload": updated_configs}
+            )
 
         # Other Agent Actions
         elif action == "get_agent_context":
@@ -684,18 +896,22 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             try:
                 # 1. Get the recent history from the agent itself
                 history = await agent.get_message_history(limit=10)
-                
+
                 # 2. Reconstruct the 'messages' list that _build_neuro_prompt expects
                 messages_for_prompt = []
                 for entry in history:
-                    if entry.get('role') == 'user':
+                    if entry.get("role") == "user":
                         # Content is in the format "username: text"
-                        content = entry.get('content', '')
-                        parts = content.split(':', 1)
+                        content = entry.get("content", "")
+                        parts = content.split(":", 1)
                         if len(parts) == 2:
-                            messages_for_prompt.append({'username': parts[0].strip(), 'text': parts[1].strip()})
-                        elif content: # Handle cases where there's no colon
-                            messages_for_prompt.append({'username': 'user', 'text': content})
+                            messages_for_prompt.append(
+                                {"username": parts[0].strip(), "text": parts[1].strip()}
+                            )
+                        elif content:  # Handle cases where there's no colon
+                            messages_for_prompt.append(
+                                {"username": "user", "text": content}
+                            )
 
                 # 3. Build the prompt using the agent's own internal logic
                 prompt = await agent.build_neuro_prompt(messages_for_prompt)
@@ -707,20 +923,46 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             await agent.reset_memory()
             response["payload"] = {"status": "success"}
             # Broadcast updates for all memory types
-            await connection_manager.broadcast_to_admins({"type": "core_memory_updated", "payload": await agent.get_memory_blocks()})
-            await connection_manager.broadcast_to_admins({"type": "temp_memory_updated", "payload": await agent.get_temp_memory()})
-            await connection_manager.broadcast_to_admins({"type": "init_memory_updated", "payload": await agent.get_init_memory()})
-            await connection_manager.broadcast_to_admins({"type": "agent_context", "action": "update", "messages": await agent.get_message_history()})
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "core_memory_updated",
+                    "payload": await agent.get_memory_blocks(),
+                }
+            )
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "temp_memory_updated",
+                    "payload": await agent.get_temp_memory(),
+                }
+            )
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "init_memory_updated",
+                    "payload": await agent.get_init_memory(),
+                }
+            )
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "agent_context",
+                    "action": "update",
+                    "messages": await agent.get_message_history(),
+                }
+            )
 
         else:
-            response["payload"] = {"status": "error", "message": f"Unknown action: {action}"}
+            response["payload"] = {
+                "status": "error",
+                "message": f"Unknown action: {action}",
+            }
 
         # Send the direct response to the requesting client
         if request_id:
             await websocket.send_json(response)
 
     except Exception as e:
-        logger.error(f"Error handling admin WS message (action: {action}): {e}", exc_info=True)
+        logger.error(
+            f"Error handling admin WS message (action: {action}): {e}", exc_info=True
+        )
         if request_id:
             response["payload"] = {"status": "error", "message": str(e)}
             await websocket.send_json(response)

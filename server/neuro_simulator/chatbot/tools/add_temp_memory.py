@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 from neuro_simulator.chatbot.tools.base import BaseChatbotTool
 from neuro_simulator.chatbot.memory.manager import ChatbotMemoryManager
 
+
 class AddTempMemoryTool(BaseChatbotTool):
     """Tool to add an entry to the chatbot's temporary memory."""
 
@@ -34,18 +35,21 @@ class AddTempMemoryTool(BaseChatbotTool):
                 "type": "string",
                 "description": "The role associated with the memory (e.g., 'system', 'user'). Defaults to 'system'.",
                 "required": False,
-            }
+            },
         ]
 
     async def execute(self, **kwargs: Any) -> Dict[str, Any]:
         content = kwargs.get("content")
         if not isinstance(content, str) or not content:
             raise ValueError("The 'content' parameter must be a non-empty string.")
-        
+
         role = kwargs.get("role", "system")
         if not isinstance(role, str):
             raise ValueError("The 'role' parameter must be a string.")
 
         await self.memory_manager.add_temp_memory(content=content, role=role)
-        
-        return {"status": "success", "message": f"Added entry to temporary memory with role '{role}'."}
+
+        return {
+            "status": "success",
+            "message": f"Added entry to temporary memory with role '{role}'.",
+        }

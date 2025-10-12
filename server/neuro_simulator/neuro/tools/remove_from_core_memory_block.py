@@ -3,8 +3,9 @@
 
 from typing import Dict, Any, List
 
-from neuro_simulator.agent.tools.base import BaseTool
-from neuro_simulator.agent.memory.manager import MemoryManager
+from neuro_simulator.neuro.tools.base import BaseTool
+from neuro_simulator.neuro.memory.manager import MemoryManager
+
 
 class RemoveFromCoreMemoryBlockTool(BaseTool):
     """Tool to remove an item from an existing core memory block's content list by its index."""
@@ -34,7 +35,7 @@ class RemoveFromCoreMemoryBlockTool(BaseTool):
                 "type": "integer",
                 "description": "The zero-based index of the item to remove from the content list.",
                 "required": True,
-            }
+            },
         ]
 
     async def execute(self, **kwargs: Any) -> Dict[str, Any]:
@@ -47,7 +48,7 @@ class RemoveFromCoreMemoryBlockTool(BaseTool):
         block = await self.memory_manager.get_core_memory_block(block_id)
         if block is None:
             raise ValueError(f"Block '{block_id}' not found.")
-        
+
         content = block.get("content", [])
         if not isinstance(content, list):
             raise TypeError(f"Content of block '{block_id}' is not a list.")
@@ -55,11 +56,15 @@ class RemoveFromCoreMemoryBlockTool(BaseTool):
         try:
             removed_item = content.pop(index)
         except IndexError:
-            raise IndexError(f"Index {index} is out of bounds for content in block '{block_id}'.")
-        
-        await self.memory_manager.update_core_memory_block(block_id=block_id, content=content)
-        
+            raise IndexError(
+                f"Index {index} is out of bounds for content in block '{block_id}'."
+            )
+
+        await self.memory_manager.update_core_memory_block(
+            block_id=block_id, content=content
+        )
+
         return {
             "status": "success",
-            "message": f"Removed item '{removed_item}' from core memory block '{block_id}' at index {index}."
+            "message": f"Removed item '{removed_item}' from core memory block '{block_id}' at index {index}.",
         }

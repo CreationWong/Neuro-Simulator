@@ -9,6 +9,7 @@ from neuro_simulator.chatbot.memory.manager import ChatbotMemoryManager
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
 
+
 class PostChatMessageTool(BaseChatbotTool):
     """Tool for the chatbot to post a message to the stream chat."""
 
@@ -21,7 +22,7 @@ class PostChatMessageTool(BaseChatbotTool):
 
     @property
     def description(self) -> str:
-        return "Posts a text message to the stream chat, as if you are a viewer." 
+        return "Posts a text message to the stream chat, as if you are a viewer."
 
     @property
     def parameters(self) -> List[Dict[str, Any]]:
@@ -42,7 +43,7 @@ class PostChatMessageTool(BaseChatbotTool):
         text = kwargs.get("text")
         if not isinstance(text, str) or not text:
             raise ValueError("The 'text' parameter must be a non-empty string.")
-        
+
         logger.info(f"Chatbot decided to say: {text}")
         # The result is the text to be posted. The core agent will combine this
         # with a generated nickname before sending it to the stream.

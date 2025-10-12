@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 
+
 class BaseAgent(ABC):
     """Abstract base class for all agents, defining a common interface for the server."""
 
@@ -16,7 +17,9 @@ class BaseAgent(ABC):
         pass
 
     @abstractmethod
-    async def process_and_respond(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    async def process_and_respond(
+        self, messages: List[Dict[str, str]]
+    ) -> Dict[str, Any]:
         """Process messages and generate a response."""
         pass
 
@@ -32,12 +35,20 @@ class BaseAgent(ABC):
         pass
 
     @abstractmethod
-    async def create_memory_block(self, title: str, description: str, content: List[str]) -> Dict[str, str]:
+    async def create_memory_block(
+        self, title: str, description: str, content: List[str]
+    ) -> Dict[str, str]:
         """Create a new memory block."""
         pass
 
     @abstractmethod
-    async def update_memory_block(self, block_id: str, title: Optional[str], description: Optional[str], content: Optional[List[str]]):
+    async def update_memory_block(
+        self,
+        block_id: str,
+        title: Optional[str],
+        description: Optional[str],
+        content: Optional[List[str]],
+    ):
         """Update an existing memory block."""
         pass
 

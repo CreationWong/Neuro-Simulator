@@ -3,8 +3,9 @@
 
 from typing import Dict, Any, List
 
-from neuro_simulator.agent.tools.base import BaseTool
-from neuro_simulator.agent.memory.manager import MemoryManager
+from neuro_simulator.neuro.tools.base import BaseTool
+from neuro_simulator.neuro.memory.manager import MemoryManager
+
 
 class CreateCoreMemoryBlockTool(BaseTool):
     """Tool to create a new core memory block."""
@@ -41,7 +42,7 @@ class CreateCoreMemoryBlockTool(BaseTool):
                 "type": "array",
                 "description": "An optional list of initial string entries for the block's content.",
                 "required": False,
-            }
+            },
         ]
 
     async def execute(self, **kwargs: Any) -> Dict[str, Any]:
@@ -66,13 +67,11 @@ class CreateCoreMemoryBlockTool(BaseTool):
             raise ValueError("The 'content' parameter must be a list of strings.")
 
         block_id = await self.memory_manager.create_core_memory_block(
-            title=title,
-            description=description,
-            content=content
+            title=title, description=description, content=content
         )
-        
+
         return {
             "status": "success",
             "message": f"Created core memory block '{block_id}' with title '{title}'.",
-            "block_id": block_id
+            "block_id": block_id,
         }

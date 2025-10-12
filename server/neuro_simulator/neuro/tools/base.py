@@ -2,7 +2,8 @@
 """Base classes and definitions for the tool system."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Coroutine
+from typing import Dict, Any, List
+
 
 class BaseTool(ABC):
     """
@@ -52,5 +53,5 @@ class BaseTool(ABC):
         return {
             "name": self.name,
             "description": self.description,
-            "parameters": self.parameters
+            "parameters": self.parameters,
         }

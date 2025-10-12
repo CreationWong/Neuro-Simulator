@@ -4,10 +4,11 @@
 import logging
 from typing import Dict, Any, List
 
-from neuro_simulator.agent.tools.base import BaseTool
-from neuro_simulator.agent.memory.manager import MemoryManager
+from neuro_simulator.neuro.tools.base import BaseTool
+from neuro_simulator.neuro.memory.manager import MemoryManager
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "agent", 1))
+logger = logging.getLogger("neuro_agent")
+
 
 class SpeakTool(BaseTool):
     """Tool for the agent to speak to the audience."""
@@ -39,7 +40,7 @@ class SpeakTool(BaseTool):
     async def execute(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Executes the speak action.
-        
+
         Args:
             **kwargs: Must contain a 'text' key with the string to be spoken.
 
@@ -49,7 +50,7 @@ class SpeakTool(BaseTool):
         text = kwargs.get("text")
         if not isinstance(text, str) or not text:
             raise ValueError("The 'text' parameter must be a non-empty string.")
-        
+
         logger.info(f"Agent says: {text}")
         # The result of the speak tool is the text that was spoken.
         # This can be used for logging or further processing.

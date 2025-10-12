@@ -5,8 +5,9 @@ from collections import deque
 from typing import Deque
 
 # Define a single, consistent format for all logs
-LOG_FORMAT = '%(asctime)s - [%(name)-32s] - %(levelname)-8s - %(message)s'
-DATE_FORMAT = '%H:%M:%S'
+LOG_FORMAT = "%(asctime)s - [%(name)-32s] - %(levelname)-8s - %(message)s"
+DATE_FORMAT = "%H:%M:%S"
+
 
 # --- Custom Colored Formatter for Console Output ---
 class ColoredFormatter(logging.Formatter):
@@ -26,29 +27,32 @@ class ColoredFormatter(logging.Formatter):
             logging.INFO: self.GREEN,
             logging.WARNING: self.YELLOW,
             logging.ERROR: self.RED,
-            logging.CRITICAL: self.BOLD_RED
+            logging.CRITICAL: self.BOLD_RED,
         }
 
     def format(self, record):
         # Create a copy of the record to avoid modifying the original
         record_copy = logging.makeLogRecord(record.__dict__)
-        
+
         # Get the color for the level
         color = self.level_colors.get(record_copy.levelno)
-        
+
         # If a color is found, apply it to the levelname
         if color:
             record_copy.levelname = f"{color}{record_copy.levelname}{self.RESET}"
-            
+
         # Use the parent class's formatter with the modified record
         return super().format(record_copy)
+
 
 # Create two independent, bounded queues for different log sources
 server_log_queue: Deque[str] = deque(maxlen=1000)
 agent_log_queue: Deque[str] = deque(maxlen=1000)
 
+
 class QueueLogHandler(logging.Handler):
     """A handler that sends log records to a specified queue."""
+
     def __init__(self, queue: Deque[str]):
         super().__init__()
         self.queue = queue
@@ -57,11 +61,12 @@ class QueueLogHandler(logging.Handler):
         log_entry = self.format(record)
         self.queue.append(log_entry)
 
+
 def configure_server_logging():
     """Configures the server (root) logger to use the server_log_queue and a standard format."""
     # Non-colored formatter for the queue (for the web UI)
     queue_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
-    
+
     # Colored formatter for the console
     console_formatter = ColoredFormatter(LOG_FORMAT)
 
@@ -85,15 +90,17 @@ def configure_server_logging():
     for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error"]:
         uvicorn_logger = logging.getLogger(logger_name)
         uvicorn_logger.handlers = [server_queue_handler, console_handler]
-        uvicorn_logger.propagate = False # Prevent double-logging
+        uvicorn_logger.propagate = False  # Prevent double-logging
 
     # Configure the neuro_agent logger
     neuro_agent_logger = logging.getLogger("neuro_agent")
     neuro_agent_queue_handler = QueueLogHandler(agent_log_queue)
     neuro_agent_queue_handler.setFormatter(queue_formatter)
     neuro_agent_logger.addHandler(neuro_agent_queue_handler)
-    neuro_agent_logger.addHandler(console_handler) # Also send agent logs to console
+    neuro_agent_logger.addHandler(console_handler)  # Also send agent logs to console
     neuro_agent_logger.setLevel(logging.INFO)
-    neuro_agent_logger.propagate = False # Prevent double-logging
+    neuro_agent_logger.propagate = False  # Prevent double-logging
 
-    root_logger.info("Server logging configured with unified formatting for queue and console.")
+    root_logger.info(
+        "Server logging configured with unified formatting for queue and console."
+    )

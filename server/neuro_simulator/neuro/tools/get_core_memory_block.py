@@ -3,8 +3,9 @@
 
 from typing import Dict, Any, List
 
-from neuro_simulator.agent.tools.base import BaseTool
-from neuro_simulator.agent.memory.manager import MemoryManager
+from neuro_simulator.neuro.tools.base import BaseTool
+from neuro_simulator.neuro.memory.manager import MemoryManager
+
 
 class GetCoreMemoryBlockTool(BaseTool):
     """Tool to retrieve a single core memory block by its ID."""
@@ -37,7 +38,7 @@ class GetCoreMemoryBlockTool(BaseTool):
             raise ValueError("The 'block_id' parameter is required.")
 
         block = await self.memory_manager.get_core_memory_block(block_id)
-        
+
         if block is None:
             return {"status": "error", "message": f"Block '{block_id}' not found."}
 

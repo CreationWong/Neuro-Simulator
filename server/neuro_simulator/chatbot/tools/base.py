@@ -4,6 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 
+
 class BaseChatbotTool(ABC):
     """
     Abstract base class for all chatbot tools.
@@ -43,5 +44,5 @@ class BaseChatbotTool(ABC):
         return {
             "name": self.name,
             "description": self.description,
-            "parameters": self.parameters
+            "parameters": self.parameters,
         }

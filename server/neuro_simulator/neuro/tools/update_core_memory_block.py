@@ -1,10 +1,11 @@
 # neuro_simulator/agent/tools/update_core_memory_block.py
 """The Update Core Memory Block tool for the agent."""
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
-from neuro_simulator.agent.tools.base import BaseTool
-from neuro_simulator.agent.memory.manager import MemoryManager
+from neuro_simulator.neuro.tools.base import BaseTool
+from neuro_simulator.neuro.memory.manager import MemoryManager
+
 
 class UpdateCoreMemoryBlockTool(BaseTool):
     """Tool to update an existing core memory block."""
@@ -46,7 +47,7 @@ class UpdateCoreMemoryBlockTool(BaseTool):
                 "type": "array",
                 "description": "The new list of string entries, which will overwrite the existing content.",
                 "required": False,
-            }
+            },
         ]
 
     async def execute(self, **kwargs: Any) -> Dict[str, Any]:
@@ -58,8 +59,8 @@ class UpdateCoreMemoryBlockTool(BaseTool):
         update_payload = {k: v for k, v in kwargs.items() if v is not None}
 
         await self.memory_manager.update_core_memory_block(**update_payload)
-        
+
         return {
             "status": "success",
-            "message": f"Successfully updated core memory block '{block_id}'."
+            "message": f"Successfully updated core memory block '{block_id}'.",
         }
