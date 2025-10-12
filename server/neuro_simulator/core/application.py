@@ -17,7 +17,7 @@ from starlette.websockets import WebSocketState
 # --- Core Imports ---
 from .config import config_manager, AppSettings
 from ..core.agent_factory import create_agent
-from ..chatbot.core import ChatbotAgent
+from ..agents.chatbot.core import Chatbot
 
 # --- API Routers ---
 from ..api.system import router as system_router
@@ -146,7 +146,7 @@ async def redirect_dashboard_to_trailing_slash():
 
 # --- Background Task Definitions ---
 
-chatbot: ChatbotAgent = None
+chatbot: Chatbot = None
 
 
 async def broadcast_events_task():
@@ -478,13 +478,13 @@ async def startup_event():
     # 3. Initialize Chatbot Agent on startup
     global chatbot
     try:
-        logger.info("Initializing ChatbotAgent on startup...")
-        chatbot = ChatbotAgent()
+        logger.info("Initializing Chatbot agent on startup...")
+        chatbot = Chatbot()
         await chatbot.initialize()
-        logger.info("Successfully initialized ChatbotAgent.")
+        logger.info("Successfully initialized Chatbot agent.")
     except Exception as e:
         logger.critical(
-            f"ChatbotAgent initialization failed on startup: {e}", exc_info=True
+            f"Chatbot agent initialization failed on startup: {e}", exc_info=True
         )
 
     # 4. Register callbacks

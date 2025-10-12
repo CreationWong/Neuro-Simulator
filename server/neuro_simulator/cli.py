@@ -50,36 +50,70 @@ def main():
                 shutil.copy(src, dest)
                 logging.info(f"Copied default file to {dest}")
 
-        # Copy config.yaml if it doesn't exist
+        # Copy main config.yaml if it doesn't exist
         copy_if_not_exists(
             package_source_path / "config.yaml", work_dir / "config.yaml"
         )
 
-        # Copy prompts
+        # --- Copy Neuro Agent Files ---
+        neuro_source_path = package_source_path / "agents" / "neuro"
         copy_if_not_exists(
-            package_source_path / "neuro" / "prompts" / "neuro_prompt.txt",
+            neuro_source_path / "prompts" / "neuro_prompt.txt",
             path_manager.path_manager.neuro_prompt_path,
         )
         copy_if_not_exists(
-            package_source_path / "neuro" / "prompts" / "memory_prompt.txt",
+            neuro_source_path / "prompts" / "memory_prompt.txt",
             path_manager.path_manager.memory_agent_prompt_path,
         )
-
-        # Copy default memory JSON files
         copy_if_not_exists(
-            package_source_path / "neuro" / "memory" / "core_memory.json",
+            neuro_source_path / "memory" / "core_memory.json",
             path_manager.path_manager.core_memory_path,
         )
         copy_if_not_exists(
-            package_source_path / "neuro" / "memory" / "init_memory.json",
+            neuro_source_path / "memory" / "init_memory.json",
             path_manager.path_manager.init_memory_path,
         )
         copy_if_not_exists(
-            package_source_path / "neuro" / "memory" / "temp_memory.json",
+            neuro_source_path / "memory" / "temp_memory.json",
             path_manager.path_manager.temp_memory_path,
         )
 
-        # Copy default video asset if it doesn't exist
+        # --- Copy Chatbot Agent Files ---
+        chatbot_source_path = package_source_path / "agents" / "chatbot"
+        copy_if_not_exists(
+            chatbot_source_path / "prompts" / "chatbot_prompt.txt",
+            path_manager.path_manager.chatbot_prompt_path,
+        )
+        copy_if_not_exists(
+            chatbot_source_path / "prompts" / "memory_prompt.txt",
+            path_manager.path_manager.chatbot_memory_agent_prompt_path,
+        )
+        copy_if_not_exists(
+            chatbot_source_path / "memory" / "init_memory.json",
+            path_manager.path_manager.chatbot_init_memory_path,
+        )
+        copy_if_not_exists(
+            chatbot_source_path / "memory" / "core_memory.json",
+            path_manager.path_manager.chatbot_core_memory_path,
+        )
+        copy_if_not_exists(
+            chatbot_source_path / "memory" / "temp_memory.json",
+            path_manager.path_manager.chatbot_temp_memory_path,
+        )
+        copy_if_not_exists(
+            chatbot_source_path / "nickname_gen" / "data" / "adjectives.txt",
+            path_manager.path_manager.chatbot_nickname_data_dir / "adjectives.txt",
+        )
+        copy_if_not_exists(
+            chatbot_source_path / "nickname_gen" / "data" / "nouns.txt",
+            path_manager.path_manager.chatbot_nickname_data_dir / "nouns.txt",
+        )
+        copy_if_not_exists(
+            chatbot_source_path / "nickname_gen" / "data" / "special_users.txt",
+            path_manager.path_manager.chatbot_nickname_data_dir / "special_users.txt",
+        )
+
+        # --- Copy Shared Assets ---
         copy_if_not_exists(
             package_source_path / "assets" / "neuro_start.mp4",
             path_manager.path_manager.assets_dir / "neuro_start.mp4",

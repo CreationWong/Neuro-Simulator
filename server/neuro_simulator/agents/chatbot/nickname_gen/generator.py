@@ -8,9 +8,9 @@ import logging
 import random
 from typing import List, Dict, Callable
 
-from ..llm import ChatbotLLMClient
-from ...core.config import config_manager
-from ...core.path_manager import path_manager
+from ...llm import LLMClient
+from ....core.config import config_manager
+from ....core.path_manager import path_manager
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
 
@@ -31,7 +31,7 @@ class NicknameGenerator:
         self.dynamic_adjectives: List[str] = []
         self.dynamic_nouns: List[str] = []
 
-        self.llm_client = ChatbotLLMClient()
+        self.llm_client = LLMClient(agent_name="chatbot")
 
     def _load_word_pool(self, filename: str) -> List[str]:
         """Loads a word pool from the nickname_gen/data directory."""

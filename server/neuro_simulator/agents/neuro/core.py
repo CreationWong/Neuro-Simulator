@@ -1,4 +1,4 @@
-# neuro_simulator/agent/core.py
+# server/neuro_simulator/agents/neuro/core.py
 """
 Core module for the Neuro Simulator's built-in agent.
 Implements a dual-LLM "Actor/Thinker" architecture for responsive interaction
@@ -10,38 +10,38 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from ..core.path_manager import path_manager
-from .llm import LLMClient
+from ...core.agent_interface import BaseAgent
+from ...core.path_manager import path_manager
+from ..llm import LLMClient
 from .memory.manager import MemoryManager
 from .tools.manager import ToolManager
 
 logger = logging.getLogger("neuro_agent")
 
 
-class Agent:
+class Neuro(BaseAgent):
     """
-    Main Agent class implementing the Actor/Thinker model.
-    - The "Neuro" part (Actor) handles real-time interaction.
-    - The "Memory" part (Thinker) handles background memory consolidation.
+    Main Neuro agent class, implementing the BaseAgent interface.
+    This class handles the core logic for Neuro's responses and memory.
     """
 
     def __init__(self):
         if not path_manager:
-            raise RuntimeError("PathManager must be initialized before the Agent.")
+            raise RuntimeError("PathManager must be initialized before the Neuro agent.")
 
         self.memory_manager = MemoryManager()
         self.tool_manager = ToolManager(self.memory_manager)
 
-        self.neuro_llm = LLMClient()
-        self.memory_llm = LLMClient()
+        self.neuro_llm = LLMClient(agent_name="neuro")
+        self.memory_llm = LLMClient(agent_name="neuro")
 
         self._initialized = False
         self.turn_counter = 0
         self.reflection_threshold = 3
 
-        logger.info("Agent instance created with dual-LLM architecture.")
+        logger.info("Neuro agent instance created with dual-LLM architecture.")
 
     async def initialize(self):
         """Initialize the agent, loading any persistent memory."""
@@ -51,7 +51,7 @@ class Agent:
             self._initialized = True
             logger.info("Agent initialized successfully.")
 
-    async def reset_all_memory(self):
+    async def reset_memory(self):
         """Reset all agent memory types and clear history logs."""
         await self.memory_manager.reset_temp_memory()
         # Clear history files by overwriting them
@@ -59,7 +59,7 @@ class Agent:
         open(path_manager.memory_agent_history_path, "w").close()
         logger.info("All agent memory and history logs have been reset.")
 
-    async def get_neuro_history(self, limit: int = 20) -> List[Dict[str, Any]]:
+    async def get_message_history(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Reads the last N lines from the Neuro agent's history log."""
         return await self._read_history_log(path_manager.neuro_history_path, limit)
 
@@ -78,7 +78,6 @@ class Agent:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
-            # Get the last N lines and parse them
             return [json.loads(line) for line in lines[-limit:]]
         except (json.JSONDecodeError, IndexError) as e:
             logger.error(f"Could not read or parse history from {file_path}: {e}")
@@ -102,9 +101,9 @@ class Agent:
             )
         return "\n".join(lines)
 
-    async def _build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
+    async def build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
         """Builds the prompt for the Neuro (Actor) LLM."""
-        prompt_template = ""  # Define a default empty prompt
+        prompt_template = ""
         if path_manager.neuro_prompt_path.exists():
             with open(path_manager.neuro_prompt_path, "r", encoding="utf-8") as f:
                 prompt_template = f.read()
@@ -167,7 +166,7 @@ class Agent:
         self, conversation_history: List[Dict[str, str]]
     ) -> str:
         """Builds the prompt for the Memory (Thinker) LLM."""
-        prompt_template = ""  # Define a default empty prompt
+        prompt_template = ""
         if path_manager.memory_agent_prompt_path.exists():
             with open(
                 path_manager.memory_agent_prompt_path, "r", encoding="utf-8"
@@ -244,7 +243,7 @@ class Agent:
                 {"role": "user", "content": f"{msg['username']}: {msg['text']}"},
             )
 
-        prompt = await self._build_neuro_prompt(messages)
+        prompt = await self.build_neuro_prompt(messages)
         response_text = await self.neuro_llm.generate(prompt)
 
         tool_calls = self._parse_tool_calls(response_text)
@@ -257,3 +256,68 @@ class Agent:
             )
 
         return processing_result
+
+    # --- Implementation of BaseAgent interface methods ---
+
+    # Memory Block Management
+    async def get_memory_blocks(self) -> List[Dict[str, Any]]:
+        blocks_dict = await self.memory_manager.get_core_memory_blocks()
+        return list(blocks_dict.values())
+
+    async def get_memory_block(self, block_id: str) -> Optional[Dict[str, Any]]:
+        return await self.memory_manager.get_core_memory_block(block_id)
+
+    async def create_memory_block(
+        self, title: str, description: str, content: List[str]
+    ) -> Dict[str, str]:
+        block_id = await self.memory_manager.create_core_memory_block(
+            title, description, content
+        )
+        return {"block_id": block_id}
+
+    async def update_memory_block(
+        self,
+        block_id: str,
+        title: Optional[str],
+        description: Optional[str],
+        content: Optional[List[str]],
+    ):
+        await self.memory_manager.update_core_memory_block(
+            block_id, title, description, content
+        )
+
+    async def delete_memory_block(self, block_id: str):
+        await self.memory_manager.delete_core_memory_block(block_id)
+
+    # Init Memory Management
+    async def get_init_memory(self) -> Dict[str, Any]:
+        return self.memory_manager.init_memory
+
+    async def update_init_memory(self, memory: Dict[str, Any]):
+        await self.memory_manager.replace_init_memory(memory)
+
+    async def update_init_memory_item(self, key: str, value: Any):
+        await self.memory_manager.update_init_memory_item(key, value)
+
+    async def delete_init_memory_key(self, key: str):
+        await self.memory_manager.delete_init_memory_key(key)
+
+    # Temp Memory Management
+    async def get_temp_memory(self) -> List[Dict[str, Any]]:
+        return self.memory_manager.temp_memory
+
+    async def add_temp_memory(self, content: str, role: str):
+        await self.memory_manager.add_temp_memory(content, role)
+
+    async def delete_temp_memory_item(self, item_id: str):
+        await self.memory_manager.delete_temp_memory_item(item_id)
+
+    async def clear_temp_memory(self):
+        await self.memory_manager.reset_temp_memory()
+
+    # Tool Management
+    async def get_available_tools(self) -> List[Dict[str, Any]]:
+        return self.tool_manager.get_tool_schemas_for_agent("neuro_agent")
+
+    async def execute_tool(self, tool_name: str, params: Dict[str, Any]) -> Any:
+        return await self.tool_manager.execute_tool(tool_name, **params)

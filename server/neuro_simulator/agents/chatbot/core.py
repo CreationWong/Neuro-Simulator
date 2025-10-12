@@ -7,14 +7,12 @@ Implements a dual-LLM "Actor/Thinker" architecture.
 import asyncio
 import json
 import logging
-import shutil
-import importlib.resources
 from pathlib import Path
 from typing import Any, Dict, List
 from datetime import datetime
 
-from ..core.path_manager import path_manager
-from .llm import ChatbotLLMClient
+from ...core.path_manager import path_manager
+from ..llm import LLMClient
 from .memory.manager import ChatbotMemoryManager
 from .tools.manager import ChatbotToolManager
 from .nickname_gen.generator import NicknameGenerator
@@ -22,7 +20,7 @@ from .nickname_gen.generator import NicknameGenerator
 logger = logging.getLogger("neuro_chatbot")
 
 
-class ChatbotAgent:
+class Chatbot:
     """
     Chatbot Agent class implementing the Actor/Thinker model.
     """
@@ -30,17 +28,15 @@ class ChatbotAgent:
     def __init__(self):
         if not path_manager:
             raise RuntimeError(
-                "PathManager must be initialized before the Chatbot Agent."
+                "PathManager must be initialized before the Chatbot agent."
             )
 
         self.memory_manager = ChatbotMemoryManager(path_manager.chatbot_memories_dir)
         self.tool_manager = ChatbotToolManager(self.memory_manager)
         self.nickname_generator = NicknameGenerator()
 
-        self.chatbot_llm = ChatbotLLMClient()
-        self.memory_llm = ChatbotLLMClient()
-
-        self._setup_working_directory()
+        self.chatbot_llm = LLMClient(agent_name="chatbot")
+        self.memory_llm = LLMClient(agent_name="chatbot")
 
         self._initialized = False
         self.turn_counter = 0
@@ -49,52 +45,17 @@ class ChatbotAgent:
     async def initialize(self):
         """Initializes components that are safe to run on startup."""
         if not self._initialized:
-            logger.info("Initializing Chatbot Agent (startup-safe components)...")
+            logger.info("Initializing Chatbot agent (startup-safe components)...")
             self.tool_manager.load_tools()
             await self.memory_manager.initialize()
             self._initialized = True
-            logger.info("Chatbot Agent startup components initialized successfully.")
+            logger.info("Chatbot agent startup components initialized successfully.")
 
     async def initialize_runtime_components(self):
         """Initializes components that require a live configuration, like the LLM."""
-        logger.info("Initializing Chatbot Agent (runtime components)...")
+        logger.info("Initializing Chatbot agent (runtime components)...")
         await self.nickname_generator.initialize()
-        logger.info("Chatbot Agent runtime components initialized successfully.")
-
-    def _setup_working_directory(self):
-        """Ensures the chatbot's working directory is populated with default files."""
-        logger.info("Setting up chatbot working directory...")
-        try:
-            package_source_dir = Path(importlib.resources.files("neuro_simulator"))
-        except (ModuleNotFoundError, AttributeError):
-            package_source_dir = Path(__file__).parent.parent
-
-        files_to_copy = {
-            "chatbot/prompts/chatbot_prompt.txt": path_manager.chatbot_prompt_path,
-            "chatbot/prompts/memory_prompt.txt": path_manager.chatbot_memory_agent_prompt_path,
-            "chatbot/memory/init_memory.json": path_manager.chatbot_init_memory_path,
-            "chatbot/memory/core_memory.json": path_manager.chatbot_core_memory_path,
-            "chatbot/memory/temp_memory.json": path_manager.chatbot_temp_memory_path,
-            "chatbot/nickname_gen/data/adjectives.txt": path_manager.chatbot_nickname_data_dir
-            / "adjectives.txt",
-            "chatbot/nickname_gen/data/nouns.txt": path_manager.chatbot_nickname_data_dir
-            / "nouns.txt",
-            "chatbot/nickname_gen/data/special_users.txt": path_manager.chatbot_nickname_data_dir
-            / "special_users.txt",
-        }
-
-        for src_rel_path, dest_path in files_to_copy.items():
-            if not dest_path.exists():
-                source_path = package_source_dir / src_rel_path
-                if source_path.exists():
-                    try:
-                        dest_path.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy(source_path, dest_path)
-                        logger.info(f"Copied default file to {dest_path}")
-                    except Exception as e:
-                        logger.error(
-                            f"Could not copy default file from {source_path}: {e}"
-                        )
+        logger.info("Chatbot agent runtime components initialized successfully.")
 
     async def _append_to_history(self, file_path: Path, data: Dict[str, Any]):
         """Appends a new entry to a JSON Lines history file."""
@@ -146,7 +107,7 @@ class ChatbotAgent:
             [f"{msg.get('role')}: {msg.get('content')}" for msg in recent_history]
         )
 
-        from ..core.config import config_manager
+        from ...core.config import config_manager
 
         chats_per_batch = config_manager.settings.chatbot.chats_per_batch
 

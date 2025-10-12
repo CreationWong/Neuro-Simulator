@@ -10,7 +10,7 @@ import string
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-from ...core.path_manager import path_manager
+from ....core.path_manager import path_manager
 
 logger = logging.getLogger("neuro_agent")
 

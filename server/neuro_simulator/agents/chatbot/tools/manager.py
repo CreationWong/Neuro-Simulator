@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-from neuro_simulator.core.path_manager import path_manager
+from ....core.path_manager import path_manager
 from .base import BaseChatbotTool
 from ..memory.manager import ChatbotMemoryManager
 
@@ -38,7 +38,7 @@ class ChatbotToolManager:
             import pkg_resources
 
             builtin_tools_path_str = pkg_resources.resource_filename(
-                "neuro_simulator", "chatbot/tools"
+                "neuro_simulator", "agents/chatbot/tools"
             )
             builtin_tools_path = Path(builtin_tools_path_str)
         except (ModuleNotFoundError, KeyError):

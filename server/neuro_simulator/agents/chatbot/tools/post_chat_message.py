@@ -4,8 +4,8 @@
 import logging
 from typing import Dict, Any, List
 
-from neuro_simulator.chatbot.tools.base import BaseChatbotTool
-from neuro_simulator.chatbot.memory.manager import ChatbotMemoryManager
+from neuro_simulator.agents.chatbot.tools.base import BaseChatbotTool
+from neuro_simulator.agents.chatbot.memory.manager import ChatbotMemoryManager
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
 

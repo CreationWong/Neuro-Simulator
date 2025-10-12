@@ -1,16 +1,17 @@
-# neuro_simulator/chatbot/tools/add_temp_memory.py
-"""The Add Temp Memory tool for the chatbot agent."""
+# neuro_simulator/agent/tools/add_temp_memory.py
+"""The Add Temp Memory tool for the agent."""
 
 from typing import Any, Dict, List
 
-from neuro_simulator.chatbot.tools.base import BaseChatbotTool
-from neuro_simulator.chatbot.memory.manager import ChatbotMemoryManager
+from neuro_simulator.agents.neuro.tools.base import BaseTool
+from neuro_simulator.agents.neuro.memory.manager import MemoryManager
 
 
-class AddTempMemoryTool(BaseChatbotTool):
-    """Tool to add an entry to the chatbot's temporary memory."""
+class AddTempMemoryTool(BaseTool):
+    """Tool to add an entry to the agent's temporary memory."""
 
-    def __init__(self, memory_manager: ChatbotMemoryManager):
+    def __init__(self, memory_manager: MemoryManager):
+        """Initializes the AddTempMemoryTool."""
         self.memory_manager = memory_manager
 
     @property
@@ -39,6 +40,15 @@ class AddTempMemoryTool(BaseChatbotTool):
         ]
 
     async def execute(self, **kwargs: Any) -> Dict[str, Any]:
+        """
+        Executes the action to add an entry to temporary memory.
+
+        Args:
+            **kwargs: Must contain 'content' and optionally 'role'.
+
+        Returns:
+            A dictionary confirming the action.
+        """
         content = kwargs.get("content")
         if not isinstance(content, str) or not content:
             raise ValueError("The 'content' parameter must be a non-empty string.")

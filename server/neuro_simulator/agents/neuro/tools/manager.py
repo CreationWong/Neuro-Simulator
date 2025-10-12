@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 
 from .base import BaseTool
 from ..memory.manager import MemoryManager
-from ...core.path_manager import path_manager
+from ....core.path_manager import path_manager
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "agent", 1))
 
@@ -41,7 +41,7 @@ class ToolManager:
             import pkg_resources
 
             builtin_tools_path_str = pkg_resources.resource_filename(
-                "neuro_simulator", "neuro/tools"
+                "neuro_simulator", "agents/neuro/tools"
             )
             builtin_tools_path = Path(builtin_tools_path_str)
         except (ModuleNotFoundError, KeyError):
