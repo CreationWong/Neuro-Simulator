@@ -32,7 +32,7 @@
                     <v-checkbox-btn v-model="editableAllocations.neuro_agent" :value="tool.name" hide-details></v-checkbox-btn>
                   </td>
                   <td class="text-center">
-                    <v-checkbox-btn v-model="editableAllocations.memory_agent" :value="tool.name" hide-details></v-checkbox-btn>
+                    <v-checkbox-btn v-model="editableAllocations.memory_manager" :value="tool.name" hide-details></v-checkbox-btn>
                   </td>
                 </tr>
               </tbody>
@@ -64,7 +64,7 @@
           <v-card-text>
             <v-chip-group column>
               <v-chip
-                v-for="toolName in toolsStore.allocations.memory_agent"
+                v-for="toolName in toolsStore.allocations.memory_manager"
                 :key="toolName"
               >
                 {{ toolName }}
@@ -87,12 +87,12 @@ const toolsStore = useToolsStore();
 const connectionStore = useConnectionStore();
 
 // Local state for editing allocations
-const editableAllocations = ref<{ neuro_agent: string[], memory_agent: string[] }>({ neuro_agent: [], memory_agent: [] });
+const editableAllocations = ref<{ neuro_agent: string[], memory_manager: string[] }>({ neuro_agent: [], memory_manager: [] });
 
 // Watch for changes from the store and update the local editable state
 watch(() => toolsStore.allocations, (newAllocations) => {
   // Deep copy to prevent direct mutation of the store's state
-  editableAllocations.value = JSON.parse(JSON.stringify(newAllocations || { neuro_agent: [], memory_agent: [] }));
+  editableAllocations.value = JSON.parse(JSON.stringify(newAllocations || { neuro_agent: [], memory_manager: [] }));
 }, { deep: true, immediate: true });
 
 async function handleSaveAllocations() {
