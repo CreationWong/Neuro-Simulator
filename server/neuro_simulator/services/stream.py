@@ -16,7 +16,6 @@ _WELCOME_VIDEO_PATH_BACKEND = os.path.join(_WORKING_DIR, "assets", "neuro_start.
 _WELCOME_VIDEO_DURATION_SEC_DEFAULT = 10.0
 
 
-@staticmethod
 def _get_video_duration(video_path: str) -> float:
     """Gets the duration of an MP4 video file using mutagen."""
     if not os.path.exists(video_path):
@@ -24,11 +23,14 @@ def _get_video_duration(video_path: str) -> float:
         return _WELCOME_VIDEO_DURATION_SEC_DEFAULT
     try:
         video = MP4(video_path)
-        duration = video.info.length
-        logger.info(
-            f"Successfully read video duration for '{video_path}': {duration:.2f}s."
-        )
-        return duration
+        if video.info:
+            duration = video.info.length
+            logger.info(
+                f"Successfully read video duration for '{video_path}': {duration:.2f}s."
+            )
+            return duration
+        else:
+            raise MP4StreamInfoError("MP4 file has no stream info.")
     except MP4StreamInfoError:
         logger.warning(
             f"Could not parse stream info for '{video_path}'. Using default duration."
@@ -69,6 +71,7 @@ class LiveStreamManager:
 
     async def broadcast_stream_metadata(self):
         """Puts the stream metadata into the event queue for broadcasting."""
+        assert config_manager.settings is not None
         metadata_event = {
             "type": "update_stream_metadata",
             **config_manager.settings.stream.model_dump(),

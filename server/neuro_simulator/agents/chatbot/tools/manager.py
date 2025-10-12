@@ -35,7 +35,7 @@ class ChatbotToolManager:
 
         # Define paths for built-in and user-defined tools
         try:
-            import pkg_resources
+            import pkg_resources  # type: ignore
 
             builtin_tools_path_str = pkg_resources.resource_filename(
                 "neuro_simulator", "agents/chatbot/tools"
@@ -44,6 +44,7 @@ class ChatbotToolManager:
         except (ModuleNotFoundError, KeyError):
             builtin_tools_path = Path(__file__).parent
 
+        assert path_manager is not None
         user_tools_path = path_manager.chatbot_tools_dir
         tool_paths = [builtin_tools_path, user_tools_path]
 
@@ -89,6 +90,7 @@ class ChatbotToolManager:
 
     def _load_allocations(self):
         """Loads tool allocations from JSON files, creating defaults if they don't exist."""
+        assert path_manager is not None
         default_allocations = {
             "chatbot": ["post_chat_message"],
             "chatbot_memory_manager": [

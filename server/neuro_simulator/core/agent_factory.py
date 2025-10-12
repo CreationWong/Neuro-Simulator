@@ -1,5 +1,6 @@
 # neuro_simulator/core/agent_factory.py
 import logging
+from typing import Optional
 
 from .agent_interface import BaseAgent
 from .config import config_manager, AppSettings
@@ -8,7 +9,7 @@ from ..agents.neuro.core import Neuro
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
 
 # A cache for the agent instance to avoid re-initialization
-_agent_instance: BaseAgent = None
+_agent_instance: Optional[BaseAgent] = None
 
 
 def _reset_agent_on_config_update(new_settings: AppSettings):

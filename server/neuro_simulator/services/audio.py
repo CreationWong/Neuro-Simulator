@@ -5,7 +5,7 @@ import html
 import logging
 import re
 
-import azure.cognitiveservices.speech as speechsdk
+import azure.cognitiveservices.speech as speechsdk  # type: ignore
 
 from ..core.config import config_manager
 
@@ -43,6 +43,7 @@ async def synthesize_audio_segment(
     Synthesizes audio using a configured TTS provider.
     Returns a Base64 encoded audio string and the audio duration in seconds.
     """
+    assert config_manager.settings is not None
     # Clean emojis from the text before synthesis
     text = _remove_emoji(text)
     if not text:

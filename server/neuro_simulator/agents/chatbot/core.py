@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 from datetime import datetime
 
+from ...core.config import config_manager
+from ...core.llm_manager import llm_manager
 from ...core.path_manager import path_manager
-from ..llm import LLMClient
 from .memory.manager import ChatbotMemoryManager
 from .tools.manager import ChatbotToolManager
 from .nickname_gen.generator import NicknameGenerator
@@ -30,13 +31,20 @@ class Chatbot:
             raise RuntimeError(
                 "PathManager must be initialized before the Chatbot agent."
             )
+        if not config_manager.settings:
+            raise RuntimeError("ConfigManager must be initialized before the Chatbot agent.")
+
+        settings = config_manager.settings
+        self.chatbot_llm = llm_manager.get_client(
+            settings.chatbot.chatbot_llm_provider_id
+        )
+        self.memory_llm = llm_manager.get_client(
+            settings.chatbot.chatbot_memory_llm_provider_id
+        )
 
         self.memory_manager = ChatbotMemoryManager(path_manager.chatbot_memories_dir)
         self.tool_manager = ChatbotToolManager(self.memory_manager)
-        self.nickname_generator = NicknameGenerator()
-
-        self.chatbot_llm = LLMClient(agent_name="chatbot")
-        self.memory_llm = LLMClient(agent_name="chatbot")
+        self.nickname_generator = NicknameGenerator(llm_client=self.chatbot_llm)
 
         self._initialized = False
         self.turn_counter = 0
@@ -96,6 +104,7 @@ class Chatbot:
         self, neuro_speech: str, recent_history: List[Dict[str, str]]
     ) -> str:
         """Builds the prompt for the Chatbot (Actor) LLM."""
+        assert path_manager is not None
         with open(path_manager.chatbot_prompt_path, "r", encoding="utf-8") as f:
             prompt_template = f.read()
 
@@ -108,6 +117,8 @@ class Chatbot:
         )
 
         from ...core.config import config_manager
+
+        assert config_manager.settings is not None
 
         chats_per_batch = config_manager.settings.chatbot.chats_per_batch
 
@@ -125,6 +136,7 @@ class Chatbot:
         self, conversation_history: List[Dict[str, str]]
     ) -> str:
         """Builds the prompt for the Memory (Thinker) LLM."""
+        assert path_manager is not None
         with open(path_manager.chatbot_memory_agent_prompt_path, 'r', encoding='utf-8') as f:
             prompt_template = f.read()
         tool_descriptions = self._format_tool_schemas_for_prompt('chatbot_memory_manager')
@@ -157,6 +169,7 @@ class Chatbot:
     async def _execute_tool_calls(
         self, tool_calls: List[Dict[str, Any]], agent_name: str
     ) -> List[Dict[str, str]]:
+        assert path_manager is not None
         generated_messages = []
         for tool_call in tool_calls:
             tool_name = tool_call.get("name")
@@ -184,6 +197,11 @@ class Chatbot:
         self, neuro_speech: str, recent_history: List[Dict[str, str]]
     ) -> List[Dict[str, str]]:
         """The main actor loop to generate chat messages."""
+        if not self.chatbot_llm:
+            logger.warning("Chatbot LLM is not configured. Skipping message generation.")
+            return []
+
+        assert path_manager is not None
         for entry in recent_history:
             await self._append_to_history(path_manager.chatbot_history_path, entry)
 
@@ -206,6 +224,13 @@ class Chatbot:
 
     async def _reflect_and_consolidate(self):
         """The main thinker loop to consolidate memories."""
+        if not self.memory_llm:
+            logger.warning(
+                "Chatbot Memory LLM is not configured. Skipping memory consolidation."
+            )
+            return
+
+        assert path_manager is not None
         logger.info("Chatbot is reflecting on recent conversations...")
         self.turn_counter = 0
         history = await self._read_history(path_manager.chatbot_history_path, limit=50)

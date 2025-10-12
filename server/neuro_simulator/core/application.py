@@ -8,6 +8,7 @@ import random
 import re
 import time
 import os
+from typing import Optional, Any, Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -56,7 +57,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config_manager.settings.server.client_origins
+    allow_origins=config_manager.settings.server.client_origins  # type: ignore
     + ["http://localhost:8080", "https://dashboard.live.jiahui.cafe"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -146,7 +147,7 @@ async def redirect_dashboard_to_trailing_slash():
 
 # --- Background Task Definitions ---
 
-chatbot: Chatbot = None
+chatbot: Optional[Chatbot] = None
 
 
 async def broadcast_events_task():
@@ -207,6 +208,7 @@ async def generate_audience_chat_task():
     """Periodically triggers the audience chat generation task."""
     while True:
         try:
+            assert config_manager.settings is not None
             # Wait until the live phase starts
             # await app_state.live_phase_started_event.wait()
 
@@ -223,6 +225,7 @@ async def generate_audience_chat_task():
 
 async def neuro_response_cycle():
     """The core response loop for the agent."""
+    assert config_manager.settings is not None
     await app_state.live_phase_started_event.wait()
     agent = await create_agent()
     is_first_response = True
@@ -516,6 +519,7 @@ def shutdown_event():
 
 @app.websocket("/ws/stream")
 async def websocket_stream_endpoint(websocket: WebSocket):
+    assert config_manager.settings is not None
     await connection_manager.connect(websocket)
     try:
         await connection_manager.send_personal_message(
@@ -644,12 +648,13 @@ async def websocket_admin_endpoint(websocket: WebSocket):
 
 async def handle_admin_ws_message(websocket: WebSocket, data: dict):
     """Handles incoming messages from the admin WebSocket."""
+    assert config_manager.settings is not None
     action = data.get("action")
     payload = data.get("payload", {})
     request_id = data.get("request_id")
 
     agent = await create_agent()
-    response = {"type": "response", "request_id": request_id, "payload": {}}
+    response: Dict[str, Any] = {"type": "response", "request_id": request_id, "payload": {}}
 
     try:
         # Core Memory Actions
@@ -787,19 +792,43 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
 
         # Stream Control Actions
         elif action == "start_stream":
-            # Validate that required providers are set before starting
-            agent_cfg = config_manager.settings.neuro
-            chatbot_cfg = config_manager.settings.chatbot
-            if not agent_cfg.llm_provider_id:
+            # --- Pre-flight validation checks ---
+            settings = config_manager.settings
+
+            # 1. Check if provider lists are defined
+            if not settings.llm_providers:
+                raise ValueError("No LLM Providers have been defined. Please add one in the settings.")
+            if not settings.tts_providers:
+                raise ValueError("No TTS Providers have been defined. Please add one in the settings.")
+
+            # 2. Create sets of defined provider IDs for efficient lookup
+            defined_llm_ids = {p.provider_id for p in settings.llm_providers}
+            defined_tts_ids = {p.provider_id for p in settings.tts_providers}
+
+            # 3. Check all required LLM provider assignments
+            required_llm_fields = {
+                "Neuro Actor": settings.neuro.neuro_llm_provider_id,
+                "Neuro Memory": settings.neuro.neuro_memory_llm_provider_id,
+                "Chatbot Actor": settings.chatbot.chatbot_llm_provider_id,
+                "Chatbot Memory": settings.chatbot.chatbot_memory_llm_provider_id,
+            }
+
+            for name, provider_id in required_llm_fields.items():
+                if not provider_id:
+                    raise ValueError(f"{name} does not have an LLM Provider configured.")
+                if provider_id not in defined_llm_ids:
+                    raise ValueError(
+                        f"{name} is configured with provider ID '{provider_id}', but no such provider is defined in the LLM Providers list."
+                    )
+            
+            # 4. Check TTS assignment
+            tts_provider_id = settings.neuro.tts_provider_id
+            if not tts_provider_id:
+                raise ValueError("Agent (Neuro) does not have a TTS Provider configured.")
+            if tts_provider_id not in defined_tts_ids:
                 raise ValueError(
-                    "Agent (Neuro) does not have an LLM Provider configured."
+                    f"Agent (Neuro) is configured with TTS provider ID '{tts_provider_id}', but no such provider is defined in the TTS Providers list."
                 )
-            if not agent_cfg.tts_provider_id:
-                raise ValueError(
-                    "Agent (Neuro) does not have a TTS Provider configured."
-                )
-            if not chatbot_cfg.llm_provider_id:
-                raise ValueError("Chatbot does not have an LLM Provider configured.")
 
             logger.info(
                 "Start stream action received. Resetting agent memory before starting processes..."

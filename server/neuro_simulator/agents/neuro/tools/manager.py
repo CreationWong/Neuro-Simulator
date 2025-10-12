@@ -34,11 +34,12 @@ class ToolManager:
 
     def _load_and_register_tools(self):
         """Dynamically scans tool directories, imports modules, and registers tool instances."""
+        assert path_manager is not None
         self.tools = {}
 
         # Define paths for built-in and user-defined tools
         try:
-            import pkg_resources
+            import pkg_resources  # type: ignore
 
             builtin_tools_path_str = pkg_resources.resource_filename(
                 "neuro_simulator", "agents/neuro/tools"
@@ -88,6 +89,7 @@ class ToolManager:
 
     def _load_allocations(self):
         """Loads tool allocations from JSON files, creating defaults if they don't exist."""
+        assert path_manager is not None
         default_allocations = {
             "neuro_agent": [
                 "speak",
@@ -153,6 +155,7 @@ class ToolManager:
         return self.agent_tool_allocations
 
     def set_allocations(self, allocations: Dict[str, List[str]]):
+        assert path_manager is not None
         self.agent_tool_allocations = allocations
         # Persist the changes to the JSON files
         with open(path_manager.neuro_tools_path, "w", encoding="utf-8") as f:

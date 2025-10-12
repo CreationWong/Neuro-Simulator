@@ -102,5 +102,5 @@ def configure_server_logging():
     neuro_agent_logger.propagate = False  # Prevent double-logging
 
     root_logger.info(
-        "Server logging configured with unified formatting for queue and console."
+        "Server logging configured for queue and console."
     )

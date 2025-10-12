@@ -41,19 +41,75 @@ def main():
     # --- 3. First-Run Environment Initialization ---
     # This block ensures that a new user has all the necessary default files.
     try:
+        # Define the default configuration data, mirroring the old config.yaml
+        DEFAULT_CONFIG_DATA = {
+            "llm_providers": [],
+            "tts_providers": [],
+            "neuro": {
+                "neuro_llm_provider_id": None,
+                "neuro_memory_llm_provider_id": None,
+                "tts_provider_id": None,
+                "input_chat_sample_size": 10,
+                "post_speech_cooldown_sec": 1.0,
+                "initial_greeting": "The stream has just started. Greet your audience and say hello!",
+                "neuro_input_queue_max_size": 200,
+            },
+            "chatbot": {
+                "chatbot_llm_provider_id": None,
+                "chatbot_memory_llm_provider_id": None,
+                "generation_interval_sec": 3,
+                "chats_per_batch": 2,
+                "nickname_generation": {
+                    "enable_dynamic_pool": True,
+                    "dynamic_pool_size": 50,
+                },
+            },
+            "stream": {
+                "streamer_nickname": "vedal987",
+                "stream_title": "neuro-sama is here for u all",
+                "stream_category": "谈天说地",
+                "stream_tags": [
+                    "Vtuber",
+                    "AI",
+                    "Cute",
+                    "English",
+                    "Gremlin",
+                    "catgirl",
+                ],
+            },
+            "server": {
+                "host": "127.0.0.1",
+                "port": 8000,
+                "panel_password": "your-secret-api-token-here",
+                "client_origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+                "audience_chat_buffer_max_size": 1000,
+                "initial_chat_backlog_limit": 50,
+            },
+        }
+
+        main_config_path = path_manager.path_manager.working_dir / "config.yaml"
+
+        # Generate config.yaml if it doesn't exist
+        if not main_config_path.exists():
+            logging.info(f"Config file not found. Generating default config at {main_config_path}")
+            import yaml
+            from neuro_simulator.core.config import AppSettings
+
+            validated_settings = AppSettings.model_validate(DEFAULT_CONFIG_DATA)
+            config_to_write = validated_settings.model_dump(exclude_none=True)
+            
+            with open(main_config_path, "w", encoding="utf-8") as f:
+                yaml.dump(config_to_write, f, sort_keys=False, allow_unicode=True)
+            logging.info("Successfully generated default config file.")
+
+        # --- Copy other asset and prompt files ---
         package_source_path = Path(__file__).parent
 
-        # Helper to copy files if they don't exist
         def copy_if_not_exists(src: Path, dest: Path):
             if not dest.exists():
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(src, dest)
                 logging.info(f"Copied default file to {dest}")
-
-        # Copy main config.yaml if it doesn't exist
-        copy_if_not_exists(
-            package_source_path / "config.yaml", work_dir / "config.yaml"
-        )
 
         # --- Copy Neuro Agent Files ---
         neuro_source_path = package_source_path / "agents" / "neuro"

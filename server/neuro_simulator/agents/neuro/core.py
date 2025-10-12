@@ -13,8 +13,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ...core.agent_interface import BaseAgent
+from ...core.config import config_manager
+from ...core.llm_manager import llm_manager
 from ...core.path_manager import path_manager
-from ..llm import LLMClient
 from .memory.manager import MemoryManager
 from .tools.manager import ToolManager
 
@@ -31,17 +32,27 @@ class Neuro(BaseAgent):
         if not path_manager:
             raise RuntimeError("PathManager must be initialized before the Neuro agent.")
 
-        self.memory_manager = MemoryManager()
-        self.tool_manager = ToolManager(self.memory_manager)
+        if not config_manager.settings:
+            raise RuntimeError("ConfigManager must be initialized before the Neuro agent.")
 
-        self.neuro_llm = LLMClient(agent_name="neuro")
-        self.memory_llm = LLMClient(agent_name="neuro")
+        settings = config_manager.settings
+        self.neuro_llm = llm_manager.get_client(settings.neuro.neuro_llm_provider_id)
+        self.memory_llm = llm_manager.get_client(
+            settings.neuro.neuro_memory_llm_provider_id
+        )
+
+        self.memory_manager = MemoryManager()
+        self._tool_manager = ToolManager(self.memory_manager)
 
         self._initialized = False
         self.turn_counter = 0
         self.reflection_threshold = 3
 
-        logger.info("Neuro agent instance created with dual-LLM architecture.")
+        logger.info("Hello everyone, Neuro-sama here.")
+
+    @property
+    def tool_manager(self) -> ToolManager:
+        return self._tool_manager
 
     async def initialize(self):
         """Initialize the agent, loading any persistent memory."""
@@ -53,6 +64,7 @@ class Neuro(BaseAgent):
 
     async def reset_memory(self):
         """Reset all agent memory types and clear history logs."""
+        assert path_manager is not None
         await self.memory_manager.reset_temp_memory()
         # Clear history files by overwriting them
         open(path_manager.neuro_history_path, "w").close()
@@ -61,6 +73,7 @@ class Neuro(BaseAgent):
 
     async def get_message_history(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Reads the last N lines from the Neuro agent's history log."""
+        assert path_manager is not None
         return await self._read_history_log(path_manager.neuro_history_path, limit)
 
     async def _append_to_history_log(self, file_path: Path, data: Dict[str, Any]):
@@ -70,7 +83,9 @@ class Neuro(BaseAgent):
             f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
     async def _read_history_log(
-        self, file_path: Path, limit: int
+        self,
+        file_path: Path,
+        limit: int,
     ) -> List[Dict[str, Any]]:
         """Reads the last N lines from a JSON Lines history file."""
         if not file_path.exists():
@@ -103,6 +118,7 @@ class Neuro(BaseAgent):
 
     async def build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
         """Builds the prompt for the Neuro (Actor) LLM."""
+        assert path_manager is not None
         prompt_template = ""
         if path_manager.neuro_prompt_path.exists():
             with open(path_manager.neuro_prompt_path, "r", encoding="utf-8") as f:
@@ -163,9 +179,11 @@ class Neuro(BaseAgent):
         )
 
     async def _build_memory_prompt(
-        self, conversation_history: List[Dict[str, str]]
+        self,
+        conversation_history: List[Dict[str, str]],
     ) -> str:
         """Builds the prompt for the Memory (Thinker) LLM."""
+        assert path_manager is not None
         prompt_template = ""
         if path_manager.memory_agent_prompt_path.exists():
             with open(
@@ -207,7 +225,8 @@ class Neuro(BaseAgent):
             return []
 
     async def _execute_tool_calls(
-        self, tool_calls: List[Dict[str, Any]]
+        self,
+        tool_calls: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         execution_results = []
         final_response = ""
@@ -234,8 +253,13 @@ class Neuro(BaseAgent):
     async def process_and_respond(
         self, messages: List[Dict[str, str]]
     ) -> Dict[str, Any]:
+        assert path_manager is not None
         await self.initialize()
         logger.info(f"Processing {len(messages)} messages in Actor flow.")
+
+        if not self.neuro_llm:
+            logger.warning("Neuro's Actor LLM is not configured. Skipping response.")
+            return {"tool_executions": [], "final_response": ""}
 
         for msg in messages:
             await self._append_to_history_log(
@@ -268,7 +292,10 @@ class Neuro(BaseAgent):
         return await self.memory_manager.get_core_memory_block(block_id)
 
     async def create_memory_block(
-        self, title: str, description: str, content: List[str]
+        self,
+        title: str,
+        description: str,
+        content: List[str],
     ) -> Dict[str, str]:
         block_id = await self.memory_manager.create_core_memory_block(
             title, description, content

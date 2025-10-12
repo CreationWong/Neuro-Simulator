@@ -17,6 +17,7 @@ router = APIRouter(tags=["System & Utilities"])
 
 async def get_api_token(request: Request):
     """FastAPI dependency to check for the API token in headers."""
+    assert config_manager.settings is not None
     password = config_manager.settings.server.panel_password
     if not password:
         return True

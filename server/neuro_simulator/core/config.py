@@ -9,22 +9,22 @@ from pydantic import BaseModel, Field
 class LLMProviderSettings(BaseModel):
     """Settings for a single LLM provider."""
 
-    provider_id: str = Field(title="Provider ID")
-    display_name: str = Field(title="Display Name")
-    provider_type: Literal["openai", "gemini"] = Field(title="Provider Type")
-    api_key: Optional[str] = Field(None, title="API Key")
-    base_url: Optional[str] = Field(None, title="Base URL")
-    model_name: str = Field(title="Model Name")
+    provider_id: str = Field(..., title="Provider ID")
+    display_name: str = Field(..., title="Display Name")
+    provider_type: Literal["openai", "gemini"] = Field(..., title="Provider Type")
+    api_key: Optional[str] = Field(default=None, title="API Key")
+    base_url: Optional[str] = Field(default=None, title="Base URL")
+    model_name: str = Field(..., title="Model Name")
 
 
 class TTSProviderSettings(BaseModel):
     """Settings for a single Text-to-Speech (TTS) provider."""
 
-    provider_id: str = Field(title="Provider ID")
-    display_name: str = Field(title="Display Name")
-    provider_type: Literal["azure"] = Field(title="Provider Type")
-    api_key: Optional[str] = Field(None, title="API Key")
-    region: Optional[str] = Field(None, title="Region")
+    provider_id: str = Field(..., title="Provider ID")
+    display_name: str = Field(..., title="Display Name")
+    provider_type: Literal["azure"] = Field(..., title="Provider Type")
+    api_key: Optional[str] = Field(default=None, title="API Key")
+    region: Optional[str] = Field(default=None, title="Region")
 
 
 # --- Core Application Settings Models ---
@@ -33,59 +33,59 @@ class TTSProviderSettings(BaseModel):
 class NeuroSettings(BaseModel):
     """Settings for the main agent (Neuro)."""
 
-    llm_provider_id: Optional[str] = Field(None, title="LLM Provider ID")
-    tts_provider_id: Optional[str] = Field(None, title="TTS Provider ID")
-    input_chat_sample_size: int = Field(title="Input Chat Sample Size")
-    post_speech_cooldown_sec: float = Field(title="Post-Speech Cooldown (sec)")
-    initial_greeting: str = Field(title="Initial Greeting", format="text-area")
-    neuro_input_queue_max_size: int = Field(title="Neuro Input Queue Max Size")
+    neuro_llm_provider_id: Optional[str] = Field(default=None, title="Neuro LLM Provider ID")
+    neuro_memory_llm_provider_id: Optional[str] = Field(default=None, title="Neuro Memory LLM Provider ID")
+    tts_provider_id: Optional[str] = Field(default=None, title="TTS Provider ID")
+    input_chat_sample_size: int = Field(..., title="Input Chat Sample Size")
+    post_speech_cooldown_sec: float = Field(..., title="Post-Speech Cooldown (sec)")
+    initial_greeting: str = Field(..., title="Initial Greeting", format="text-area")  # type: ignore[call-overload]
+    neuro_input_queue_max_size: int = Field(..., title="Neuro Input Queue Max Size")
 
 
 class NicknameGenerationSettings(BaseModel):
-    enable_dynamic_pool: bool = Field(title="Enable Dynamic Pool")
-    dynamic_pool_size: int = Field(title="Dynamic Pool Size")
+    enable_dynamic_pool: bool = Field(..., title="Enable Dynamic Pool")
+    dynamic_pool_size: int = Field(..., title="Dynamic Pool Size")
 
 
 class ChatbotSettings(BaseModel):
     """Settings for the audience chatbot."""
 
-    llm_provider_id: Optional[str] = Field(None, title="LLM Provider ID")
-    generation_interval_sec: int = Field(title="Generation Interval (sec)")
-    chats_per_batch: int = Field(title="Chats per Batch")
+    chatbot_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot LLM Provider ID")
+    chatbot_memory_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot Memory LLM Provider ID")
+    generation_interval_sec: int = Field(..., title="Generation Interval (sec)")
+    chats_per_batch: int = Field(..., title="Chats per Batch")
     nickname_generation: NicknameGenerationSettings
 
 
 class StreamSettings(BaseModel):
     """Settings related to the stream's appearance."""
 
-    streamer_nickname: str = Field(title="Streamer Nickname")
-    stream_title: str = Field(title="Stream Title")
-    stream_category: str = Field(title="Stream Category")
-    stream_tags: List[str] = Field(title="Stream Tags")
+    streamer_nickname: str = Field(..., title="Streamer Nickname")
+    stream_title: str = Field(..., title="Stream Title")
+    stream_category: str = Field(..., title="Stream Category")
+    stream_tags: List[str] = Field(..., title="Stream Tags")
 
 
 class ServerSettings(BaseModel):
     """Settings for the web server and performance."""
 
-    host: str = Field(title="Host")
-    port: int = Field(title="Port")
-    panel_password: Optional[str] = Field(
-        None, title="Panel Password", format="password"
-    )
-    client_origins: List[str] = Field(title="Client Origins")
-    audience_chat_buffer_max_size: int = Field(title="Audience Chat Buffer Max Size")
-    initial_chat_backlog_limit: int = Field(title="Initial Chat Backlog Limit")
+    host: str = Field(..., title="Host")
+    port: int = Field(..., title="Port")
+    panel_password: Optional[str] = Field(default=None, title="Panel Password", format="password")  # type: ignore[call-overload]
+    client_origins: List[str] = Field(..., title="Client Origins")
+    audience_chat_buffer_max_size: int = Field(..., title="Audience Chat Buffer Max Size")
+    initial_chat_backlog_limit: int = Field(..., title="Initial Chat Backlog Limit")
 
 
 class AppSettings(BaseModel):
     """Root model for all application settings."""
 
-    llm_providers: List[LLMProviderSettings] = Field(title="LLM Providers")
-    tts_providers: List[TTSProviderSettings] = Field(title="TTS Providers")
-    neuro: NeuroSettings = Field(title="Neuro")
-    chatbot: ChatbotSettings = Field(title="Chatbot")
-    stream: StreamSettings = Field(title="Stream")
-    server: ServerSettings = Field(title="Server")
+    llm_providers: List[LLMProviderSettings] = Field(..., title="LLM Providers")
+    tts_providers: List[TTSProviderSettings] = Field(..., title="TTS Providers")
+    neuro: NeuroSettings = Field(..., title="Neuro")
+    chatbot: ChatbotSettings = Field(..., title="Chatbot")
+    stream: StreamSettings = Field(..., title="Stream")
+    server: ServerSettings = Field(..., title="Server")
 
 
 # --- Configuration Manager ---

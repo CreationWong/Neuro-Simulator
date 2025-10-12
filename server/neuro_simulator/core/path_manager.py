@@ -3,6 +3,7 @@
 
 import os
 from pathlib import Path
+from typing import Optional
 
 
 class PathManager:
@@ -79,7 +80,7 @@ class PathManager:
 
 # A global instance that can be imported and used by other modules.
 # It will be initialized on application startup.
-path_manager: PathManager = None
+path_manager: Optional[PathManager] = None
 
 
 def initialize_path_manager(working_dir: str):

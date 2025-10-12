@@ -6,6 +6,12 @@ from typing import List, Dict, Any, Optional
 class BaseAgent(ABC):
     """Abstract base class for all agents, defining a common interface for the server."""
 
+    @property
+    @abstractmethod
+    def tool_manager(self) -> Any:  # Using Any to avoid circular import issues
+        """The agent's tool manager instance."""
+        pass
+
     @abstractmethod
     async def initialize(self):
         """Initialize the agent."""
@@ -68,6 +74,16 @@ class BaseAgent(ABC):
         """Update the agent's initialization memory."""
         pass
 
+    @abstractmethod
+    async def update_init_memory_item(self, key: str, value: Any):
+        """Update a single item in the agent's init memory."""
+        pass
+
+    @abstractmethod
+    async def delete_init_memory_key(self, key: str):
+        """Delete a key from the agent's init memory."""
+        pass
+
     # Temp Memory Management
     @abstractmethod
     async def get_temp_memory(self) -> List[Dict[str, Any]]:
@@ -77,6 +93,11 @@ class BaseAgent(ABC):
     @abstractmethod
     async def add_temp_memory(self, content: str, role: str):
         """Add an item to the agent's temporary memory."""
+        pass
+
+    @abstractmethod
+    async def delete_temp_memory_item(self, item_id: str):
+        """Deletes an item from temp memory by its ID."""
         pass
 
     @abstractmethod
@@ -99,4 +120,10 @@ class BaseAgent(ABC):
     @abstractmethod
     async def get_message_history(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get the recent message history."""
+        pass
+
+    # Prompt Building (Internal Helper, but used by admin panel)
+    @abstractmethod
+    async def build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
+        """Builds the full prompt for the Neuro agent for inspection."""
         pass

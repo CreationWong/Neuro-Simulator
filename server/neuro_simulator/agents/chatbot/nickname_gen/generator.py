@@ -6,7 +6,7 @@ Implements a dual-pool system (base and dynamic) with multiple generation strate
 
 import logging
 import random
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Optional
 
 from ...llm import LLMClient
 from ....core.config import config_manager
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
 class NicknameGenerator:
     """Generates diverse nicknames using a multi-strategy, dual-pool system."""
 
-    def __init__(self):
+    def __init__(self, llm_client: Optional[LLMClient] = None):
         if not path_manager:
             raise RuntimeError(
                 "PathManager must be initialized before NicknameGenerator."
@@ -31,10 +31,11 @@ class NicknameGenerator:
         self.dynamic_adjectives: List[str] = []
         self.dynamic_nouns: List[str] = []
 
-        self.llm_client = LLMClient(agent_name="chatbot")
+        self.llm_client = llm_client
 
     def _load_word_pool(self, filename: str) -> List[str]:
         """Loads a word pool from the nickname_gen/data directory."""
+        assert path_manager is not None
         file_path = path_manager.chatbot_nickname_data_dir / filename
         if not file_path.exists():
             logger.warning(
@@ -63,6 +64,12 @@ class NicknameGenerator:
 
     async def _populate_dynamic_pools(self):
         """Uses an LLM to generate and populate the dynamic word pools."""
+        if not self.llm_client:
+            logger.warning(
+                "LLM client not configured for NicknameGenerator. Skipping dynamic pool generation."
+            )
+            return
+
         logger.info("Attempting to populate dynamic nickname pools using LLM...")
         pool_size = (
             config_manager.settings.chatbot.nickname_generation.dynamic_pool_size
@@ -151,7 +158,7 @@ class NicknameGenerator:
             # Redistribute weight
             if strategies:
                 total_weight = sum(strategies.values())
-                strategies = {k: v / total_weight * 100 for k, v in strategies.items()}
+                strategies = {k: int(v / total_weight * 100) for k, v in strategies.items()}
 
         if not any(self._get_combined_pools()):
             strategies = {self._generate_random_numeric: 100}
