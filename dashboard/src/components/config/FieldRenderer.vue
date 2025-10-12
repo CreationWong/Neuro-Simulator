@@ -205,10 +205,10 @@ const isProviderId = computed(() => {
 
 // --- Provider ID Dropdown Logic ---
 const providerItems = computed(() => {
-  if (props.propKey === 'llm_provider_id') {
+  if (props.propKey.includes('llm')) {
     return configStore.config.llm_providers || [];
   }
-  if (props.propKey === 'tts_provider_id') {
+  if (props.propKey.includes('tts')) {
     return configStore.config.tts_providers || [];
   }
   return [];
