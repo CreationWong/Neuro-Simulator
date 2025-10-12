@@ -38,21 +38,27 @@ class ChatbotAgent:
         
         self.chatbot_llm = ChatbotLLMClient()
         self.memory_llm = ChatbotLLMClient()
+
+        self._setup_working_directory()
         
         self._initialized = False
         self.turn_counter = 0
         self.reflection_threshold = 5 # Consolidate memory every 5 turns
 
     async def initialize(self):
-        """Initialize the agent, copying default files and loading components."""
+        """Initializes components that are safe to run on startup."""
         if not self._initialized:
-            logger.info("Initializing Chatbot Agent...")
-            self._setup_working_directory()
+            logger.info("Initializing Chatbot Agent (startup-safe components)...")
             self.tool_manager.load_tools()
             await self.memory_manager.initialize()
-            await self.nickname_generator.initialize()
             self._initialized = True
-            logger.info("Chatbot Agent initialized successfully.")
+            logger.info("Chatbot Agent startup components initialized successfully.")
+
+    async def initialize_runtime_components(self):
+        """Initializes components that require a live configuration, like the LLM."""
+        logger.info("Initializing Chatbot Agent (runtime components)...")
+        await self.nickname_generator.initialize()
+        logger.info("Chatbot Agent runtime components initialized successfully.")
 
     def _setup_working_directory(self):
         """Ensures the chatbot's working directory is populated with default files."""
@@ -83,27 +89,6 @@ class ChatbotAgent:
                         logger.info(f"Copied default file to {dest_path}")
                     except Exception as e:
                         logger.error(f"Could not copy default file from {source_path}: {e}")
-        
-        self._copy_builtin_tools(package_source_dir)
-
-    def _copy_builtin_tools(self, package_source_dir: Path):
-        """Copies the packaged built-in tools to the working directory."""
-        source_dir = package_source_dir / "chatbot" / "tools"
-        dest_dir = path_manager.chatbot_builtin_tools_dir
-
-        if not source_dir.exists():
-            logger.warning(f"Default chatbot tools source directory not found at {source_dir}")
-            return
-
-        dest_dir.mkdir(parents=True, exist_ok=True)
-
-        for item in os.listdir(source_dir):
-            source_item = source_dir / item
-            if source_item.is_file() and source_item.name.endswith('.py') and not item.startswith(('__', 'base', 'manager')):
-                dest_item = dest_dir / item
-                if not dest_item.exists():
-                    shutil.copy(source_item, dest_item)
-                    logger.info(f"Copied default chatbot tool to {dest_item}")
 
     async def _append_to_history(self, file_path: Path, data: Dict[str, Any]):
         """Appends a new entry to a JSON Lines history file."""

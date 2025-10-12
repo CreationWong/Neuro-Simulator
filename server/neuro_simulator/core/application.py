@@ -378,7 +378,15 @@ async def startup_event():
     # 2. Initialize queues now that config is loaded
     initialize_queues()
 
-    # 3. Chatbot Agent will be initialized on stream start.
+    # 3. Initialize Chatbot Agent on startup
+    global chatbot
+    try:
+        logger.info("Initializing ChatbotAgent on startup...")
+        chatbot = ChatbotAgent()
+        await chatbot.initialize()
+        logger.info("Successfully initialized ChatbotAgent.")
+    except Exception as e:
+        logger.critical(f"ChatbotAgent initialization failed on startup: {e}", exc_info=True)
 
     # 4. Register callbacks
     async def metadata_callback(settings: AppSettings):
@@ -616,15 +624,10 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             if not chatbot_cfg.llm_provider_id:
                 raise ValueError("Chatbot does not have an LLM Provider configured.")
 
-            # Initialize chatbot agent on first stream start if not already initialized
-            global chatbot
-            if chatbot is None:
-                logger.info("Initializing ChatbotAgent for the first time...")
-                chatbot = ChatbotAgent()
-                await chatbot.initialize()
-
             logger.info("Start stream action received. Resetting agent memory before starting processes...")
             await agent.reset_memory()
+            if chatbot:
+                await chatbot.initialize_runtime_components()
             if not process_manager.is_running:
                 process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream started"}

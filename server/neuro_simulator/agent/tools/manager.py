@@ -29,41 +29,34 @@ class ToolManager:
         self.tools: Dict[str, BaseTool] = {}
         self.agent_tool_allocations: Dict[str, List[str]] = {}
 
-        self._copy_builtin_tools()
         self.reload_tools()  # Initial load
         self._load_allocations()
 
-    def _copy_builtin_tools(self):
-        """Copies the packaged built-in tools to the working directory, overwriting existing ones."""
+    def _load_and_register_tools(self):
+        """Dynamically scans tool directories, imports modules, and registers tool instances."""
+        self.tools = {}
+
+        # Define paths for built-in and user-defined tools
         try:
             import pkg_resources
-            source_dir_str = pkg_resources.resource_filename('neuro_simulator', 'agent/tools')
-            source_dir = Path(source_dir_str)
+            builtin_tools_path_str = pkg_resources.resource_filename('neuro_simulator', 'agent/tools')
+            builtin_tools_path = Path(builtin_tools_path_str)
         except (ModuleNotFoundError, KeyError):
-            source_dir = Path(__file__).parent
+            builtin_tools_path = Path(__file__).parent
 
-        dest_dir = path_manager.builtin_tools_dir
-        if not dest_dir.exists():
-            os.makedirs(dest_dir)
+        user_tools_path = path_manager.user_tools_dir
+        tool_paths = [builtin_tools_path, user_tools_path]
 
-        for item in os.listdir(source_dir):
-            source_item = source_dir / item
-            if source_item.is_file() and source_item.name.endswith('.py') and not source_item.name.startswith(('__', 'manager')):
-                shutil.copy(source_item, dest_dir / item)
-        logger.info(f"Built-in tools copied to {dest_dir}")
-
-    def _load_and_register_tools(self):
-        """Dynamically scans the user tools directory, imports modules, and registers tool instances."""
-        self.tools = {}
-        tools_dir = path_manager.user_tools_dir
-        
-        for root, _, files in os.walk(tools_dir):
-            for filename in files:
-                if filename.endswith('.py') and not filename.startswith('__'):
-                    module_path = Path(root) / filename
-                    # Create a module spec from the file path
+        for tools_dir in tool_paths:
+            if not tools_dir.exists():
+                continue
+            
+            logger.info(f"Scanning for tools in: {tools_dir}")
+            for filename in os.listdir(tools_dir):
+                if filename.endswith('.py') and not filename.startswith(('__', 'base', 'manager')):
+                    module_path = tools_dir / filename
                     spec = importlib.util.spec_from_file_location(module_path.stem, module_path)
-                    if spec:
+                    if spec and spec.loader:
                         try:
                             module = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(module)
@@ -71,7 +64,7 @@ class ToolManager:
                                 if issubclass(cls, BaseTool) and cls is not BaseTool:
                                     tool_instance = cls(memory_manager=self.memory_manager)
                                     if tool_instance.name in self.tools:
-                                        logger.warning(f"Duplicate tool name '{tool_instance.name}' found. Overwriting.")
+                                        logger.warning(f"Duplicate tool name '{tool_instance.name}' found. Overwriting with version from {module_path}.")
                                     self.tools[tool_instance.name] = tool_instance
                                     logger.info(f"Successfully loaded and registered tool: {tool_instance.name}")
                         except Exception as e:

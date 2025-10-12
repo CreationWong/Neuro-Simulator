@@ -18,7 +18,6 @@ class PathManager:
         self.memory_agent_dir = self.agents_dir / "memory_manager"
         self.shared_memories_dir = self.agents_dir / "memories"
         self.user_tools_dir = self.agents_dir / "tools"
-        self.builtin_tools_dir = self.user_tools_dir / "builtin_tools"
 
         self.neuro_tools_path = self.neuro_agent_dir / "tools.json"
         self.neuro_history_path = self.neuro_agent_dir / "history.jsonl"
@@ -37,7 +36,6 @@ class PathManager:
         self.chatbot_memory_agent_dir = self.chatbot_root_dir / "memory_agent"
         self.chatbot_memories_dir = self.chatbot_root_dir / "memories"
         self.chatbot_tools_dir = self.chatbot_root_dir / "tools"
-        self.chatbot_builtin_tools_dir = self.chatbot_tools_dir / "builtin_tools"
         self.chatbot_nickname_data_dir = self.chatbot_root_dir / "nickname_gen" / "data"
 
         self.chatbot_prompt_path = self.chatbot_dir / "chatbot_prompt.txt"
@@ -61,22 +59,15 @@ class PathManager:
             self.memory_agent_dir,
             self.shared_memories_dir,
             self.user_tools_dir,
-            self.builtin_tools_dir,
             self.chatbot_root_dir,
             self.chatbot_dir,
             self.chatbot_memory_agent_dir,
             self.chatbot_memories_dir,
             self.chatbot_tools_dir,
-            self.chatbot_builtin_tools_dir,
             self.chatbot_nickname_data_dir,
         ]
         for dir_path in dirs_to_create:
             os.makedirs(dir_path, exist_ok=True)
-
-        # Create the warning file in the builtin_tools directory
-        warning_file_path = self.builtin_tools_dir / "!!!NO-CHANGE-WILL-BE-SAVED-AFTER-RESTART!!!"
-        if not warning_file_path.exists():
-            warning_file_path.touch()
 
 # A global instance that can be imported and used by other modules.
 # It will be initialized on application startup.

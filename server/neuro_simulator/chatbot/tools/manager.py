@@ -24,35 +24,47 @@ class ChatbotToolManager:
 
     def __init__(self, memory_manager: ChatbotMemoryManager):
         self.memory_manager = memory_manager
-        self.tools_dir = path_manager.chatbot_builtin_tools_dir
         self.tools: Dict[str, BaseChatbotTool] = {}
         self.agent_tool_allocations: Dict[str, List[str]] = {}
 
     def load_tools(self):
-        """Dynamically scans the tools directory, imports modules, and registers tool instances."""
-        logger.info(f"Loading chatbot tools from: {self.tools_dir}")
+        """Dynamically scans tool directories, imports modules, and registers tool instances."""
+        logger.info("Loading chatbot tools...")
         self.tools = {}
-        if not self.tools_dir.exists():
-            logger.warning(f"Chatbot tools directory not found: {self.tools_dir}")
-            return
 
-        for filename in os.listdir(self.tools_dir):
-            if filename.endswith('.py') and not filename.startswith('__'):
-                module_path = self.tools_dir / filename
-                spec = importlib.util.spec_from_file_location(module_path.stem, module_path)
-                if spec and spec.loader:
-                    try:
-                        module = importlib.util.module_from_spec(spec)
-                        spec.loader.exec_module(module)
-                        for _, cls in inspect.getmembers(module, inspect.isclass):
-                            if issubclass(cls, BaseChatbotTool) and cls is not BaseChatbotTool:
-                                tool_instance = cls(memory_manager=self.memory_manager)
-                                if tool_instance.name in self.tools:
-                                    logger.warning(f"Duplicate chatbot tool name '{tool_instance.name}' found. Overwriting.")
-                                self.tools[tool_instance.name] = tool_instance
-                                logger.info(f"Successfully loaded chatbot tool: {tool_instance.name}")
-                    except Exception as e:
-                        logger.error(f"Failed to load chatbot tool from {module_path}: {e}", exc_info=True)
+        # Define paths for built-in and user-defined tools
+        try:
+            import pkg_resources
+            builtin_tools_path_str = pkg_resources.resource_filename('neuro_simulator', 'chatbot/tools')
+            builtin_tools_path = Path(builtin_tools_path_str)
+        except (ModuleNotFoundError, KeyError):
+            builtin_tools_path = Path(__file__).parent
+
+        user_tools_path = path_manager.chatbot_tools_dir
+        tool_paths = [builtin_tools_path, user_tools_path]
+
+        for tools_dir in tool_paths:
+            if not tools_dir.exists():
+                continue
+
+            logger.info(f"Scanning for chatbot tools in: {tools_dir}")
+            for filename in os.listdir(tools_dir):
+                if filename.endswith('.py') and not filename.startswith(('__', 'base', 'manager')):
+                    module_path = tools_dir / filename
+                    spec = importlib.util.spec_from_file_location(module_path.stem, module_path)
+                    if spec and spec.loader:
+                        try:
+                            module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(module)
+                            for _, cls in inspect.getmembers(module, inspect.isclass):
+                                if issubclass(cls, BaseChatbotTool) and cls is not BaseChatbotTool:
+                                    tool_instance = cls(memory_manager=self.memory_manager)
+                                    if tool_instance.name in self.tools:
+                                        logger.warning(f"Duplicate chatbot tool name '{tool_instance.name}' found. Overwriting with version from {module_path}.")
+                                    self.tools[tool_instance.name] = tool_instance
+                                    logger.info(f"Successfully loaded chatbot tool: {tool_instance.name}")
+                        except Exception as e:
+                            logger.error(f"Failed to load chatbot tool from {module_path}: {e}", exc_info=True)
         self._load_allocations()
 
     def _load_allocations(self):
