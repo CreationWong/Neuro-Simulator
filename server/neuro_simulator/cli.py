@@ -53,12 +53,14 @@ def main():
                 "post_speech_cooldown_sec": 1.0,
                 "initial_greeting": "The stream has just started. Greet your audience and say hello!",
                 "neuro_input_queue_max_size": 200,
+                "reflection_threshold": 5,
             },
             "chatbot": {
                 "chatbot_llm_provider_id": None,
                 "chatbot_memory_llm_provider_id": None,
                 "generation_interval_sec": 3,
                 "chats_per_batch": 2,
+                "reflection_threshold": 50,
                 "nickname_generation": {
                     "enable_dynamic_pool": True,
                     "dynamic_pool_size": 50,

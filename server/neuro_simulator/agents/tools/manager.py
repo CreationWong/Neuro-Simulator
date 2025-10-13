@@ -1,5 +1,5 @@
-# neuro_simulator/agent/tools/manager.py
-"""The central tool manager for the agent, responsible for loading, managing, and executing tools."""
+# neuro_simulator/agents/tools/manager.py
+"""The central tool manager for all agents, responsible for loading, managing, and executing tools."""
 
 import os
 import json
@@ -11,45 +11,37 @@ from typing import Any, Dict, List
 
 from .base import BaseTool
 from ..memory.manager import MemoryManager
-from ....core.path_manager import path_manager
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "agent", 1))
+logger = logging.getLogger(__name__.replace("neuro_simulator", "server"))
 
 
 class ToolManager:
     """
-    Acts as a central registry and executor for all available tools.
-    This manager dynamically loads tools from the user's working directory.
+    Acts as a central registry and executor for all available tools for a given agent.
     """
 
-    def __init__(self, memory_manager: MemoryManager):
-        if not path_manager:
-            raise RuntimeError("PathManager not initialized before ToolManager.")
+    def __init__(
+        self, 
+        memory_manager: MemoryManager, 
+        builtin_tools_path: Path,
+        user_tools_path: Path,
+        tool_allocations_paths: Dict[str, Path],
+        default_allocations: Dict[str, List[str]]
+    ):
         self.memory_manager = memory_manager
+        self.builtin_tools_path = builtin_tools_path
+        self.user_tools_path = user_tools_path
+        self.tool_allocations_paths = tool_allocations_paths
+        self.default_allocations = default_allocations
+
         self.tools: Dict[str, BaseTool] = {}
         self.agent_tool_allocations: Dict[str, List[str]] = {}
 
-        self.reload_tools()  # Initial load
-        self._load_allocations()
-
-    def _load_and_register_tools(self):
+    def load_tools(self):
         """Dynamically scans tool directories, imports modules, and registers tool instances."""
-        assert path_manager is not None
+        logger.info(f"Loading tools for agent from: {self.builtin_tools_path.parent.name}")
         self.tools = {}
-
-        # Define paths for built-in and user-defined tools
-        try:
-            import pkg_resources  # type: ignore
-
-            builtin_tools_path_str = pkg_resources.resource_filename(
-                "neuro_simulator", "agents/neuro/tools"
-            )
-            builtin_tools_path = Path(builtin_tools_path_str)
-        except (ModuleNotFoundError, KeyError):
-            builtin_tools_path = Path(__file__).parent
-
-        user_tools_path = path_manager.user_tools_dir
-        tool_paths = [builtin_tools_path, user_tools_path]
+        tool_paths = [self.builtin_tools_path, self.user_tools_path]
 
         for tools_dir in tool_paths:
             if not tools_dir.exists():
@@ -62,14 +54,17 @@ class ToolManager:
                 ):
                     module_path = tools_dir / filename
                     spec = importlib.util.spec_from_file_location(
-                        module_path.stem, module_path
+                        f"neuro_simulator.agents.tools.{module_path.stem}", module_path
                     )
                     if spec and spec.loader:
                         try:
                             module = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(module)
                             for _, cls in inspect.getmembers(module, inspect.isclass):
-                                if issubclass(cls, BaseTool) and cls is not BaseTool:
+                                if (
+                                    issubclass(cls, BaseTool)
+                                    and cls is not BaseTool
+                                ):
                                     tool_instance = cls(
                                         memory_manager=self.memory_manager
                                     )
@@ -79,57 +74,27 @@ class ToolManager:
                                         )
                                     self.tools[tool_instance.name] = tool_instance
                                     logger.info(
-                                        f"Successfully loaded and registered tool: {tool_instance.name}"
+                                        f"Successfully loaded tool: {tool_instance.name}"
                                     )
                         except Exception as e:
                             logger.error(
                                 f"Failed to load tool from {module_path}: {e}",
                                 exc_info=True,
                             )
+        self._load_allocations()
 
     def _load_allocations(self):
         """Loads tool allocations from JSON files, creating defaults if they don't exist."""
-        assert path_manager is not None
-        default_allocations = {
-            "neuro_agent": [
-                "speak",
-                "get_core_memory_blocks",
-                "get_core_memory_block",
-                "model_spin",
-                "model_zoom",
-            ],
-            "memory_manager": [
-                "add_temp_memory",
-                "create_core_memory_block",
-                "update_core_memory_block",
-                "delete_core_memory_block",
-                "add_to_core_memory_block",
-                "remove_from_core_memory_block",
-                "get_core_memory_blocks",
-                "get_core_memory_block",
-            ],
-        }
-        # Load neuro agent allocations
-        if path_manager.neuro_tools_path.exists():
-            with open(path_manager.neuro_tools_path, "r", encoding="utf-8") as f:
-                self.agent_tool_allocations["neuro_agent"] = json.load(f)
-        else:
-            self.agent_tool_allocations["neuro_agent"] = default_allocations[
-                "neuro_agent"
-            ]
-            with open(path_manager.neuro_tools_path, "w", encoding="utf-8") as f:
-                json.dump(default_allocations["neuro_agent"], f, indent=2)
-
-        # Load memory manager allocations
-        if path_manager.memory_agent_tools_path.exists():
-            with open(path_manager.memory_agent_tools_path, "r", encoding="utf-8") as f:
-                self.agent_tool_allocations["memory_manager"] = json.load(f)
-        else:
-            self.agent_tool_allocations["memory_manager"] = default_allocations[
-                "memory_manager"
-            ]
-            with open(path_manager.memory_agent_tools_path, "w", encoding="utf-8") as f:
-                json.dump(default_allocations["memory_manager"], f, indent=2)
+        self.agent_tool_allocations = {}
+        for agent_name, file_path in self.tool_allocations_paths.items():
+            if file_path.exists():
+                with open(file_path, "r", encoding="utf-8") as f:
+                    self.agent_tool_allocations[agent_name] = json.load(f)
+            else:
+                default = self.default_allocations.get(agent_name, [])
+                self.agent_tool_allocations[agent_name] = default
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(default, f, indent=2)
 
         logger.info(f"Tool allocations loaded: {self.agent_tool_allocations}")
 
@@ -148,20 +113,18 @@ class ToolManager:
 
     def reload_tools(self):
         logger.info("Reloading tools...")
-        self._load_and_register_tools()
+        self.load_tools()
         logger.info(f"Tools reloaded. {len(self.tools)} tools available.")
 
     def get_allocations(self) -> Dict[str, List[str]]:
         return self.agent_tool_allocations
 
     def set_allocations(self, allocations: Dict[str, List[str]]):
-        assert path_manager is not None
         self.agent_tool_allocations = allocations
-        # Persist the changes to the JSON files
-        with open(path_manager.neuro_tools_path, "w", encoding="utf-8") as f:
-            json.dump(allocations.get("neuro_agent", []), f, indent=2)
-        with open(path_manager.memory_agent_tools_path, "w", encoding="utf-8") as f:
-            json.dump(allocations.get("memory_manager", []), f, indent=2)
+        # Persist the changes to the individual JSON files
+        for agent_name, file_path in self.tool_allocations_paths.items():
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(allocations.get(agent_name, []), f, indent=2)
         logger.info(
             f"Tool allocations updated and saved: {self.agent_tool_allocations}"
         )

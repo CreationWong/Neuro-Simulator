@@ -1,15 +1,23 @@
-# neuro_simulator/agent/tools/base.py
+# neuro_simulator/agents/tools/base.py
 """Base classes and definitions for the tool system."""
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 
+# To avoid circular imports, we forward-declare the MemoryManager type
+# and will use it for type hinting only.
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..memory.manager import MemoryManager
 
 class BaseTool(ABC):
     """
     Abstract base class for all tools.
     It defines the standard interface that all tools must implement to be discoverable and executable.
     """
+
+    def __init__(self, memory_manager: 'MemoryManager'):
+        self.memory_manager = memory_manager
 
     @property
     @abstractmethod

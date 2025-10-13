@@ -40,6 +40,9 @@ class NeuroSettings(BaseModel):
     post_speech_cooldown_sec: float = Field(..., title="Post-Speech Cooldown (sec)")
     initial_greeting: str = Field(..., title="Initial Greeting", format="text-area")  # type: ignore[call-overload]
     neuro_input_queue_max_size: int = Field(..., title="Neuro Input Queue Max Size")
+    reflection_threshold: int = Field(
+        ..., title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
+    )
 
 
 class NicknameGenerationSettings(BaseModel):
@@ -54,6 +57,9 @@ class ChatbotSettings(BaseModel):
     chatbot_memory_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot Memory LLM Provider ID")
     generation_interval_sec: int = Field(..., title="Generation Interval (sec)")
     chats_per_batch: int = Field(..., title="Chats per Batch")
+    reflection_threshold: int = Field(
+        ..., title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
+    )
     nickname_generation: NicknameGenerationSettings
 
 

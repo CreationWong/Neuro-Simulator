@@ -2,7 +2,7 @@
 import logging
 from typing import Dict, Any, List
 
-from neuro_simulator.agents.neuro.tools.base import BaseTool
+from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.services.stream import live_stream_manager
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))

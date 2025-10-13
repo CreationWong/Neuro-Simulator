@@ -8,7 +8,7 @@ import random
 import re
 import time
 import os
-from typing import Optional, Any, Dict
+from typing import Any, Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -18,6 +18,7 @@ from starlette.websockets import WebSocketState
 # --- Core Imports ---
 from .config import config_manager, AppSettings
 from ..core.agent_factory import create_agent
+from ..core.chatbot_factory import create_chatbot
 from ..agents.chatbot.core import Chatbot
 
 # --- API Routers ---
@@ -147,8 +148,6 @@ async def redirect_dashboard_to_trailing_slash():
 
 # --- Background Task Definitions ---
 
-chatbot: Optional[Chatbot] = None
-
 
 async def broadcast_events_task():
     """Broadcasts events from the live_stream_manager's queue to all clients."""
@@ -165,7 +164,9 @@ async def broadcast_events_task():
 
 async def fetch_and_process_audience_chats():
     """Generates a batch of audience chat messages using the new ChatbotAgent."""
+    chatbot = await create_chatbot()
     if not chatbot:
+        logger.warning("Chatbot is not available or configured, skipping chat generation.")
         return
     try:
         # Get context for the chatbot
@@ -478,16 +479,12 @@ async def startup_event():
     # 2. Initialize queues now that config is loaded
     initialize_queues()
 
-    # 3. Initialize Chatbot Agent on startup
-    global chatbot
+    # 3. Initialize Chatbot Agent on startup via factory
     try:
-        logger.info("Initializing Chatbot agent on startup...")
-        chatbot = Chatbot()
-        await chatbot.initialize()
-        logger.info("Successfully initialized Chatbot agent.")
+        await create_chatbot()
     except Exception as e:
         logger.critical(
-            f"Chatbot agent initialization failed on startup: {e}", exc_info=True
+            f"Initial Chatbot agent creation failed on startup: {e}", exc_info=True
         )
 
     # 4. Register callbacks
@@ -833,8 +830,9 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             logger.info(
                 "Start stream action received. Resetting agent memory before starting processes..."
             )
-            await agent.reset_memory()
-            if chatbot:
+            # This will create the instance on first call if not already created
+            chatbot = await create_chatbot()
+            if isinstance(chatbot, Chatbot):
                 await chatbot.initialize_runtime_components()
             if not process_manager.is_running:
                 process_manager.start_live_processes()

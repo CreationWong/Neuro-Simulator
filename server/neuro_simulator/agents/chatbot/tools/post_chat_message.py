@@ -4,17 +4,16 @@
 import logging
 from typing import Dict, Any, List
 
-from neuro_simulator.agents.chatbot.tools.base import BaseChatbotTool
-from neuro_simulator.agents.chatbot.memory.manager import ChatbotMemoryManager
+from neuro_simulator.agents.tools.base import BaseTool
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
 
 
-class PostChatMessageTool(BaseChatbotTool):
+class PostChatMessageTool(BaseTool):
     """Tool for the chatbot to post a message to the stream chat."""
 
-    def __init__(self, memory_manager: ChatbotMemoryManager):
-        self.memory_manager = memory_manager
+    def __init__(self, memory_manager):
+        super().__init__(memory_manager)
 
     @property
     def name(self) -> str:

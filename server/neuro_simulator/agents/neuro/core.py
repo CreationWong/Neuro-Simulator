@@ -16,8 +16,8 @@ from ...core.agent_interface import BaseAgent
 from ...core.config import config_manager
 from ...core.llm_manager import llm_manager
 from ...core.path_manager import path_manager
-from .memory.manager import MemoryManager
-from .tools.manager import ToolManager
+from ..memory.manager import MemoryManager
+from ..tools.manager import ToolManager
 
 logger = logging.getLogger("neuro_agent")
 
@@ -41,12 +41,43 @@ class Neuro(BaseAgent):
             settings.neuro.neuro_memory_llm_provider_id
         )
 
-        self.memory_manager = MemoryManager()
-        self._tool_manager = ToolManager(self.memory_manager)
+        self.memory_manager = MemoryManager(
+            init_memory_path=path_manager.init_memory_path,
+            core_memory_path=path_manager.core_memory_path,
+            temp_memory_path=path_manager.temp_memory_path,
+        )
+        self._tool_manager = ToolManager(
+            memory_manager=self.memory_manager,
+            builtin_tools_path=Path(__file__).parent / "tools",
+            user_tools_path=path_manager.user_tools_dir,
+            tool_allocations_paths={
+                "neuro_agent": path_manager.neuro_tools_path,
+                "memory_manager": path_manager.memory_agent_tools_path,
+            },
+            default_allocations={
+                "neuro_agent": [
+                    "speak",
+                    "get_core_memory_blocks",
+                    "get_core_memory_block",
+                    "model_spin",
+                    "model_zoom",
+                ],
+                "memory_manager": [
+                    "add_temp_memory",
+                    "create_core_memory_block",
+                    "update_core_memory_block",
+                    "delete_core_memory_block",
+                    "add_to_core_memory_block",
+                    "remove_from_core_memory_block",
+                    "get_core_memory_blocks",
+                    "get_core_memory_block",
+                ],
+            }
+        )
 
         self._initialized = False
         self.turn_counter = 0
-        self.reflection_threshold = 3
+        self.reflection_threshold = settings.neuro.reflection_threshold
 
         logger.info("Hello everyone, Neuro-sama here.")
 
@@ -55,10 +86,11 @@ class Neuro(BaseAgent):
         return self._tool_manager
 
     async def initialize(self):
-        """Initialize the agent, loading any persistent memory."""
+        """Initialize the agent, loading any persistent memory and tools."""
         if not self._initialized:
-            logger.info("Initializing agent memory manager...")
+            logger.info("Initializing agent memory and tools...")
             await self.memory_manager.initialize()
+            self.tool_manager.load_tools()
             self._initialized = True
             logger.info("Agent initialized successfully.")
 
@@ -227,6 +259,7 @@ class Neuro(BaseAgent):
     async def _execute_tool_calls(
         self,
         tool_calls: List[Dict[str, Any]],
+        agent_name: str, # Added for signature consistency
     ) -> Dict[str, Any]:
         execution_results = []
         final_response = ""
@@ -271,7 +304,7 @@ class Neuro(BaseAgent):
         response_text = await self.neuro_llm.generate(prompt)
 
         tool_calls = self._parse_tool_calls(response_text)
-        processing_result = await self._execute_tool_calls(tool_calls)
+        processing_result = await self._execute_tool_calls(tool_calls, "neuro_agent")
 
         if final_response := processing_result.get("final_response", ""):
             await self._append_to_history_log(
@@ -279,7 +312,43 @@ class Neuro(BaseAgent):
                 {"role": "assistant", "content": final_response},
             )
 
+        self.turn_counter += 1
+        if self.turn_counter >= self.reflection_threshold:
+            asyncio.create_task(self._reflect_and_consolidate())
+
         return processing_result
+
+    async def _reflect_and_consolidate(self):
+        """The main thinker loop to consolidate memories for the Neuro agent."""
+        if not self.reflection_threshold > 0:
+            return
+
+        if not self.memory_llm:
+            logger.warning(
+                "Neuro Memory LLM is not configured. Skipping memory consolidation."
+            )
+            return
+
+        assert path_manager is not None
+        logger.info("Neuro is reflecting on recent conversations...")
+        self.turn_counter = 0
+        # Use neuro's history path
+        history = await self._read_history_log(path_manager.neuro_history_path, limit=50)
+        if len(history) < self.reflection_threshold:
+            return
+
+        prompt = await self._build_memory_prompt(history)
+        response_text = await self.memory_llm.generate(prompt)
+        if not response_text:
+            return
+
+        tool_calls = self._parse_tool_calls(response_text)
+        if not tool_calls:
+            return
+
+        # Execute with the 'memory_manager' agent name
+        await self._execute_tool_calls(tool_calls, "memory_manager")
+        logger.info("Neuro memory consolidation complete.")
 
     # --- Implementation of BaseAgent interface methods ---
 
