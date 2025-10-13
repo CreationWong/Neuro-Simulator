@@ -36,18 +36,18 @@ class NeuroSettings(BaseModel):
     neuro_llm_provider_id: Optional[str] = Field(default=None, title="Neuro LLM Provider ID")
     neuro_memory_llm_provider_id: Optional[str] = Field(default=None, title="Neuro Memory LLM Provider ID")
     tts_provider_id: Optional[str] = Field(default=None, title="TTS Provider ID")
-    input_chat_sample_size: int = Field(..., title="Input Chat Sample Size")
-    post_speech_cooldown_sec: float = Field(..., title="Post-Speech Cooldown (sec)")
-    initial_greeting: str = Field(..., title="Initial Greeting", format="text-area")  # type: ignore[call-overload]
-    neuro_input_queue_max_size: int = Field(..., title="Neuro Input Queue Max Size")
+    input_chat_sample_size: int = Field(10, title="Input Chat Sample Size")
+    post_speech_cooldown_sec: float = Field(1.0, title="Post-Speech Cooldown (sec)")
+    initial_greeting: str = Field("The stream has just started. Greet your audience and say hello!", title="Initial Greeting", format="text-area")  # type: ignore[call-overload]
+    neuro_input_queue_max_size: int = Field(200, title="Neuro Input Queue Max Size")
     reflection_threshold: int = Field(
-        ..., title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
+        5, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
     )
 
 
 class NicknameGenerationSettings(BaseModel):
-    enable_dynamic_pool: bool = Field(..., title="Enable Dynamic Pool")
-    dynamic_pool_size: int = Field(..., title="Dynamic Pool Size")
+    enable_dynamic_pool: bool = Field(True, title="Enable Dynamic Pool")
+    dynamic_pool_size: int = Field(50, title="Dynamic Pool Size")
 
 
 class ChatbotSettings(BaseModel):
@@ -55,43 +55,43 @@ class ChatbotSettings(BaseModel):
 
     chatbot_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot LLM Provider ID")
     chatbot_memory_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot Memory LLM Provider ID")
-    generation_interval_sec: int = Field(..., title="Generation Interval (sec)")
-    chats_per_batch: int = Field(..., title="Chats per Batch")
+    generation_interval_sec: int = Field(3, title="Generation Interval (sec)")
+    chats_per_batch: int = Field(2, title="Chats per Batch")
     reflection_threshold: int = Field(
-        ..., title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
+        50, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
     )
-    nickname_generation: NicknameGenerationSettings
+    nickname_generation: NicknameGenerationSettings = Field(default_factory=NicknameGenerationSettings)
 
 
 class StreamSettings(BaseModel):
     """Settings related to the stream's appearance."""
 
-    streamer_nickname: str = Field(..., title="Streamer Nickname")
-    stream_title: str = Field(..., title="Stream Title")
-    stream_category: str = Field(..., title="Stream Category")
-    stream_tags: List[str] = Field(..., title="Stream Tags")
+    streamer_nickname: str = Field("vedal987", title="Streamer Nickname")
+    stream_title: str = Field("neuro-sama is here for u all", title="Stream Title")
+    stream_category: str = Field("谈天说地", title="Stream Category")
+    stream_tags: List[str] = Field(default_factory=lambda: ["Vtuber", "AI", "Cute", "English", "Gremlin", "catgirl"], title="Stream Tags")
 
 
 class ServerSettings(BaseModel):
     """Settings for the web server and performance."""
 
-    host: str = Field(..., title="Host")
-    port: int = Field(..., title="Port")
-    panel_password: Optional[str] = Field(default=None, title="Panel Password", format="password")  # type: ignore[call-overload]
-    client_origins: List[str] = Field(..., title="Client Origins")
-    audience_chat_buffer_max_size: int = Field(..., title="Audience Chat Buffer Max Size")
-    initial_chat_backlog_limit: int = Field(..., title="Initial Chat Backlog Limit")
+    host: str = Field("127.0.0.1", title="Host")
+    port: int = Field(8000, title="Port")
+    panel_password: Optional[str] = Field("your-secret-api-token-here", title="Panel Password", format="password")  # type: ignore[call-overload]
+    client_origins: List[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"], title="Client Origins")
+    audience_chat_buffer_max_size: int = Field(1000, title="Audience Chat Buffer Max Size")
+    initial_chat_backlog_limit: int = Field(50, title="Initial Chat Backlog Limit")
 
 
 class AppSettings(BaseModel):
     """Root model for all application settings."""
 
-    llm_providers: List[LLMProviderSettings] = Field(..., title="LLM Providers")
-    tts_providers: List[TTSProviderSettings] = Field(..., title="TTS Providers")
-    neuro: NeuroSettings = Field(..., title="Neuro")
-    chatbot: ChatbotSettings = Field(..., title="Chatbot")
-    stream: StreamSettings = Field(..., title="Stream")
-    server: ServerSettings = Field(..., title="Server")
+    llm_providers: List[LLMProviderSettings] = Field(default_factory=list, title="LLM Providers")
+    tts_providers: List[TTSProviderSettings] = Field(default_factory=list, title="TTS Providers")
+    neuro: NeuroSettings = Field(default_factory=NeuroSettings, title="Neuro")
+    chatbot: ChatbotSettings = Field(default_factory=ChatbotSettings, title="Chatbot")
+    stream: StreamSettings = Field(default_factory=StreamSettings, title="Stream")
+    server: ServerSettings = Field(default_factory=ServerSettings, title="Server")
 
 
 # --- Configuration Manager ---
@@ -107,9 +107,16 @@ class ConfigManager:
 
     def load(self, file_path: str):
         self.file_path = file_path
-        with open(self.file_path, "r") as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(self.file_path, "r") as f:
+                data = yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            data = {}
+        
         self.settings = AppSettings.model_validate(data)
+        # Save the settings back immediately. This auto-migrates old configs
+        # and populates new ones with all default values.
+        self.save_settings()
 
     def save_settings(self):
         if self.settings and self.file_path:
