@@ -1,6 +1,6 @@
 <template>
   <v-card>
-    <v-card-title>Server 日志</v-card-title>
+    <v-card-title>{{ t('Server Logs') }}</v-card-title>
     <v-card-text>
       <div ref="logsContainer" class="logs-output">
         <div v-for="(log, index) in logStore.serverLogs" :key="`server-${index}`" class="log-entry">
@@ -13,8 +13,10 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useLogStore } from '@/stores/logs';
 
+const { t } = useI18n();
 const logStore = useLogStore();
 const logsContainer = ref<HTMLElement | null>(null);
 

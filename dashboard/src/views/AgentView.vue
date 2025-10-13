@@ -4,18 +4,18 @@
     <div v-if="isExternalAgent" class="overlay">
       <div class="overlay-content">
         <v-icon size="x-large" class="mb-4">mdi-link-variant</v-icon>
-        <h2 class="text-h5">当前正在调用外部 Agent</h2>
-        <p class="text-body-1">请前往相应平台进行控制</p>
+        <h2 class="text-h5">{{ t('Currently using an external Agent') }}</h2>
+        <p class="text-body-1">{{ t('Please go to the corresponding platform for control') }}</p>
       </div>
     </div>
 
     <!-- Main content (same as before) -->
     <v-card :disabled="isExternalAgent">
       <v-tabs v-model="tab" bg-color="primary" grow>
-        <v-tab value="context">对话</v-tab>
-        <v-tab value="memory">记忆</v-tab>
-        <v-tab value="tools">工具</v-tab>
-        <v-tab value="logs">日志</v-tab>
+        <v-tab value="context">{{ t('Conversation') }}</v-tab>
+        <v-tab value="memory">{{ t('Memory') }}</v-tab>
+        <v-tab value="tools">{{ t('Tools') }}</v-tab>
+        <v-tab value="logs">{{ t('Logs') }}</v-tab>
       </v-tabs>
 
       <v-card-text>
@@ -43,6 +43,7 @@
 
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useConfigStore } from '@/stores/config';
 
 // Async components
@@ -51,6 +52,7 @@ const MemoryTab = defineAsyncComponent(() => import('@/components/agent/MemoryTa
 const ToolsTab = defineAsyncComponent(() => import('@/components/agent/ToolsTab.vue'));
 const LogsTab = defineAsyncComponent(() => import('@/components/agent/LogsTab.vue'));
 
+const { t } = useI18n();
 const configStore = useConfigStore();
 const tab = ref('context');
 

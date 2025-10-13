@@ -1,18 +1,18 @@
 <template>
   <v-card>
-    <v-card-title>直播控制</v-card-title>
+    <v-card-title>{{ t('Stream Control') }}</v-card-title>
     <v-card-text>
       <div class="stream-status">
-        <p>当前状态: 
+        <p>{{ t('Current Status') }}: 
           <v-chip :color="streamStore.isRunning ? 'green' : 'red'" dark>
-            {{ streamStore.isRunning ? '运行中' : '已停止' }}
+            {{ streamStore.isRunning ? t('Running') : t('Stopped') }}
           </v-chip>
         </p>
       </div>
       <div class="control-buttons">
-        <v-btn color="primary" @click="startStream" :loading="loading.start">开始直播</v-btn>
-        <v-btn color="error" @click="stopStream" :loading="loading.stop">停止直播</v-btn>
-        <v-btn color="warning" @click="restartStream" :loading="loading.restart">重启直播</v-btn>
+        <v-btn color="primary" @click="startStream" :loading="loading.start">{{ t('Start Stream') }}</v-btn>
+        <v-btn color="error" @click="stopStream" :loading="loading.stop">{{ t('Stop Stream') }}</v-btn>
+        <v-btn color="warning" @click="restartStream" :loading="loading.restart">{{ t('Restart Stream') }}</v-btn>
       </div>
     </v-card-text>
   </v-card>
@@ -20,9 +20,11 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useStreamStore } from '@/stores/stream';
 import { useConnectionStore } from '@/stores/connection';
 
+const { t } = useI18n();
 const streamStore = useStreamStore();
 const connectionStore = useConnectionStore();
 

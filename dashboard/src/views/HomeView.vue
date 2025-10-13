@@ -3,14 +3,14 @@
     <div v-if="connectionStore.isIntegrated" class="overlay">
       <div class="overlay-content">
         <v-icon size="x-large" class="mb-4">mdi-server-network</v-icon>
-        <h2 class="text-h5">已自动连接服务端</h2>
-        <p class="text-body-1">内置面板无需手动连接，意外断连请刷新</p>
+        <h2 class="text-h5">{{ t('Automatically connected to the server') }}</h2>
+        <p class="text-body-1">{{ t('No manual connection required for the built-in panel, please refresh if accidentally disconnected') }}</p>
       </div>
     </div>
 
     <v-card class="mx-auto" max-width="500" :disabled="connectionStore.isIntegrated">
       <v-card-title class="text-h6 font-weight-regular justify-space-between">
-        <span>连接设置</span>
+        <span>{{ t('Connection Settings') }}</span>
       </v-card-title>
 
       <v-window v-model="step">
@@ -18,13 +18,13 @@
           <v-card-text>
             <v-text-field
               v-model="connectionStore.backendUrl"
-              label="后端地址"
+              :label="t('Backend URL')"
               placeholder="http://localhost:8000"
               :disabled="connectionStore.isConnected"
             ></v-text-field>
             <v-text-field
               v-model="connectionStore.password"
-              label="访问密码 (可选)"
+              :label="t('Access Password (optional)')"
               type="password"
               :disabled="connectionStore.isConnected"
             ></v-text-field>
@@ -45,7 +45,7 @@
           @click="handleConnect"
           :loading="loading"
         >
-          连接
+          {{ t('Connect') }}
         </v-btn>
         <v-btn
           v-else
@@ -53,7 +53,7 @@
           variant="flat"
           @click="handleDisconnect"
         >
-          断开连接
+          {{ t('Disconnect') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -62,8 +62,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useConnectionStore } from '@/stores/connection';
 
+const { t } = useI18n();
 const connectionStore = useConnectionStore();
 const loading = ref(false);
 const step = ref(1);

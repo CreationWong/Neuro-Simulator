@@ -1,11 +1,11 @@
 <template>
   <div>
     <v-expansion-panels variant="inset" class="my-4">
-      <v-expansion-panel title="初始化记忆 (Init Memory)">
+      <v-expansion-panel :title="t('Init Memory')">
         <v-expansion-panel-text>
           <div class="d-flex mb-4">
-            <v-btn @click="refreshInitMemory" class="mr-2">刷新</v-btn>
-            <v-btn @click="openInitMemoryDialog()" color="primary">添加</v-btn>
+            <v-btn @click="refreshInitMemory" class="mr-2">{{ t('Refresh') }}</v-btn>
+            <v-btn @click="openInitMemoryDialog()" color="primary">{{ t('Add') }}</v-btn>
           </div>
           <v-list lines="one" v-if="Object.keys(agentStore.initMemory).length > 0">
             <v-list-item
@@ -20,16 +20,16 @@
               </template>
             </v-list-item>
           </v-list>
-          <p v-else>没有初始化记忆。</p>
+          <p v-else>{{ t('No init memory.') }}</p>
         </v-expansion-panel-text>
       </v-expansion-panel>
 
-      <v-expansion-panel title="临时记忆 (Temp Memory)">
+      <v-expansion-panel :title="t('Temp Memory')">
         <v-expansion-panel-text>
           <div class="d-flex mb-4">
-            <v-btn @click="refreshTempMemory" class="mr-2">刷新</v-btn>
-            <v-btn @click="isAddTempMemoryDialogVisible = true" color="primary" class="mr-2">添加</v-btn>
-            <v-btn @click="clearTempMemory" color="error">清空</v-btn>
+            <v-btn @click="refreshTempMemory" class="mr-2">{{ t('Refresh') }}</v-btn>
+            <v-btn @click="isAddTempMemoryDialogVisible = true" color="primary" class="mr-2">{{ t('Add') }}</v-btn>
+            <v-btn @click="clearTempMemory" color="error">{{ t('Clear') }}</v-btn>
           </div>
           <v-list lines="one" v-if="agentStore.tempMemory.length > 0">
             <v-list-item
@@ -42,15 +42,15 @@
               </template>
             </v-list-item>
           </v-list>
-          <p v-else>没有临时记忆。</p>
+          <p v-else>{{ t('No temp memory.') }}</p>
         </v-expansion-panel-text>
       </v-expansion-panel>
 
-      <v-expansion-panel title="核心记忆 (Core Memory)">
+      <v-expansion-panel :title="t('Core Memory')">
         <v-expansion-panel-text>
           <div class="d-flex mb-4">
-            <v-btn @click="refreshCoreMemory" class="mr-2">刷新</v-btn>
-            <v-btn @click="openCoreMemoryDialog()" color="primary">添加记忆块</v-btn>
+            <v-btn @click="refreshCoreMemory" class="mr-2">{{ t('Refresh') }}</v-btn>
+            <v-btn @click="openCoreMemoryDialog()" color="primary">{{ t('Add Memory Block') }}</v-btn>
           </div>
           <div v-if="Object.keys(agentStore.coreMemory).length > 0">
             <v-card 
@@ -74,7 +74,7 @@
               </v-card-text>
             </v-card>
           </div>
-          <p v-else>没有核心记忆。</p>
+          <p v-else>{{ t('No core memory.') }}</p>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -83,25 +83,25 @@
     <v-dialog v-model="isAddTempMemoryDialogVisible" max-width="500px">
       <v-card>
         <v-card-title>
-          <span class="text-h5">添加临时记忆</span>
+          <span class="text-h5">{{ t('Add Temp Memory') }}</span>
         </v-card-title>
         <v-card-text>
           <v-select
             v-model="newTempMemory.role"
             :items="['system', 'user', 'assistant']"
-            label="角色"
+            :label="t('Role')"
             required
           ></v-select>
           <v-textarea
             v-model="newTempMemory.content"
-            label="内容"
+            :label="t('Content')"
             required
           ></v-textarea>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue-darken-1" variant="text" @click="isAddTempMemoryDialogVisible = false">取消</v-btn>
-          <v-btn color="blue-darken-1" variant="text" @click="addTempMemory">添加</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="isAddTempMemoryDialogVisible = false">{{ t('Cancel') }}</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="addTempMemory">{{ t('Add') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -110,27 +110,27 @@
     <v-dialog v-model="isCoreMemoryDialogVisible" max-width="600px">
       <v-card>
         <v-card-title>
-          <span class="text-h5">{{ editingCoreMemoryBlock.id ? '编辑' : '添加' }}核心记忆块</span>
+          <span class="text-h5">{{ t(editingCoreMemoryBlock.id ? 'Editing' : 'Adding') }} {{ t('Add/Edit Core Memory Block') }}</span>
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="editingCoreMemoryBlock.title"
-            label="标题"
+            :label="t('Title')"
             required
           ></v-text-field>
           <v-textarea
             v-model="editingCoreMemoryBlock.description"
-            label="描述"
+            :label="t('Description')"
           ></v-textarea>
           <v-textarea
             v-model="editingCoreMemoryBlock.contentStr"
-            label="内容 (每行一条)"
+            :label="t('Content (one per line)')"
           ></v-textarea>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue-darken-1" variant="text" @click="isCoreMemoryDialogVisible = false">取消</v-btn>
-          <v-btn color="blue-darken-1" variant="text" @click="saveCoreMemoryBlock">保存</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="isCoreMemoryDialogVisible = false">{{ t('Cancel') }}</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="saveCoreMemoryBlock">{{ t('Save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -139,24 +139,24 @@
     <v-dialog v-model="isInitMemoryDialogVisible" max-width="600px">
       <v-card>
         <v-card-title>
-          <span class="text-h5">{{ editingInitMemoryItem.isEditing ? '编辑' : '添加' }}初始化记忆项</span>
+          <span class="text-h5">{{ t(editingInitMemoryItem.isEditing ? 'Editing' : 'Adding') }} {{ t('Add/Edit Init Memory Item') }}</span>
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="editingInitMemoryItem.key"
-            label="键"
+            :label="t('Key')"
             :disabled="editingInitMemoryItem.isEditing"
             required
           ></v-text-field>
           <v-textarea
             v-model="editingInitMemoryItem.valueStr"
-            label="值 (可以是字符串, JSON, 或换行分隔的数组)"
+            :label="t('Value (String, JSON, or newline-separated array)')"
           ></v-textarea>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue-darken-1" variant="text" @click="isInitMemoryDialogVisible = false">取消</v-btn>
-          <v-btn color="blue-darken-1" variant="text" @click="saveInitMemoryItem">保存</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="isInitMemoryDialogVisible = false">{{ t('Cancel') }}</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="saveInitMemoryItem">{{ t('Save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -166,10 +166,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAgentStore } from '@/stores/agent';
 import { useConnectionStore } from '@/stores/connection';
 import { useUiStore } from '@/stores/ui';
 
+const { t } = useI18n();
 const agentStore = useAgentStore();
 const connectionStore = useConnectionStore();
 const uiStore = useUiStore();
@@ -278,7 +280,7 @@ async function addTempMemory() {
 
 async function deleteCoreMemoryBlock(blockId: string) {
   if (!connectionStore.isConnected) return;
-  if (confirm('确定要删除这个记忆块吗？')) {
+  if (confirm(t('Are you sure you want to delete this memory block?'))) {
     try {
       await connectionStore.sendAdminWsMessage('delete_core_memory_block', { block_id: blockId });
     } catch (error) {
@@ -289,7 +291,7 @@ async function deleteCoreMemoryBlock(blockId: string) {
 
 async function deleteInitMemoryItem(key: string) {
   if (!connectionStore.isConnected) return;
-  if (confirm(`确定要删除键 "${key}" 吗？`)) {
+  if (confirm(`${t('Are you sure you want to delete the key')} "${key}"?`)) {
     try {
       await connectionStore.sendAdminWsMessage('delete_init_memory_key', { key });
     } catch (error) {
@@ -311,7 +313,7 @@ async function deleteTempMemoryItem(itemId: string) {
 async function clearTempMemory() {
   if (!connectionStore.isConnected) return;
   // Optional: add a confirmation dialog
-  if (confirm('确定要清空所有临时记忆吗？')) {
+  if (confirm(t('Are you sure you want to clear all temp memory?'))) {
     try {
       await connectionStore.sendAdminWsMessage('clear_temp_memory');
     } catch (error) {

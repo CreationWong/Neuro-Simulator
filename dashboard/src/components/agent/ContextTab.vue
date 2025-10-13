@@ -3,7 +3,7 @@
     <div class="d-flex align-center mb-4">
       <v-switch
         v-model="isPromptMode"
-        label="上下文模式"
+        :label="t('Context Mode')"
         color="primary"
         hide-details
       ></v-switch>
@@ -25,9 +25,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAgentStore } from '@/stores/agent';
 import { useConnectionStore } from '@/stores/connection';
 
+const { t } = useI18n();
 const isPromptMode = ref(false);
 const agentStore = useAgentStore();
 const connectionStore = useConnectionStore();
@@ -40,15 +42,15 @@ async function refreshContext() {
       const response = await connectionStore.sendAdminWsMessage('get_last_prompt');
       agentStore.setAgentPrompt(response.prompt);
     } catch (error) {
-      console.error('获取最新Prompt失败:', error);
-      agentStore.setAgentPrompt(`获取提示词失败: ${error}`);
+      console.error('Failed to get latest prompt:', error);
+      agentStore.setAgentPrompt(`${t('Failed to get prompt')}: ${error}`);
     }
   } else {
     try {
       // Request the context, the store will be updated by the websocket handler
       await connectionStore.sendAdminWsMessage('get_agent_context');
     } catch (error) {
-      console.error('获取上下文失败:', error);
+      console.error('Failed to get context:', error);
     }
   }
 }

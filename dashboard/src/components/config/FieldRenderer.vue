@@ -5,7 +5,7 @@
       v-if="propKey === 'provider_id'"
       v-model="modelValue"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       persistent-hint
       variant="outlined"
       density="compact"
@@ -17,7 +17,7 @@
       v-else-if="isType('integer') || isType('number')"
       v-model.number="modelValue"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       type="number"
       persistent-hint
       variant="outlined"
@@ -29,7 +29,7 @@
       v-else-if="isType('string') && propSchema.format === 'password'"
       v-model="modelValue"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       type="password"
       persistent-hint
       variant="outlined"
@@ -41,7 +41,7 @@
       v-else-if="isType('string') && propSchema.format === 'text-area'"
       v-model="modelValue"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       persistent-hint
       variant="outlined"
     ></v-textarea>
@@ -51,7 +51,7 @@
       v-else-if="isType('string') && !propSchema.enum && !isProviderId"
       v-model="modelValue"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       persistent-hint
       variant="outlined"
       density="compact"
@@ -62,7 +62,7 @@
       v-if="isType('boolean')"
       v-model="modelValue"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       persistent-hint
       color="primary"
       inset
@@ -74,7 +74,7 @@
       v-model="modelValue"
       :items="propSchema.enum"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       persistent-hint
       variant="outlined"
       density="compact"
@@ -88,7 +88,7 @@
       item-title="display_name"
       item-value="provider_id"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       persistent-hint
       variant="outlined"
       density="compact"
@@ -141,7 +141,7 @@
       v-else-if="isType('array')"
       v-model="modelValue"
       :label="t(propSchema.title || propKey)"
-      :hint="propSchema.description"
+      :hint="t(propSchema.description)"
       persistent-hint
       chips
       multiple

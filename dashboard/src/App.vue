@@ -35,7 +35,7 @@
 
       <template v-slot:append>
         <div class="pa-2 footer-text">
-          *Evil sold out
+          *{{ t('Evil sold out') }}
         </div>
       </template>
 

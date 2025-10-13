@@ -3,18 +3,18 @@
     <div class="overlay">
       <div class="overlay-content">
         <v-icon size="x-large" class="mb-4">mdi-dev-to</v-icon>
-        <h2 class="text-h5">Chatbot 控制开发中</h2>
-        <p class="text-body-1">后端 API 尚未实现</p>
+        <h2 class="text-h5">{{ t('Chatbot control is under development') }}</h2>
+        <p class="text-body-1">{{ t('Backend API is not yet implemented') }}</p>
       </div>
     </div>
     
     <!-- The entire AgentView content is duplicated here -->
     <v-card>
       <v-tabs v-model="tab" bg-color="primary" grow>
-        <v-tab value="context">对话</v-tab>
-        <v-tab value="memory">记忆</v-tab>
-        <v-tab value="tools">工具</v-tab>
-        <v-tab value="logs">日志</v-tab>
+        <v-tab value="context">{{ t('Conversation') }}</v-tab>
+        <v-tab value="memory">{{ t('Memory') }}</v-tab>
+        <v-tab value="tools">{{ t('Tools') }}</v-tab>
+        <v-tab value="logs">{{ t('Logs') }}</v-tab>
       </v-tabs>
 
       <v-card-text>
@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { ref, defineAsyncComponent } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 // Re-using the same components from the Agent page
 const ContextTab = defineAsyncComponent(() => import('@/components/agent/ContextTab.vue'));
@@ -49,6 +50,7 @@ const MemoryTab = defineAsyncComponent(() => import('@/components/agent/MemoryTa
 const ToolsTab = defineAsyncComponent(() => import('@/components/agent/ToolsTab.vue'));
 const LogsTab = defineAsyncComponent(() => import('@/components/agent/LogsTab.vue'));
 
+const { t } = useI18n();
 const tab = ref('context');
 </script>
 

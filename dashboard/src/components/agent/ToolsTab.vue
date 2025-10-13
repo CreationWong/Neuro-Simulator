@@ -3,25 +3,25 @@
     <v-row>
       <v-col cols="12">
         <div class="d-flex mb-4">
-          <v-btn @click="reloadTools" class="mr-2">重载工具</v-btn>
-          <v-btn @click="handleSaveAllocations" color="primary">保存分配</v-btn>
+          <v-btn @click="reloadTools" class="mr-2">{{ t('Reload Tools') }}</v-btn>
+          <v-btn @click="handleSaveAllocations" color="primary">{{ t('Save Allocations') }}</v-btn>
         </div>
-        <p class="text-caption">在这里为 Agent 分配可用的工具标签。Neuro Agent 负责与观众互动，Memory Agent 负责在后台整理记忆。</p>
+        <p class="text-caption">{{ t('Here you can assign available tool tags to Agents. The Neuro Agent is responsible for interacting with the audience, while the Memory Agent is responsible for organizing memories in the background.') }}</p>
       </v-col>
     </v-row>
 
     <v-row>
       <v-col cols="12">
         <v-card variant="outlined">
-          <v-card-title>所有可用工具</v-card-title>
+          <v-card-title>{{ t('All Available Tools') }}</v-card-title>
           <v-card-text>
             <v-table density="compact">
               <thead>
                 <tr>
-                  <th class="text-left">工具名称</th>
-                  <th class="text-left">描述</th>
-                  <th class="text-center">Neuro Agent</th>
-                  <th class="text-center">Memory Agent</th>
+                  <th class="text-left">{{ t('Tool Name') }}</th>
+                  <th class="text-left">{{ t('Description') }}</th>
+                  <th class="text-center">{{ t('Neuro Agent') }}</th>
+                  <th class="text-center">{{ t('Memory Agent') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -45,7 +45,7 @@
     <v-row>
       <v-col md="6" cols="12">
         <v-card variant="outlined">
-          <v-card-title>Neuro Agent 工具集</v-card-title>
+          <v-card-title>{{ t('Neuro Agent Toolset') }}</v-card-title>
           <v-card-text>
              <v-chip-group column>
               <v-chip
@@ -60,7 +60,7 @@
       </v-col>
       <v-col md="6" cols="12">
         <v-card variant="outlined">
-          <v-card-title>Memory Agent 工具集</v-card-title>
+          <v-card-title>{{ t('Memory Agent Toolset') }}</v-card-title>
           <v-card-text>
             <v-chip-group column>
               <v-chip
@@ -80,9 +80,11 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToolsStore } from '@/stores/tools';
 import { useConnectionStore } from '@/stores/connection';
 
+const { t } = useI18n();
 const toolsStore = useToolsStore();
 const connectionStore = useConnectionStore();
 
