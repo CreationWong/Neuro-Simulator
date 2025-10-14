@@ -1,6 +1,6 @@
 [package]
 name = "neuro-simulator"
-version = "0.2.14"
+version = "0.2.15"
 description = "Neuro Simulator Tauri Client"
 authors = ["Moha-Master"]
 license = "MIT"

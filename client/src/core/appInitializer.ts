@@ -40,6 +40,7 @@ export class AppInitializer {
 
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
+    private isConnectionLost: boolean = false;
 
     constructor() {
         this.layoutManager = new LayoutManager();
@@ -152,6 +153,20 @@ export class AppInitializer {
         const url = backendUrl ? `${backendUrl}/ws/stream` : '';
         const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
 
+        const onOpen = () => {
+            // Reset connection lost flag on successful connection
+            this.isConnectionLost = false;
+            this.goOnline();
+        };
+
+        const onDisconnect = () => {
+            // Only trigger goOffline if we are not already in a disconnected state
+            if (!this.isConnectionLost) {
+                this.isConnectionLost = true;
+                this.goOffline();
+            }
+        };
+
         // If wsClient already exists, update its configuration; otherwise, create a new instance
         if (this.wsClient) {
             this.wsClient.updateOptions({
@@ -159,8 +174,8 @@ export class AppInitializer {
                 autoReconnect: true,
                 maxReconnectAttempts: this.currentSettings.reconnectAttempts,
                 onMessage: universalMessageHandler,
-                onOpen: () => this.goOnline(),
-                onDisconnect: () => this.goOffline(),
+                onOpen: onOpen,
+                onDisconnect: onDisconnect,
             });
             // If the new URL is valid, disconnect the old connection and try the new one
             if (url) {
@@ -175,8 +190,8 @@ export class AppInitializer {
                 autoReconnect: true,
                 maxReconnectAttempts: this.currentSettings.reconnectAttempts,
                 onMessage: universalMessageHandler,
-                onOpen: () => this.goOnline(),
-                onDisconnect: () => this.goOffline(),
+                onOpen: onOpen,
+                onDisconnect: onDisconnect,
             });
         }
     }
