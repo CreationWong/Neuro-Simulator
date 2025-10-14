@@ -37,6 +37,7 @@ export class AppInitializer {
     private muteButton: MuteButton;
     private resizeObserver: ResizeObserver | null = null;
     private offlinePlayerSrc: string | null = null;
+    private logoContainer: HTMLElement | null = null;
 
     private isStarted: boolean = false;
     private currentPhase: string = 'offline';
@@ -73,6 +74,7 @@ export class AppInitializer {
             this.offlinePlayerSrc = offlinePlayer.src;
         }
         this.updateOfflinePlayerSrc();
+        this.logoContainer = document.querySelector('.twitch-logo-container');
     }
 
     public start(): void {
@@ -84,6 +86,7 @@ export class AppInitializer {
 
         // Then start the layout manager and go offline
         this.layoutManager.start();
+        this.updateLogoState('disconnected'); // Set initial logo state
         this.goOffline(); // Start in offline state, connection status will update UI via goOnline
         this.updateUiWithSettings();
         // Connection logic is handled by probeForIntegratedServer
@@ -122,6 +125,24 @@ export class AppInitializer {
         return this.neuroAvatar;
     }
 
+    private updateLogoState(state: 'disconnected' | 'connected' | 'live'): void {
+        if (!this.logoContainer) return;
+
+        this.logoContainer.classList.remove('logo-disconnected', 'logo-connected', 'logo-live');
+
+        switch (state) {
+            case 'disconnected':
+                this.logoContainer.classList.add('logo-disconnected');
+                break;
+            case 'connected':
+                this.logoContainer.classList.add('logo-connected');
+                break;
+            case 'live':
+                this.logoContainer.classList.add('logo-live');
+                break;
+        }
+    }
+
     private handleSettingsUpdate(newSettings: AppSettings): void {
         console.log("Settings updated. Re-initializing connection with new settings:", newSettings);
         this.currentSettings = newSettings;
@@ -154,8 +175,8 @@ export class AppInitializer {
         const universalMessageHandler = (message: WebSocketMessage) => this.handleWebSocketMessage(message);
 
         const onOpen = () => {
-            // Reset connection lost flag on successful connection
             this.isConnectionLost = false;
+            this.updateLogoState('connected'); // Set logo to connected state
             this.goOnline();
         };
 
@@ -163,6 +184,7 @@ export class AppInitializer {
             // Only trigger goOffline if we are not already in a disconnected state
             if (!this.isConnectionLost) {
                 this.isConnectionLost = true;
+                this.updateLogoState('disconnected'); // Set logo to disconnected state
                 this.goOffline();
             }
         };
@@ -429,6 +451,7 @@ export class AppInitializer {
                 if (window.__TAURI__) {
                     document.body.classList.add('stream-live-view');
                 }
+                this.updateLogoState('live');
                 this.currentPhase = 'live';
                 this.videoPlayer.hide();
                 this.neuroAvatar.setStage('step2'); 

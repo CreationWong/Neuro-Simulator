@@ -34,12 +34,22 @@
 }
 .twitch-logo-container {
   margin: 0;
+  /* The base state is vertically flipped. Rotations are added by state classes. */
   transform: scaleY(-1);
-  transition: transform 0.3s ease-out;
+  transition: transform 0.5s ease-in-out;
 }
-.twitch-logo-container:hover {
-  transform: scaleY(1);
+
+/* State classes for the logo */
+.logo-disconnected {
+  transform: scaleY(-1) rotate(-90deg);
 }
+.logo-connected {
+  transform: scaleY(-1) rotate(90deg);
+}
+.logo-live {
+  transform: scaleY(-1) rotate(0deg);
+}
+
 .twitch-logo-svg .logo-body { fill: var(--twitch-purple); }
 .twitch-logo-svg .logo-face { fill: var(--twitch-chat-bg); }
 .twitch-logo-svg .logo-eye-path { fill: var(--twitch-purple); }
