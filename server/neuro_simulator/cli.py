@@ -31,6 +31,7 @@ def main():
         work_dir.mkdir(parents=True, exist_ok=True)
 
     os.chdir(work_dir)
+    os.environ['NEURO_SIM_WORK_DIR'] = str(work_dir)
     logging.info(f"Using working directory: {work_dir}")
 
     # --- 2. Initialize Path Manager ---
@@ -46,6 +47,7 @@ def main():
         # Generate a blank config.yaml if it doesn't exist. 
         # The ConfigManager will populate it with defaults on first load.
         if not main_config_path.exists():
+            os.environ['NEURO_SIM_FIRST_RUN'] = 'true'
             logging.info(f"Config file not found. Generating a blank config at {main_config_path}")
             with open(main_config_path, "w", encoding="utf-8") as f:
                 f.write("{}\n") # Write an empty YAML object
@@ -146,6 +148,8 @@ def main():
     # Command-line arguments override config file settings
     server_host = args.host or config_manager.settings.server.host
     server_port = args.port or config_manager.settings.server.port
+    os.environ['NEURO_SIM_HOST'] = server_host
+    os.environ['NEURO_SIM_PORT'] = str(server_port)
 
     # --- 6. Run the Server ---
     logging.info(f"Starting Neuro-Simulator server on {server_host}:{server_port}...")

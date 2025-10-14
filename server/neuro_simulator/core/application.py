@@ -45,6 +45,7 @@ from ..utils.queue import (
 )
 from ..utils.state import app_state
 from ..utils.websocket import connection_manager
+from ..utils.banner import display_banner
 
 # --- Logger Setup ---
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
@@ -363,6 +364,38 @@ async def neuro_response_cycle():
 @app.on_event("startup")
 async def startup_event():
     """Actions to perform on application startup."""
+    # --- Populate app_state for banner ---
+    # This is done first so the banner can display status correctly.
+    app_state.is_first_run = os.getenv('NEURO_SIM_FIRST_RUN') == 'true'
+    app_state.work_dir = os.getenv('NEURO_SIM_WORK_DIR')
+    app_state.server_host = os.getenv('NEURO_SIM_HOST', '127.0.0.1')
+    app_state.server_port = os.getenv('NEURO_SIM_PORT', '8000')
+
+    app_state.missing_providers = []
+    app_state.unassigned_providers = []
+    
+    if config_manager.settings:
+        settings = config_manager.settings
+        if not settings.llm_providers:
+            app_state.missing_providers.append("LLM Providers")
+        if not settings.tts_providers:
+            app_state.missing_providers.append("TTS Providers")
+
+        if not settings.neuro.neuro_llm_provider_id:
+            app_state.unassigned_providers.append("Neuro Actor LLM")
+        if not settings.neuro.neuro_memory_llm_provider_id:
+            app_state.unassigned_providers.append("Neuro Memory LLM")
+        if not settings.neuro.tts_provider_id:
+            app_state.unassigned_providers.append("Neuro TTS")
+        if not settings.chatbot.chatbot_llm_provider_id:
+            app_state.unassigned_providers.append("Chatbot Actor LLM")
+        if not settings.chatbot.chatbot_memory_llm_provider_id:
+            app_state.unassigned_providers.append("Chatbot Memory LLM")
+
+        app_state.using_default_password = (
+            settings.server.panel_password == "your-secret-api-token-here"
+        )
+
     # --- Custom Exception Handler for Benign Connection Errors ---
     # This is to suppress the benign "ConnectionResetError" that asyncio's Proactor
     # event loop on Windows logs when a client disconnects abruptly. This error is
@@ -501,6 +534,7 @@ async def startup_event():
         logger.critical(f"Agent initialization failed on startup: {e}", exc_info=True)
 
     logger.info("FastAPI application has started.")
+    display_banner()
 
 
 @app.on_event("shutdown")
