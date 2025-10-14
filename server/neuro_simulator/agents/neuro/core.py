@@ -5,6 +5,7 @@ Implements a dual-LLM "Actor/Thinker" architecture for responsive interaction
 and asynchronous memory consolidation.
 """
 
+import asyncio
 import json
 import logging
 import re
