@@ -9,17 +9,84 @@ class Colors:
     BLUE = "\033[94m"
     RESET = "\033[0m"
 
+def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    """Converts a hex color string to an (R, G, B) tuple."""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+def _colorize_logo(text: str) -> str:
+    """Applies complex coloring rules to the ASCII logo."""
+    lines = text.strip("\n").split("\n")
+    colored_lines = []
+
+    # --- Color and Range Definitions ---
+    # Note: Ranges are 0-indexed, converted from user's 1-based columns.
+    NEURO_RANGE = (0, 43)
+    S_RANGE = (48, 55)
+    A1_RANGE = (56, 63)
+    M_RANGE = (64, 74)
+    A2_RANGE = (75, 82)
+
+    NEURO_START_RGB = _hex_to_rgb("#8b3f5e")
+    NEURO_END_RGB = _hex_to_rgb("#fda6ad")
+    
+    SAMA_COLORS_RGB = {
+        "S": _hex_to_rgb("#ff78b6"),
+        "A1": _hex_to_rgb("#ef9ffd"),
+        "M": _hex_to_rgb("#36bbbc"),
+        "A2": _hex_to_rgb("#dda256"),
+    }
+
+    for line in lines:
+        new_line = ""
+        for i, char in enumerate(line):
+            if char.isspace():
+                new_line += char
+                continue
+
+            color_code = ""
+            # NEURO Gradient
+            if NEURO_RANGE[0] <= i <= NEURO_RANGE[1]:
+                fraction = (i - NEURO_RANGE[0]) / (NEURO_RANGE[1] - NEURO_RANGE[0])
+                r = int(NEURO_START_RGB[0] + (NEURO_END_RGB[0] - NEURO_START_RGB[0]) * fraction)
+                g = int(NEURO_START_RGB[1] + (NEURO_END_RGB[1] - NEURO_START_RGB[1]) * fraction)
+                b = int(NEURO_START_RGB[2] + (NEURO_END_RGB[2] - NEURO_START_RGB[2]) * fraction)
+                color_code = f"\033[38;2;{r};{g};{b}m"
+            # SAMA Solid Colors
+            elif S_RANGE[0] <= i <= S_RANGE[1]:
+                r, g, b = SAMA_COLORS_RGB["S"]
+                color_code = f"\033[38;2;{r};{g};{b}m"
+            elif A1_RANGE[0] <= i <= A1_RANGE[1]:
+                r, g, b = SAMA_COLORS_RGB["A1"]
+                color_code = f"\033[38;2;{r};{g};{b}m"
+            elif M_RANGE[0] <= i <= M_RANGE[1]:
+                r, g, b = SAMA_COLORS_RGB["M"]
+                color_code = f"\033[38;2;{r};{g};{b}m"
+            elif A2_RANGE[0] <= i <= A2_RANGE[1]:
+                r, g, b = SAMA_COLORS_RGB["A2"]
+                color_code = f"\033[38;2;{r};{g};{b}m"
+
+            new_line += f"{color_code}{char}" if color_code else char
+        
+        colored_lines.append(new_line)
+    
+    return "\n".join(colored_lines) + Colors.RESET
+
 def display_banner():
     """Displays an ASCII art banner with server and status information."""
-    logo = r"""
+    logo_text = r"""
+ 
 ███╗   ██╗███████╗██╗   ██╗██████╗  ██████╗     ███████╗ █████╗ ███╗   ███╗ █████╗
 ████╗  ██║██╔════╝██║   ██║██╔══██╗██╔═══██╗    ██╔════╝██╔══██╗████╗ ████║██╔══██╗
 ██╔██╗ ██║█████╗  ██║   ██║██████╔╝██║   ██║    ███████╗███████║██╔████╔██║███████║
 ██║╚██╗██║██╔══╝  ██║   ██║██╔══██╗██║   ██║    ╚════██║██╔══██║██║╚██╔╝██║██╔══██║
 ██║ ╚████║███████╗╚██████╔╝██║  ██║╚██████╔╝    ███████║██║  ██║██║ ╚═╝ ██║██║  ██║
 ╚═╝  ╚═══╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝     ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝
+ 
 """
-    print(logo)
+    
+    colored_logo = _colorize_logo(logo_text)
+    print(colored_logo)
 
     # --- URL and Status Boxes ---
     messages = {
@@ -78,7 +145,7 @@ def box_it_up(lines: list[str], title: str = "", border_color: str = Colors.RESE
         lines_with_color = lines
 
     def visible_len(s: str) -> int:
-        return len(re.sub(r'\033\[\d+m', '', s))
+        return len(re.sub(r'\033\[[\d;]*m', '', s))
 
     width = max(visible_len(line) for line in lines_with_color)
     if title:
@@ -86,9 +153,9 @@ def box_it_up(lines: list[str], title: str = "", border_color: str = Colors.RESE
 
     # Top border
     if title:
-        top_border_str = f"╭───┤ {title} ├{"─" * (width - len(title) - 1)}╮"
+        top_border_str = f"╭───┤ {title} ├{'─' * (width - len(title) - 1)}╮"
     else:
-        top_border_str = f"╭───{"─" * width}───╮"
+        top_border_str = f"╭───{'─' * width}───╮"
     print(f"{border_color}{top_border_str}{Colors.RESET}")
 
     # Content lines
@@ -99,5 +166,5 @@ def box_it_up(lines: list[str], title: str = "", border_color: str = Colors.RESE
               f"{border_color}│{Colors.RESET}")
 
     # Bottom border
-    bottom_border_str = f"╰───{"─" * width}───╯"
+    bottom_border_str = f"╰───{'─' * width}───╯"
     print(f"{border_color}{bottom_border_str}{Colors.RESET}")
