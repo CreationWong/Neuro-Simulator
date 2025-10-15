@@ -86,6 +86,7 @@ class LiveStreamManager:
         while not self.event_queue.empty():
             self.event_queue.get_nowait()
         app_state.live_phase_started_event.clear()
+        app_state.neuro_last_speech = None  # Clear last speech context
         logger.info("Stream state has been reset to OFFLINE.")
 
     async def start_new_stream_cycle(self):

@@ -7,11 +7,12 @@ Implements a dual-pool system (base and dynamic) with multiple generation strate
 import logging
 import random
 import json
-from typing import List, Dict, Callable, Optional
+from typing import Any, List, Dict, Callable, Optional
 
 from ...llm import LLMClient
 from ....core.config import config_manager
 from ....core.path_manager import path_manager
+from ....utils.banner import Colors, box_it_up
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
 
@@ -113,6 +114,13 @@ class NicknameGenerator:
                 logger.info(
                     f"Successfully populated dynamic pools with {len(self.dynamic_adjectives)} adjectives and {len(self.dynamic_nouns)} nouns."
                 )
+                box_it_up(
+                    [
+                        f"Successfully populated dynamic pools with {len(self.dynamic_adjectives)} adjectives and {len(self.dynamic_nouns)} nouns."
+                    ],
+                    title="Nickname Pool Generated",
+                    border_color=Colors.BLUE,
+                )
             else:
                 logger.warning("LLM generated empty lists for dynamic pools.")
 
@@ -135,10 +143,24 @@ class NicknameGenerator:
         if not adjectives or not nouns:
             return self._generate_random_numeric()  # Fallback
 
-        noun = random.choice(nouns)
+        def get_word(item: Any) -> str:
+            """Safely get the word from a string or a dict."""
+            if isinstance(item, dict):
+                # Look for common keys for the word itself.
+                for key in ["word", "noun", "adjective", "name"]:
+                    if isinstance(item.get(key), str):
+                        return item[key]
+                # Fallback: stringify the whole dict if no suitable key is found.
+                return str(item)
+            return str(item)
+
+        noun_item = random.choice(nouns)
+        noun = get_word(noun_item)
+
         # 50% chance to add an adjective
         if random.random() < 0.5:
-            adjective = random.choice(adjectives)
+            adjective_item = random.choice(adjectives)
+            adjective = get_word(adjective_item)
             # Formatting variations
             format_choice = random.random()
             if format_choice < 0.4:

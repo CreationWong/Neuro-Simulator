@@ -172,16 +172,11 @@ async def fetch_and_process_audience_chats():
     try:
         # Get context for the chatbot
         current_neuro_speech = app_state.neuro_last_speech
-        context_message = (
-            current_neuro_speech
-            if current_neuro_speech
-            else "The stream is starting! Let's say hello and get the hype going!"
-        )
         recent_history = get_recent_audience_chats_for_chatbot(limit=10)
 
         # Generate messages
         generated_messages = await chatbot.generate_chat_messages(
-            neuro_speech=context_message, recent_history=recent_history
+            neuro_speech=current_neuro_speech, recent_history=recent_history
         )
 
         if not generated_messages:
@@ -861,7 +856,7 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
                     raise ValueError(f"{name} does not have an LLM Provider configured.")
                 if provider_id not in defined_llm_ids:
                     raise ValueError(
-                        f"{name} is configured with provider ID '{provider_id}', but no such provider is defined in the LLM Providers list."
+                        f"'{name}' is configured with provider ID '{provider_id}', but no such provider is defined in the LLM Providers list."
                     )
             
             # 4. Check TTS assignment
@@ -873,13 +868,15 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
                     f"Agent (Neuro) is configured with TTS provider ID '{tts_provider_id}', but no such provider is defined in the TTS Providers list."
                 )
 
-            logger.info(
-                "Start stream action received. Resetting agent memory before starting processes..."
-            )
-            # This will create the instance on first call if not already created
+            logger.info("Start stream action received. Resetting agent and chatbot memory...")
+            agent = await create_agent()
+            await agent.reset_memory()
             chatbot = await create_chatbot()
-            if isinstance(chatbot, Chatbot):
-                await chatbot.initialize_runtime_components()
+            if chatbot:
+                await chatbot.reset_memory()
+                if isinstance(chatbot, Chatbot):
+                    await chatbot.initialize_runtime_components()
+
             if not process_manager.is_running:
                 process_manager.start_live_processes()
             response["payload"] = {"status": "success", "message": "Stream started"}
@@ -910,9 +907,63 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             )
 
         elif action == "restart_stream":
-            await process_manager.stop_live_processes()
-            await asyncio.sleep(1)
-            process_manager.start_live_processes()
+            # 1. Stop the stream
+            if process_manager.is_running:
+                await process_manager.stop_live_processes()
+            
+            await asyncio.sleep(1) # Give tasks a moment to cancel
+
+            # 2. Start the stream (with full validation and memory reset)
+            # --- Pre-flight validation checks ---
+            settings = config_manager.settings
+
+            # 1. Check if provider lists are defined
+            if not settings.llm_providers:
+                raise ValueError("No LLM Providers have been defined. Please add one in the settings.")
+            if not settings.tts_providers:
+                raise ValueError("No TTS Providers have been defined. Please add one in the settings.")
+
+            # 2. Create sets of defined provider IDs for efficient lookup
+            defined_llm_ids = {p.provider_id for p in settings.llm_providers}
+            defined_tts_ids = {p.provider_id for p in settings.tts_providers}
+
+            # 3. Check all required LLM provider assignments
+            required_llm_fields = {
+                "Neuro Actor": settings.neuro.neuro_llm_provider_id,
+                "Neuro Memory": settings.neuro.neuro_memory_llm_provider_id,
+                "Chatbot Actor": settings.chatbot.chatbot_llm_provider_id,
+                "Chatbot Memory": settings.chatbot.chatbot_memory_llm_provider_id,
+            }
+
+            for name, provider_id in required_llm_fields.items():
+                if not provider_id:
+                    raise ValueError(f"{name} does not have an LLM Provider configured.")
+                if provider_id not in defined_llm_ids:
+                    raise ValueError(
+                        f"'{name}' is configured with provider ID '{provider_id}', but no such provider is defined in the LLM Providers list."
+                    )
+            
+            # 4. Check TTS assignment
+            tts_provider_id = settings.neuro.tts_provider_id
+            if not tts_provider_id:
+                raise ValueError("Agent (Neuro) does not have a TTS Provider configured.")
+            if tts_provider_id not in defined_tts_ids:
+                raise ValueError(
+                    f"Agent (Neuro) is configured with TTS provider ID '{tts_provider_id}', but no such provider is defined in the TTS Providers list."
+                )
+
+            logger.info("Restart stream action received. Resetting agent and chatbot memory...")
+            agent = await create_agent()
+            await agent.reset_memory()
+            chatbot = await create_chatbot()
+            if chatbot:
+                await chatbot.reset_memory()
+                if isinstance(chatbot, Chatbot):
+                    await chatbot.initialize_runtime_components()
+
+            if not process_manager.is_running:
+                process_manager.start_live_processes()
+            
             response["payload"] = {"status": "success", "message": "Stream restarted"}
             # Broadcast stream status update
             status = {

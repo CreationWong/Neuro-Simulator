@@ -17,6 +17,7 @@ from ...core.agent_interface import BaseAgent
 from ...core.config import config_manager
 from ...core.llm_manager import llm_manager
 from ...core.path_manager import path_manager
+from ...utils.banner import Colors, box_it_up
 from ..memory.manager import MemoryManager
 from ..tools.manager import ToolManager
 
@@ -58,6 +59,7 @@ class Neuro(BaseAgent):
             default_allocations={
                 "neuro_agent": [
                     "speak",
+                    "add_temp_memory",
                     "get_core_memory_blocks",
                     "get_core_memory_block",
                     "model_spin",
@@ -189,17 +191,19 @@ class Neuro(BaseAgent):
             else "Empty."
         )
 
-        # Read a larger chunk of history to find enough of Neuro's own speech.
+        # Read a much larger chunk of history to find enough of Neuro's own speech.
+        # Since chat messages are much more frequent than Neuro's responses, we need to look further back.
         recent_history = await self._read_history_log(
-            path_manager.neuro_history_path, limit=30
+            path_manager.neuro_history_path, limit=300
         )
         
-        # Filter for only Neuro's (assistant) messages and take the last 5.
+        # Filter for only Neuro's (assistant) messages and take the configured number of recent lines.
+        neuro_recent_lines = config_manager.settings.neuro.recent_history_lines if config_manager.settings else 5
         neuro_speech_history = [
             msg.get('content', '') 
             for msg in recent_history 
             if msg.get('role') == 'assistant'
-        ][-5:]
+        ][-neuro_recent_lines:]
 
         # Format the text to be injected into the prompt.
         if neuro_speech_history:
@@ -311,8 +315,18 @@ class Neuro(BaseAgent):
 
         prompt = await self.build_neuro_prompt(messages)
         response_text = await self.neuro_llm.generate(prompt)
+        box_it_up(
+            response_text.split('\n'),
+            title="Neuro Raw Response",
+            border_color=Colors.GREEN,
+        )
 
         tool_calls = self._parse_tool_calls(response_text)
+        box_it_up(
+            json.dumps(tool_calls, indent=2).split('\n'),
+            title="Neuro Parsed Tool Calls",
+            border_color=Colors.YELLOW,
+        )
         processing_result = await self._execute_tool_calls(tool_calls, "neuro_agent")
 
         if final_response := processing_result.get("final_response", ""):
@@ -340,6 +354,11 @@ class Neuro(BaseAgent):
 
         assert path_manager is not None
         logger.info("Neuro is reflecting on recent conversations...")
+        box_it_up(
+            ["The 'Thinker' agent is now active.", "Consolidating recent memories..."],
+            title="Neuro Memory Consolidation Started",
+            border_color=Colors.BLUE,
+        )
         self.turn_counter = 0
         # Use neuro's history path
         history = await self._read_history_log(path_manager.neuro_history_path, limit=50)
@@ -348,15 +367,30 @@ class Neuro(BaseAgent):
 
         prompt = await self._build_memory_prompt(history)
         response_text = await self.memory_llm.generate(prompt)
+        box_it_up(
+            response_text.split('\n'),
+            title="Neuro (Thinker) Raw Response",
+            border_color=Colors.GREEN,
+        )
         if not response_text:
             return
 
         tool_calls = self._parse_tool_calls(response_text)
+        box_it_up(
+            json.dumps(tool_calls, indent=2).split('\n'),
+            title="Neuro (Thinker) Parsed Tool Calls",
+            border_color=Colors.YELLOW,
+        )
         if not tool_calls:
             return
 
         # Execute with the 'memory_manager' agent name
         await self._execute_tool_calls(tool_calls, "memory_manager")
+        box_it_up(
+            ["The 'Thinker' agent has finished its task."],
+            title="Neuro Memory Consolidation Complete",
+            border_color=Colors.BLUE,
+        )
         logger.info("Neuro memory consolidation complete.")
 
     # --- Implementation of BaseAgent interface methods ---

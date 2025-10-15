@@ -20,7 +20,7 @@ class AddTempMemoryTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Adds an entry to the temporary memory. Use for short-term observations, recent facts, or topics to bring up soon."
+        return "Adds a non-empty entry to the temporary memory. Use for short-term observations, recent facts, or topics to bring up soon. The 'content' parameter is mandatory."
 
     @property
     def parameters(self) -> List[Dict[str, Any]]:
@@ -28,7 +28,7 @@ class AddTempMemoryTool(BaseTool):
             {
                 "name": "content",
                 "type": "string",
-                "description": "The content of the memory entry.",
+                "description": "The specific, non-empty text content of the memory entry. Cannot be an empty string or contain only whitespace.",
                 "required": True,
             },
             {

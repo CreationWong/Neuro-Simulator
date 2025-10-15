@@ -19,8 +19,8 @@ class LLMProviderSettings(BaseModel):
     temperature: Optional[float] = Field(default=1.2, ge=0.0, le=2.0, title="Temperature", description="Controls randomness. Higher values (e.g., 1.2) make output more random, lower values (e.g., 0.7) make it more deterministic.")
     top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0, title="Top P", description="Nucleus sampling: model considers results of tokens with this probability mass. (e.g., 0.1 means only tokens comprising the top 10% probability mass are considered).")
     top_k: Optional[int] = Field(default=None, ge=0, title="Top K", description="Model considers the top K most likely tokens at each step.")
-    frequency_penalty: Optional[float] = Field(default=0.3, ge=-2.0, le=2.0, title="Frequency Penalty", description="Positive values penalize new tokens based on their existing frequency, decreasing repetition. (OpenAI/Gemini)")
-    presence_penalty: Optional[float] = Field(default=0.3, ge=-2.0, le=2.0, title="Presence Penalty", description="Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. (OpenAI/Gemini)")
+    frequency_penalty: Optional[float] = Field(default=0.5, ge=-2.0, le=2.0, title="Frequency Penalty", description="Positive values penalize new tokens based on their existing frequency, decreasing repetition. (OpenAI/Gemini)")
+    presence_penalty: Optional[float] = Field(default=0.5, ge=-2.0, le=2.0, title="Presence Penalty", description="Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. (OpenAI/Gemini)")
     max_output_tokens: Optional[int] = Field(default=2048, ge=1, title="Max Output Tokens", description="The maximum number of tokens to generate in the response.")
     stop_sequences: Optional[List[str]] = Field(default=None, title="Stop Sequences", description="A list of strings that will cause the model to stop generating text if they are produced.")
     seed: Optional[int] = Field(default=None, title="Seed", description="A seed for sampling to create reproducible results. (Useful for testing).")
@@ -50,14 +50,13 @@ class NeuroSettings(BaseModel):
     post_speech_cooldown_sec: float = Field(1.0, title="Post-Speech Cooldown (sec)", description="Time to wait after Neuro speaks before she can speak again.")
     initial_greeting: str = Field("The stream has just started. Greet your audience and say hello!", title="Initial Greeting", format="text-area", description="The message Neuro will see when the stream first starts.")  # type: ignore[call-overload]
     neuro_input_queue_max_size: int = Field(200, title="Neuro Input Queue Max Size", description="Max number of incoming events (chats, etc.) to hold in the queue.")
-    reflection_threshold: int = Field(
-        5, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
-    )
+    reflection_threshold: int = Field(5, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable.")
+    recent_history_lines: int = Field(10, title="Recent History Lines", description="Number of recent spoken lines to include in the prompt context.")
 
 
 class NicknameGenerationSettings(BaseModel):
     enable_dynamic_pool: bool = Field(True, title="Enable Dynamic Pool", description="Whether to dynamically generate nicknames for viewers.")
-    dynamic_pool_size: int = Field(50, title="Dynamic Pool Size", description="The number of dynamically generated nicknames to maintain.")
+    dynamic_pool_size: int = Field(256, title="Dynamic Pool Size", description="The number of dynamically generated nicknames to maintain.")
 
 
 class ChatbotSettings(BaseModel):
@@ -66,12 +65,11 @@ class ChatbotSettings(BaseModel):
     chatbot_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot LLM Provider ID", description="The ID of the LLM provider for the audience-facing chatbot.")
     chatbot_memory_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot Memory LLM Provider ID", description="The ID of the LLM provider for the chatbot's memory operations.")
     generation_interval_sec: int = Field(3, title="Generation Interval (sec)", description="How often (in seconds) the chatbot should try to generate a message.")
-    chats_per_batch: int = Field(2, title="Chats per Batch", description="How many chat messages the chatbot should generate at once.")
-    ambient_chat_ratio: float = Field(default=0.4, ge=0.0, le=1.0, title="Ambient Chat Ratio", description="The proportion of chat messages in a batch that should be ambient/random instead of reacting to Neuro.")
-    reflection_threshold: int = Field(
-        50, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
-    )
+    chats_per_batch: int = Field(4, title="Chats per Batch", description="How many chat messages the chatbot should generate at once.")
+    ambient_chat_ratio: float = Field(default=0.5, ge=0.0, le=1.0, title="Ambient Chat Ratio", description="The proportion of chat messages in a batch that should be ambient/random instead of reacting to Neuro.")
+    reflection_threshold: int = Field(50, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable.")
     nickname_generation: NicknameGenerationSettings = Field(default_factory=NicknameGenerationSettings, description="Settings for generating viewer nicknames.")
+    initial_prompt: str = Field(default="The stream is starting! Let's say hello and get the hype going!", title="Initial Prompt", format="text-area", description="The message the chatbot will use as context before Neuro has spoken.")  # type: ignore[call-overload]
 
 
 class StreamSettings(BaseModel):

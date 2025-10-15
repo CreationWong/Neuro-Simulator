@@ -1,5 +1,7 @@
 from neuro_simulator.utils.state import app_state
 import re
+import shutil
+import textwrap
 
 # ANSI escape codes for colors
 class Colors:
@@ -133,38 +135,88 @@ def display_banner():
     if messages["FATAL"]:
         box_it_up(messages["FATAL"], title="Fatal", border_color=Colors.RED, content_color=Colors.RED)
 
-def box_it_up(lines: list[str], title: str = "", border_color: str = Colors.RESET, content_color: str = Colors.RESET):
-    """Wraps a list of strings in a decorative box and prints them."""
+def box_it_up(
+    lines: list[str],
+    title: str = "",
+    border_color: str = Colors.RESET,
+    content_color: str = Colors.RESET,
+):
+    """Wraps a list of strings in a decorative, auto-wrapping box and prints them."""
     if not lines:
         return
 
-    # Apply content color to lines before calculating width
-    if content_color and content_color != Colors.RESET:
-        lines_with_color = [f"{content_color}{line}{Colors.RESET}" for line in lines]
-    else:
-        lines_with_color = lines
+    # --- Text Wrapping Logic ---
+    terminal_width = shutil.get_terminal_size((120, 24)).columns
+    # Max content width = terminal_width - box borders - padding
+    max_content_width = terminal_width - 4 - 6
 
     def visible_len(s: str) -> int:
-        return len(re.sub(r'\033\[[\d;]*m', '', s))
+        return len(re.sub(r"\033\[[\d;]*m", "", s))
 
-    width = max(visible_len(line) for line in lines_with_color)
+    wrapped_lines = []
+    for line in lines:
+        # Wrap only the visible part of the line, then re-apply color codes if they exist
+        color_prefix = ""
+        color_suffix = ""
+        if content_color and content_color != Colors.RESET:
+            color_prefix = content_color
+            color_suffix = Colors.RESET
+
+        # Handle lines that might already have color codes from the caller
+        # This is a simplification; it assumes color is at the start if present
+        has_existing_color = "\033[" in line
+        if has_existing_color:
+            # This logic is too complex to handle robustly here.
+            # For now, we just wrap the visible part and hope for the best.
+            visible_text = visible_len(line)
+            if visible_text > max_content_width:
+                # Don't wrap pre-colored long lines, just truncate them to avoid mangling codes
+                # A better implementation would require a more sophisticated parser.
+                wrapped_lines.append(line[:max_content_width - 3] + "...")
+                continue
+            else:
+                wrapped_lines.append(line)
+                continue
+
+        # If the line is short enough, just add it with color
+        if visible_len(line) <= max_content_width:
+            wrapped_lines.append(f"{color_prefix}{line}{color_suffix}")
+            continue
+
+        # If the line is too long, wrap it
+        wrapped_sub_lines = textwrap.wrap(
+            line,
+            width=max_content_width,
+            replace_whitespace=False,
+            drop_whitespace=True,
+        )
+        for sub_line in wrapped_sub_lines:
+            wrapped_lines.append(f"{color_prefix}{sub_line}{color_suffix}")
+
+    if not wrapped_lines:
+        return
+
+    # --- Drawing Logic ---
+    width = max(visible_len(line) for line in wrapped_lines)
     if title:
         width = max(width, len(title) + 2)
 
     # Top border
     if title:
-        top_border_str = f"╭───┤ {title} ├{'─' * (width - len(title) - 1)}╮"
+        top_border_str = f"╭───┤ {title} ├{"─" * (width - len(title) - 1)}╮"
     else:
-        top_border_str = f"╭───{'─' * width}───╮"
+        top_border_str = f"╭───{"─" * width}───╮"
     print(f"{border_color}{top_border_str}{Colors.RESET}")
 
     # Content lines
-    for line in lines_with_color:
+    for line in wrapped_lines:
         padding = width - visible_len(line)
-        print(f"{border_color}│{Colors.RESET}"
-              f"   {line}{' ' * padding}   "
-              f"{border_color}│{Colors.RESET}")
+        print(
+            f"{border_color}│{Colors.RESET}"
+            f"   {line}{' ' * padding}   "
+            f"{border_color}│{Colors.RESET}"
+        )
 
     # Bottom border
-    bottom_border_str = f"╰───{'─' * width}───╯"
+    bottom_border_str = f"╰───{"─" * width}───╯"
     print(f"{border_color}{bottom_border_str}{Colors.RESET}")

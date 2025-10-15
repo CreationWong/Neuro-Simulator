@@ -226,28 +226,43 @@ class Chatbot(BaseAgent):
         assert path_manager is not None
         generated_messages = []
         for tool_call in tool_calls:
-            tool_name = tool_call.get("name")
-            if not tool_name:
-                continue
-            params = tool_call.get("params", {})
-            result = await self.tool_manager.execute_tool(tool_name, **params)
-
-            if (
-                agent_name == "chatbot"
-                and tool_name == "post_chat_message"
-                and result.get("status") == "success"
-            ):
-                text_to_post = result.get("text_to_post", "")
-                if text_to_post:
-                    nickname = self.nickname_generator.generate_nickname()
-                    message = {"username": nickname, "text": text_to_post}
-                    generated_messages.append(message)
-                    await self._append_to_history(
-                        path_manager.chatbot_history_path,
-                        {"role": "assistant", "content": f"{nickname}: {text_to_post}"},
-                    )
+            # Handle nested lists or ensure we have a valid dict
+            if isinstance(tool_call, list):
+                # If tool_call is a list, process each item in the list
+                for sub_call in tool_call:
+                    if isinstance(sub_call, dict):
+                        await self._execute_single_tool_call(sub_call, agent_name, generated_messages)
+            elif isinstance(tool_call, dict):
+                # If it's a dictionary, process it directly
+                await self._execute_single_tool_call(tool_call, agent_name, generated_messages)
+            else:
+                logger.warning(f"Unexpected tool_call type: {type(tool_call)}, value: {tool_call}")
         logger.info(f"Returning generated messages: {generated_messages}")
         return generated_messages
+
+    async def _execute_single_tool_call(self, tool_call: Dict[str, Any], agent_name: str, generated_messages: List[Dict[str, str]]):
+        """Execute a single tool call and add to generated messages if appropriate."""
+        tool_name = tool_call.get("name")
+        if not tool_name:
+            logger.warning(f"Tool call missing name: {tool_call}")
+            return
+        params = tool_call.get("params", {})
+        result = await self.tool_manager.execute_tool(tool_name, **params)
+
+        if (
+            agent_name == "chatbot"
+            and tool_name == "post_chat_message"
+            and result.get("status") == "success"
+        ):
+            text_to_post = result.get("text_to_post", "")
+            if text_to_post:
+                nickname = self.nickname_generator.generate_nickname()
+                message = {"username": nickname, "text": text_to_post}
+                generated_messages.append(message)
+                await self._append_to_history(
+                    path_manager.chatbot_history_path,
+                    {"role": "assistant", "content": f"{nickname}: {text_to_post}"},
+                )
 
     async def _build_ambient_prompt(self, num_messages: int) -> str:
         """Builds the prompt for the ambient Chatbot LLM."""
@@ -299,7 +314,7 @@ class Chatbot(BaseAgent):
 
     async def generate_chat_messages(
         self,
-        neuro_speech: str,
+        neuro_speech: Optional[str],
         recent_history: List[Dict[str, str]],
     ) -> List[Dict[str, str]]:
         """
@@ -320,6 +335,11 @@ class Chatbot(BaseAgent):
         chats_per_batch = settings.chats_per_batch
         ambient_ratio = settings.ambient_chat_ratio
 
+        # Determine the contextual speech to use
+        contextual_speech = neuro_speech
+        if not contextual_speech:
+            contextual_speech = settings.initial_prompt
+
         num_ambient = round(chats_per_batch * ambient_ratio)
         num_contextual = chats_per_batch - num_ambient
 
@@ -327,7 +347,7 @@ class Chatbot(BaseAgent):
         if num_contextual > 0:
             tasks.append(
                 self._generate_contextual_chats(
-                    neuro_speech, recent_history, num_contextual
+                    contextual_speech, recent_history, num_contextual
                 )
             )
         if num_ambient > 0:

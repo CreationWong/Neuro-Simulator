@@ -164,5 +164,5 @@ class LLMClient:
             return result if result is not None else ""
         except Exception as e:
             logger.error(f"Error generating text with LLM for '{self.provider_id}': {e}", exc_info=True)
-            return "My brain is not working, tell Vedal to check the logs."
+            return "Someone tell Vedal there is a problem with my AI."
 
