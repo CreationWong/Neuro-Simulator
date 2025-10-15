@@ -189,15 +189,23 @@ class Neuro(BaseAgent):
             else "Empty."
         )
 
+        # Read a larger chunk of history to find enough of Neuro's own speech.
         recent_history = await self._read_history_log(
-            path_manager.neuro_history_path, limit=10
+            path_manager.neuro_history_path, limit=30
         )
-        recent_history_text = "\n".join(
-            [
-                f"{msg.get('role', 'unknown')}: {msg.get('content', '')}"
-                for msg in recent_history
-            ]
-        )
+        
+        # Filter for only Neuro's (assistant) messages and take the last 5.
+        neuro_speech_history = [
+            msg.get('content', '') 
+            for msg in recent_history 
+            if msg.get('role') == 'assistant'
+        ][-5:]
+
+        # Format the text to be injected into the prompt.
+        if neuro_speech_history:
+            recent_history_text = "\n".join([f'- "{line}"' for line in reversed(neuro_speech_history)])
+        else:
+            recent_history_text = "- (You haven't spoken recently.)"
         user_messages_text = "\n".join(
             [f"{msg['username']}: {msg['text']}" for msg in messages]
         )

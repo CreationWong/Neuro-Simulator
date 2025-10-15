@@ -15,6 +15,15 @@ class LLMProviderSettings(BaseModel):
     api_key: Optional[str] = Field(default=None, title="API Key", description="API key for authentication.")
     base_url: Optional[str] = Field(default=None, title="Base URL", description="Optional custom base URL for the API endpoint.")
     model_name: str = Field(..., title="Model Name", description="The specific model to be used (e.g., gpt-4, gemini-pro).")
+    force_json_output: bool = Field(True, title="Force JSON Output", description="Ensures the model's output is always a valid JSON object, improving reliability for tool calls.")
+    temperature: Optional[float] = Field(default=1.2, ge=0.0, le=2.0, title="Temperature", description="Controls randomness. Higher values (e.g., 1.2) make output more random, lower values (e.g., 0.7) make it more deterministic.")
+    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0, title="Top P", description="Nucleus sampling: model considers results of tokens with this probability mass. (e.g., 0.1 means only tokens comprising the top 10% probability mass are considered).")
+    top_k: Optional[int] = Field(default=None, ge=0, title="Top K", description="Model considers the top K most likely tokens at each step.")
+    frequency_penalty: Optional[float] = Field(default=0.3, ge=-2.0, le=2.0, title="Frequency Penalty", description="Positive values penalize new tokens based on their existing frequency, decreasing repetition. (OpenAI/Gemini)")
+    presence_penalty: Optional[float] = Field(default=0.3, ge=-2.0, le=2.0, title="Presence Penalty", description="Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. (OpenAI/Gemini)")
+    max_output_tokens: Optional[int] = Field(default=2048, ge=1, title="Max Output Tokens", description="The maximum number of tokens to generate in the response.")
+    stop_sequences: Optional[List[str]] = Field(default=None, title="Stop Sequences", description="A list of strings that will cause the model to stop generating text if they are produced.")
+    seed: Optional[int] = Field(default=None, title="Seed", description="A seed for sampling to create reproducible results. (Useful for testing).")
 
 
 class TTSProviderSettings(BaseModel):
@@ -57,6 +66,7 @@ class ChatbotSettings(BaseModel):
     chatbot_memory_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot Memory LLM Provider ID", description="The ID of the LLM provider for the chatbot's memory operations.")
     generation_interval_sec: int = Field(3, title="Generation Interval (sec)", description="How often (in seconds) the chatbot should try to generate a message.")
     chats_per_batch: int = Field(2, title="Chats per Batch", description="How many chat messages the chatbot should generate at once.")
+    ambient_chat_ratio: float = Field(default=0.4, ge=0.0, le=1.0, title="Ambient Chat Ratio", description="The proportion of chat messages in a batch that should be ambient/random instead of reacting to Neuro.")
     reflection_threshold: int = Field(
         50, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable."
     )

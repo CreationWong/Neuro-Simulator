@@ -146,6 +146,7 @@ class Chatbot(BaseAgent):
         self,
         neuro_speech: str,
         recent_history: List[Dict[str, str]],
+        num_messages: int,
     ) -> str:
         """Builds the prompt for the Chatbot (Actor) LLM."""
         assert path_manager is not None
@@ -160,12 +161,6 @@ class Chatbot(BaseAgent):
             [f"{msg.get('role')}: {msg.get('content')}" for msg in recent_history]
         )
 
-        from ...core.config import config_manager
-
-        assert config_manager.settings is not None
-
-        chats_per_batch = config_manager.settings.chatbot.chats_per_batch
-
         return prompt_template.format(
             tool_descriptions=tool_descriptions,
             init_memory=init_memory_text,
@@ -173,16 +168,21 @@ class Chatbot(BaseAgent):
             temp_memory=temp_memory_text,
             recent_history=recent_history_text,
             neuro_speech=neuro_speech,
-            chats_per_batch=chats_per_batch,
+            chats_per_batch=num_messages,
         )
 
     async def build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
         """Implements the BaseAgent requirement, but delegates to build_chatbot_prompt."""
         # This is a slight mismatch in concepts, as chatbot has a different trigger.
         # We'll use the last message as the 'neuro_speech' context.
-        neuro_speech = messages[-1]["text"] if messages else ""
+        neuro_speech = messages[-1].get("text", "") if messages else ""
         recent_history = await self.get_message_history(limit=10)
-        return await self.build_chatbot_prompt(neuro_speech, recent_history)
+        
+        from ...core.config import config_manager
+        assert config_manager.settings is not None
+        chats_per_batch = config_manager.settings.chatbot.chats_per_batch
+        
+        return await self.build_chatbot_prompt(neuro_speech, recent_history, chats_per_batch)
 
     async def _build_memory_prompt(
         self,
@@ -249,21 +249,29 @@ class Chatbot(BaseAgent):
         logger.info(f"Returning generated messages: {generated_messages}")
         return generated_messages
 
-    async def generate_chat_messages(
+    async def _build_ambient_prompt(self, num_messages: int) -> str:
+        """Builds the prompt for the ambient Chatbot LLM."""
+        assert path_manager is not None
+        with open(path_manager.chatbot_ambient_prompt_path, "r", encoding="utf-8") as f:
+            prompt_template = f.read()
+
+        tool_descriptions = self._format_tool_schemas_for_prompt("chatbot")
+
+        return prompt_template.format(
+            tool_descriptions=tool_descriptions,
+            num_messages=num_messages,
+        )
+
+    async def _generate_contextual_chats(
         self,
         neuro_speech: str,
         recent_history: List[Dict[str, str]],
+        num_contextual: int,
     ) -> List[Dict[str, str]]:
-        """The main actor loop to generate chat messages."""
-        if not self.chatbot_llm:
-            logger.warning("Chatbot LLM is not configured. Skipping message generation.")
-            return []
-
-        assert path_manager is not None
-        for entry in recent_history:
-            await self._append_to_history(path_manager.chatbot_history_path, entry)
-
-        prompt = await self.build_chatbot_prompt(neuro_speech, recent_history)
+        """Generates chat messages that are contextually relevant to Neuro's speech."""
+        prompt = await self.build_chatbot_prompt(
+            neuro_speech, recent_history, num_contextual
+        )
         response_text = await self.chatbot_llm.generate(prompt)
         if not response_text:
             return []
@@ -272,13 +280,73 @@ class Chatbot(BaseAgent):
         if not tool_calls:
             return []
 
-        messages = await self._execute_tool_calls(tool_calls, "chatbot")
+        return await self._execute_tool_calls(tool_calls, "chatbot")
+
+    async def _generate_ambient_chats(
+        self, num_ambient: int
+    ) -> List[Dict[str, str]]:
+        """Generates random, non-contextual chat messages."""
+        prompt = await self._build_ambient_prompt(num_ambient)
+        response_text = await self.chatbot_llm.generate(prompt)
+        if not response_text:
+            return []
+
+        tool_calls = self._parse_tool_calls(response_text)
+        if not tool_calls:
+            return []
+
+        return await self._execute_tool_calls(tool_calls, "chatbot")
+
+    async def generate_chat_messages(
+        self,
+        neuro_speech: str,
+        recent_history: List[Dict[str, str]],
+    ) -> List[Dict[str, str]]:
+        """
+        The main actor loop to generate chat messages.
+        It splits the generation into two parallel tasks:
+        1. Contextual chats based on Neuro's speech.
+        2. Ambient chats to add diversity.
+        """
+        if not self.chatbot_llm:
+            logger.warning("Chatbot LLM is not configured. Skipping message generation.")
+            return []
+
+        assert path_manager is not None
+        for entry in recent_history:
+            await self._append_to_history(path_manager.chatbot_history_path, entry)
+
+        settings = config_manager.settings.chatbot
+        chats_per_batch = settings.chats_per_batch
+        ambient_ratio = settings.ambient_chat_ratio
+
+        num_ambient = round(chats_per_batch * ambient_ratio)
+        num_contextual = chats_per_batch - num_ambient
+
+        tasks = []
+        if num_contextual > 0:
+            tasks.append(
+                self._generate_contextual_chats(
+                    neuro_speech, recent_history, num_contextual
+                )
+            )
+        if num_ambient > 0:
+            tasks.append(self._generate_ambient_chats(num_ambient))
+
+        if not tasks:
+            return []
+
+        generated_messages_lists = await asyncio.gather(*tasks)
+        
+        all_messages = []
+        for msg_list in generated_messages_lists:
+            all_messages.extend(msg_list)
 
         self.turn_counter += 1
-        if self.turn_counter >= self.reflection_threshold:
+        if self.reflection_threshold > 0 and self.turn_counter >= self.reflection_threshold:
             asyncio.create_task(self._reflect_and_consolidate())
 
-        return messages
+        return all_messages
 
     async def _reflect_and_consolidate(self):
         """The main thinker loop to consolidate memories."""

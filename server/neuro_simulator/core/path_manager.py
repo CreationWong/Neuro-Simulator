@@ -41,6 +41,7 @@ class PathManager:
         self.chatbot_nickname_data_dir = self.chatbot_data_dir / "nickname_gen" / "data"
 
         self.chatbot_prompt_path = self.chatbot_dir / "chatbot_prompt.txt"
+        self.chatbot_ambient_prompt_path = self.chatbot_dir / "ambient_prompt.txt"
         self.chatbot_tools_path = self.chatbot_dir / "tools.json"
         self.chatbot_history_path = self.chatbot_dir / "history.jsonl"
 

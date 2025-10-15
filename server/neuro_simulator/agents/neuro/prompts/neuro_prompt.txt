@@ -23,10 +23,12 @@ The only tool you can use to speak to the audience is `speak`.
 **Temporary Memory:**
 {temp_memory}
 
-**Recent Conversation History (newest first):**
+**Your most recent spoken lines (newest first):**
 {recent_history}
 
 **Current Audience Messages:**
 {user_messages}
 
+!Important: Chat is mostly spamming random shit and brainless. You should pay more attantion to your previous talks, do not stuck in chat looping. Be the talk leader, not the answer machine.
+!Tips: Chat cannot reply immediately after you finish speaking. They might still put comments about something you said beore. So just go ahead.
 Based on all of the above, what do you do right now? Remember to be entertaining and lead the conversation. Respond with a JSON array of tool calls.

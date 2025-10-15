@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Optional
 
 from ..agents.llm import LLMClient
-from .config import config_manager
+from .config import AppSettings, config_manager
 
 logger = logging.getLogger(__name__)
 
@@ -65,3 +65,14 @@ class _LLMManager:
 
 # Global instance of the manager
 llm_manager = _LLMManager()
+
+
+def _reset_llm_clients_on_config_update(new_settings: AppSettings):
+    """Resets the cached LLM clients when configuration is updated."""
+    global llm_manager
+    logger.info("Configuration has been updated. Resetting cached LLMClient instances.")
+    llm_manager._clients.clear()
+
+
+# Register the callback to the config manager
+config_manager.register_update_callback(_reset_llm_clients_on_config_update)

@@ -92,6 +92,10 @@ def main():
             path_manager.path_manager.chatbot_prompt_path,
         )
         copy_if_not_exists(
+            chatbot_source_path / "prompts" / "ambient_prompt.txt",
+            path_manager.path_manager.chatbot_ambient_prompt_path,
+        )
+        copy_if_not_exists(
             chatbot_source_path / "prompts" / "memory_prompt.txt",
             path_manager.path_manager.chatbot_memory_agent_prompt_path,
         )
