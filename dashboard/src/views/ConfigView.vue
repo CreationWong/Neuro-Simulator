@@ -26,6 +26,20 @@
             <div v-for="prop in group.properties" :key="prop.key">
               <FieldRenderer :group-key="group.isGroup ? group.key : null" :prop-key="prop.key" :prop-schema="prop.schema" />
             </div>
+
+            <!-- Danger Zone for Server Settings -->
+            <div v-if="group.key === 'server'" class="mt-10">
+              <v-card border color="error" variant="outlined">
+                <v-card-title class="text-h5">{{ t('Danger Zone') }}</v-card-title>
+                <v-card-text>
+                  <p class="mb-4">{{ t('These actions are destructive and cannot be undone.') }}</p>
+                  <div class="d-flex flex-wrap ga-4">
+                    <v-btn @click="resetConfig" color="error" variant="flat">{{ t('Reset Settings to Default') }}</v-btn>
+                    <v-btn @click="resetData" color="error" variant="flat">{{ t('Reset Data to Initial State') }}</v-btn>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </div>
           </v-card>
         </v-window-item>
       </v-window>
@@ -104,6 +118,31 @@ async function saveConfig() {
     console.error("Failed to save config:", error);
   } finally {
     isSaving.value = false;
+  }
+}
+
+async function resetConfig() {
+  if (confirm(t('Are you sure you want to reset all settings to their default values? This cannot be undone.'))) {
+    try {
+      await connectionStore.sendAdminWsMessage('reset_config_to_defaults', {});
+      // Optionally, show a success message to the user
+      alert(t('Configuration has been reset. The new settings are now active.'));
+    } catch (error) {
+      console.error("Failed to reset config:", error);
+      alert(t('Failed to reset configuration.'));
+    }
+  }
+}
+
+async function resetData() {
+  if (confirm(t('Are you sure you want to reset all data (prompts, memory, etc.) to the initial state? This cannot be undone.'))) {
+    try {
+      await connectionStore.sendAdminWsMessage('reset_data_directories', {});
+      alert(t('Data has been reset. The application is re-initializing with the new data.'));
+    } catch (error) {
+      console.error("Failed to reset data:", error);
+      alert(t('Failed to reset data.'));
+    }
   }
 }
 
