@@ -59,7 +59,7 @@ class NicknameGenerator:
                 "Base adjective or noun pools are empty. Nickname generation quality will be affected."
             )
 
-        if config_manager.settings.chatbot.nickname_generation.enable_dynamic_pool:
+        if config_manager.settings.chatbot.enable_dynamic_pool:
             await self._populate_dynamic_pools()
 
         logger.info("NicknameGenerator initialized.")
@@ -74,7 +74,7 @@ class NicknameGenerator:
 
         logger.info("Attempting to populate dynamic nickname pools using LLM...")
         pool_size = (
-            config_manager.settings.chatbot.nickname_generation.dynamic_pool_size
+            config_manager.settings.chatbot.dynamic_pool_size
         )
         try:
             adj_prompt = f"Generate a JSON array of {pool_size} diverse, cool-sounding English adjectives for online usernames. The output MUST be a single valid JSON array of strings. Example: [\"fast\", \"clever\", \"shiny\"]"
