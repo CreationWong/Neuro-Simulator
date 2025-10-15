@@ -105,10 +105,15 @@ async def synthesize_audio_segment(
         )
 
         def _perform_synthesis_sync():
+            # This function is fully blocking, as intended for to_thread
             return synthesizer.speak_ssml_async(ssml_string).get()
 
         try:
-            result = await asyncio.to_thread(_perform_synthesis_sync)
+            timeout_sec = provider_config.tts_timeout
+            # Use asyncio.wait_for to apply a timeout to the threaded blocking call
+            result = await asyncio.wait_for(
+                asyncio.to_thread(_perform_synthesis_sync), timeout=timeout_sec
+            )
 
             if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
                 audio_data = result.audio_data
@@ -125,6 +130,11 @@ async def synthesize_audio_segment(
                     error_message += f" | Details: {cancellation_details.error_details}"
                 logger.error(error_message)
                 raise Exception(error_message)
+        except asyncio.TimeoutError:
+            logger.error(
+                f"TTS synthesis timed out after {timeout_sec} seconds for text: '{text[:30]}...'"
+            )
+            return "timeout", 0.0
         except Exception as e:
             logger.error(
                 f"An exception occurred during the Azure TTS SDK call: {e}",

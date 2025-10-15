@@ -34,6 +34,7 @@ class TTSProviderSettings(BaseModel):
     provider_type: Literal["azure"] = Field(..., title="Provider Type", description="The type of the provider service.")
     api_key: Optional[str] = Field(default=None, title="API Key", description="API key for authentication.")
     region: Optional[str] = Field(default=None, title="Region", description="The service region for the provider (e.g., eastus).")
+    tts_timeout: float = Field(5.0, title="TTS Timeout (sec)", description="Timeout in seconds for the TTS synthesis request.")
 
 
 # --- Core Application Settings Models ---

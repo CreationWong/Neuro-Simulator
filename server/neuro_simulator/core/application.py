@@ -318,6 +318,18 @@ async def neuro_response_cycle():
                 *synthesis_tasks, return_exceptions=True
             )
 
+            # Check for TTS timeout before processing packages
+            tts_timed_out = False
+            for res in synthesis_results:
+                if isinstance(res, tuple) and res[0] == "timeout":
+                    logger.warning("TTS synthesis timed out. Broadcasting TTS error to clients.")
+                    await connection_manager.broadcast({"type": "neuro_error_signal"})
+                    tts_timed_out = True
+                    break  # Exit after the first timeout
+
+            if tts_timed_out:
+                continue
+
             speech_packages = [
                 {
                     "segment_id": i,
