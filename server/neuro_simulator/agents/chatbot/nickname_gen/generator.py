@@ -6,6 +6,7 @@ Implements a dual-pool system (base and dynamic) with multiple generation strate
 
 import logging
 import random
+import json
 from typing import List, Dict, Callable, Optional
 
 from ...llm import LLMClient
@@ -75,22 +76,38 @@ class NicknameGenerator:
             config_manager.settings.chatbot.nickname_generation.dynamic_pool_size
         )
         try:
-            adj_prompt = f"Generate a list of {pool_size} diverse, cool-sounding English adjectives for online usernames. Output only the words, one per line."
-            noun_prompt = f"Generate a list of {pool_size} diverse, cool-sounding English nouns for online usernames. Output only the words, one per line."
+            adj_prompt = f"Generate a JSON array of {pool_size} diverse, cool-sounding English adjectives for online usernames. The output MUST be a single valid JSON array of strings. Example: [\"fast\", \"clever\", \"shiny\"]"
+            noun_prompt = f"Generate a JSON array of {pool_size} diverse, cool-sounding English nouns for online usernames. The output MUST be a single valid JSON array of strings. Example: [\"river\", \"comet\", \"dream\"]"
 
             adj_list_str = await self.llm_client.generate(
-                adj_prompt, max_tokens=pool_size * 10
+                adj_prompt, max_tokens=pool_size * 15  # Increased token limit for JSON overhead
             )
             noun_list_str = await self.llm_client.generate(
-                noun_prompt, max_tokens=pool_size * 10
+                noun_prompt, max_tokens=pool_size * 15 # Increased token limit for JSON overhead
             )
 
-            self.dynamic_adjectives = [
-                line.strip() for line in adj_list_str.split("\n") if line.strip()
-            ]
-            self.dynamic_nouns = [
-                line.strip() for line in noun_list_str.split("\n") if line.strip()
-            ]
+            try:
+                # Primary strategy: parse as JSON
+                self.dynamic_adjectives = json.loads(adj_list_str)
+                self.dynamic_nouns = json.loads(noun_list_str)
+            except json.JSONDecodeError:
+                logger.warning("LLM did not return valid JSON for nickname pools, falling back to line splitting.")
+                # Fallback strategy: split by newline
+                self.dynamic_adjectives = [
+                    line.strip() for line in adj_list_str.split("\n") if line.strip()
+                ]
+                self.dynamic_nouns = [
+                    line.strip() for line in noun_list_str.split("\n") if line.strip()
+                ]
+
+            # Robustness check: Flatten list if it's a list of lists
+            if self.dynamic_adjectives and isinstance(self.dynamic_adjectives[0], list):
+                logger.warning("Dynamic adjectives pool is a list of lists, flattening.")
+                self.dynamic_adjectives = [item[0] for item in self.dynamic_adjectives if item and isinstance(item, list)]
+            
+            if self.dynamic_nouns and isinstance(self.dynamic_nouns[0], list):
+                logger.warning("Dynamic nouns pool is a list of lists, flattening.")
+                self.dynamic_nouns = [item[0] for item in self.dynamic_nouns if item and isinstance(item, list)]
 
             if self.dynamic_adjectives and self.dynamic_nouns:
                 logger.info(

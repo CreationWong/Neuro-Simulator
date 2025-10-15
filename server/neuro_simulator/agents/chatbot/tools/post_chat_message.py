@@ -6,8 +6,6 @@ from typing import Dict, Any, List
 
 from neuro_simulator.agents.tools.base import BaseTool
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
-
 
 class PostChatMessageTool(BaseTool):
     """Tool for the chatbot to post a message to the stream chat."""
@@ -43,7 +41,6 @@ class PostChatMessageTool(BaseTool):
         if not isinstance(text, str) or not text:
             raise ValueError("The 'text' parameter must be a non-empty string.")
 
-        logger.info(f"Chatbot decided to say: {text}")
         # The result is the text to be posted. The core agent will combine this
         # with a generated nickname before sending it to the stream.
         return {"status": "success", "text_to_post": text}
