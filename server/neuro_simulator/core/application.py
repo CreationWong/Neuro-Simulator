@@ -46,6 +46,8 @@ from ..utils.queue import (
 from ..utils.state import app_state
 from ..utils.websocket import connection_manager
 from ..utils.banner import display_banner
+from .data_manager import reset_data_directories_to_defaults
+
 
 # --- Logger Setup ---
 logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
@@ -1009,6 +1011,64 @@ async def handle_admin_ws_message(websocket: WebSocket, data: dict):
             updated_configs = config_manager.settings.model_dump()
             await connection_manager.broadcast_to_admins(
                 {"type": "config_updated", "payload": updated_configs}
+            )
+
+        elif action == "reset_config_to_defaults":
+            config_manager.reset_to_defaults()
+            # After resetting, reload the new default config into the live app state
+            if config_manager.file_path:
+                config_manager.load(config_manager.file_path)
+            
+            response["payload"] = {
+                "status": "success",
+                "message": "Configuration has been reset to defaults.",
+            }
+            # Broadcast the update to all admins
+            updated_configs = config_manager.settings.model_dump()
+            await connection_manager.broadcast_to_admins(
+                {"type": "config_updated", "payload": updated_configs}
+            )
+
+        elif action == "reset_data_directories":
+            reset_data_directories_to_defaults()
+            
+            # Re-initialize agents to pick up the new default data
+            agent = await create_agent(force_recreate=True)
+            chatbot = await create_chatbot(force_recreate=True)
+
+            await agent.reset_memory()
+            if chatbot:
+                await chatbot.reset_memory()
+
+            response["payload"] = {
+                "status": "success",
+                "message": "Data directories have been reset to defaults.",
+            }
+            # Broadcast updates for all memory types to refresh the UI
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "core_memory_updated",
+                    "payload": await agent.get_memory_blocks(),
+                }
+            )
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "temp_memory_updated",
+                    "payload": await agent.get_temp_memory(),
+                }
+            )
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "init_memory_updated",
+                    "payload": await agent.get_init_memory(),
+                }
+            )
+            await connection_manager.broadcast_to_admins(
+                {
+                    "type": "agent_context",
+                    "action": "update",
+                    "messages": await agent.get_message_history(),
+                }
             )
 
         # Other Agent Actions

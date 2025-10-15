@@ -23,12 +23,20 @@ def _reset_agent_on_config_update(new_settings: AppSettings):
 config_manager.register_update_callback(_reset_agent_on_config_update)
 
 
-async def create_agent() -> BaseAgent:
+async def create_agent(force_recreate: bool = False) -> BaseAgent:
     """
     Factory function to create and initialize the Neuro agent instance.
     Returns a cached instance unless the configuration has changed.
+    
+    Args:
+        force_recreate: If True, forces the recreation of the agent instance.
     """
     global _agent_instance
+
+    if force_recreate:
+        logger.info("Forcing recreation of agent instance.")
+        _agent_instance = None
+
     if _agent_instance is not None:
         return _agent_instance
 

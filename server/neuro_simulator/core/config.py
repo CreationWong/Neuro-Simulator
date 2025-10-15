@@ -54,11 +54,6 @@ class NeuroSettings(BaseModel):
     recent_history_lines: int = Field(10, title="Recent History Lines", description="Number of recent spoken lines to include in the prompt context.")
 
 
-class NicknameGenerationSettings(BaseModel):
-    enable_dynamic_pool: bool = Field(True, title="Enable Dynamic Pool", description="Whether to dynamically generate nicknames for viewers.")
-    dynamic_pool_size: int = Field(256, title="Dynamic Pool Size", description="The number of dynamically generated nicknames to maintain.")
-
-
 class ChatbotSettings(BaseModel):
     """Settings for the audience chatbot."""
 
@@ -68,7 +63,8 @@ class ChatbotSettings(BaseModel):
     chats_per_batch: int = Field(4, title="Chats per Batch", description="How many chat messages the chatbot should generate at once.")
     ambient_chat_ratio: float = Field(default=0.5, ge=0.0, le=1.0, title="Ambient Chat Ratio", description="The proportion of chat messages in a batch that should be ambient/random instead of reacting to Neuro.")
     reflection_threshold: int = Field(50, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable.")
-    nickname_generation: NicknameGenerationSettings = Field(default_factory=NicknameGenerationSettings, description="Settings for generating viewer nicknames.")
+    enable_dynamic_pool: bool = Field(True, title="Enable Dynamic Nickname Pool", description="Whether to dynamically generate nicknames for viewers.")
+    dynamic_pool_size: int = Field(256, title="Dynamic Nickname Pool Size", description="The number of dynamically generated nicknames to maintain.")
     initial_prompt: str = Field(default="The stream is starting! Let's say hello and get the hype going!", title="Initial Prompt", format="text-area", description="The message the chatbot will use as context before Neuro has spoken.")  # type: ignore[call-overload]
 
 
@@ -133,6 +129,26 @@ class ConfigManager:
                 yaml.dump(
                     self.settings.model_dump(exclude_none=True), f, sort_keys=False
                 )
+
+    def reset_to_defaults(self):
+        """Resets the settings to their default values while preserving providers."""
+        if self.file_path and self.settings:
+            # Preserve the existing provider configurations
+            preserved_llm_providers = self.settings.llm_providers
+            preserved_tts_providers = self.settings.tts_providers
+
+            # Create a new AppSettings instance with all other values at their defaults
+            new_default_settings = AppSettings()
+
+            # Overwrite the default (empty) provider lists with the preserved ones
+            new_default_settings.llm_providers = preserved_llm_providers
+            new_default_settings.tts_providers = preserved_tts_providers
+
+            # Set the current settings to this new, combined configuration
+            self.settings = new_default_settings
+            
+            # Save the result
+            self.save_settings()
 
     def get_settings_schema(self):
         return AppSettings.model_json_schema()

@@ -23,13 +23,21 @@ def _reset_chatbot_on_config_update(new_settings: AppSettings):
 config_manager.register_update_callback(_reset_chatbot_on_config_update)
 
 
-async def create_chatbot() -> Optional[BaseAgent]:
+async def create_chatbot(force_recreate: bool = False) -> Optional[BaseAgent]:
     """
     Factory function to create and initialize the Chatbot agent instance.
     Returns a cached instance unless the configuration has changed.
     Returns None if the chatbot is not configured.
+
+    Args:
+        force_recreate: If True, forces the recreation of the agent instance.
     """
     global _chatbot_instance
+
+    if force_recreate:
+        logger.info("Forcing recreation of Chatbot instance.")
+        _chatbot_instance = None
+
     if _chatbot_instance is not None:
         return _chatbot_instance
 
