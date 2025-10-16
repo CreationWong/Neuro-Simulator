@@ -34,7 +34,7 @@ class TTSProviderSettings(BaseModel):
     provider_type: Literal["azure"] = Field(..., title="Provider Type", description="The type of the provider service.")
     api_key: Optional[str] = Field(default=None, title="API Key", description="API key for authentication.")
     region: Optional[str] = Field(default=None, title="Region", description="The service region for the provider (e.g., eastus).")
-    tts_timeout: float = Field(5.0, title="TTS Timeout (sec)", description="Timeout in seconds for the TTS synthesis request.")
+    tts_timeout: float = Field(10.0, title="TTS Timeout (sec)", description="Timeout in seconds for the TTS synthesis request.")
 
 
 # --- Core Application Settings Models ---
@@ -53,7 +53,7 @@ class NeuroSettings(BaseModel):
     neuro_input_queue_max_size: int = Field(200, title="Neuro Input Queue Max Size", description="Max number of incoming events (chats, etc.) to hold in the queue.")
     reflection_threshold: int = Field(5, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable.")
     recent_history_lines: int = Field(10, title="Recent History Lines", description="Number of recent spoken lines to include in the prompt context.")
-    filter_enabled: bool = Field(default=True, title="Enable Filter", description="If true, a second LLM call is made via the Filter module to review and potentially revise Neuro's response.")
+    filter_enabled: bool = Field(default=False, title="Enable Filter", description="If true, a second LLM call is made via the Filter module to review and potentially revise Neuro's response.")
 
 
 class ChatbotSettings(BaseModel):
@@ -63,9 +63,9 @@ class ChatbotSettings(BaseModel):
     chatbot_memory_llm_provider_id: Optional[str] = Field(default=None, title="Chatbot Memory LLM Provider ID", description="The ID of the LLM provider for the chatbot's memory operations.")
     generation_interval_sec: int = Field(3, title="Generation Interval (sec)", description="How often (in seconds) the chatbot should try to generate a message.")
     chats_per_batch: int = Field(4, title="Chats per Batch", description="How many chat messages the chatbot should generate at once.")
-    ambient_chat_ratio: float = Field(default=0.5, ge=0.0, le=1.0, title="Ambient Chat Ratio", description="The proportion of chat messages in a batch that should be ambient/random instead of reacting to Neuro.")
+    ambient_chat_ratio: float = Field(default=0.1, ge=0.0, le=1.0, title="Ambient Chat Ratio", description="The proportion of chat messages in a batch that should be ambient/random instead of reacting to Neuro.")
     reflection_threshold: int = Field(50, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable.")
-    enable_dynamic_pool: bool = Field(True, title="Enable Dynamic Nickname Pool", description="Whether to dynamically generate nicknames for viewers.")
+    enable_dynamic_pool: bool = Field(False, title="Enable Dynamic Nickname Pool", description="Whether to dynamically generate nicknames for viewers.")
     dynamic_pool_size: int = Field(256, title="Dynamic Nickname Pool Size", description="The number of dynamically generated nicknames to maintain.")
     initial_prompt: str = Field(default="The stream is starting! Let's say hello and get the hype going!", title="Initial Prompt", format="text-area", description="The message the chatbot will use as context before Neuro has spoken.")  # type: ignore[call-overload]
 
