@@ -29,8 +29,8 @@ class CustomBuildHook(BuildHookInterface):
                 "NodeJS `npm` is required for building the dashboard but it was not found"
             )
         
-        stderr.write("### npm install\n")
-        subprocess.run([npm, "install"], check=True, cwd=dashboard_dir)
+        stderr.write("### npm ci\n")
+        subprocess.run([npm, "ci"], check=True, cwd=dashboard_dir)
 
         stderr.write("\n### npm run build\n")
         subprocess.run([npm, "run", "build"], check=True, cwd=dashboard_dir)
@@ -43,8 +43,8 @@ class CustomBuildHook(BuildHookInterface):
             # Note: This does not raise an error to allow building server-only in some scenarios
             return
 
-        stderr.write("### npm install\n")
-        subprocess.run([npm, "install"], check=True, cwd=client_dir)
+        stderr.write("### npm ci\n")
+        subprocess.run([npm, "ci"], check=True, cwd=client_dir)
 
         stderr.write("\n### npm run build\n")
         subprocess.run([npm, "run", "build"], check=True, cwd=client_dir)
