@@ -276,8 +276,8 @@ async def neuro_response_cycle():
                 agent.process_and_respond(selected_chats), timeout=20.0
             )
 
-            response_text = response_result.get("final_response", "").strip()
-            if not response_text:
+            response_texts = response_result.get("final_responses", [])
+            if not response_texts:
                 continue
 
             # Push updated agent context to admin clients immediately after processing
@@ -290,16 +290,11 @@ async def neuro_response_cycle():
                 }
             )
 
+            response_text = " ".join(response_texts)
             async with app_state.neuro_last_speech_lock:
                 app_state.neuro_last_speech = response_text
 
-            sentences = [
-                s.strip()
-                for s in re.split(r"(?<=[.!?])\s+", response_text.replace("\n", " "))
-                if s.strip()
-            ]
-            if not sentences:
-                continue
+            sentences = response_texts
 
             tts_id = config_manager.settings.neuro.tts_provider_id
             if not tts_id:

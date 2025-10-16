@@ -265,7 +265,7 @@ class Neuro(BaseAgent):
         agent_name: str, # Added for signature consistency
     ) -> Dict[str, Any]:
         execution_results = []
-        final_response = ""
+        final_responses = []
         for tool_call in tool_calls:
             tool_name = tool_call.get("name")
             # Handle both 'params' and 'parameters' for robustness.
@@ -279,13 +279,15 @@ class Neuro(BaseAgent):
                     {"name": tool_name, "params": params, "result": result}
                 )
                 if tool_name == "speak" and result.get("status") == "success":
-                    final_response = result.get("spoken_text", "")
+                    spoken_text = result.get("spoken_text", "")
+                    if spoken_text:
+                        final_responses.append(spoken_text)
             except Exception as e:
                 logger.error(f"Error executing tool {tool_name}: {e}")
                 execution_results.append(
                     {"name": tool_name, "params": params, "error": str(e)}
                 )
-        return {"tool_executions": execution_results, "final_response": final_response}
+        return {"tool_executions": execution_results, "final_responses": final_responses}
 
     async def process_and_respond(
         self, messages: List[Dict[str, str]]
@@ -319,42 +321,35 @@ class Neuro(BaseAgent):
             border_color=Colors.YELLOW,
         )
 
-        processing_result = {"tool_executions": [], "final_response": ""}
-        speak_call = None
-        speak_call_index = -1
+        # Filter all speak tool calls
+        if self.filter and config_manager.settings.neuro.filter_enabled:
+            for i in range(len(tool_calls) - 1, -1, -1):
+                tool_call = tool_calls[i]
+                if tool_call.get("name") == "speak":
+                    logger.info("Filter enabled. Reviewing a speak call.")
+                    original_text = (tool_call.get("params") or tool_call.get("parameters", {})).get("text", "")
 
-        # Find the speak tool call to process it with the filter
-        for i, tool_call in enumerate(tool_calls):
-            if tool_call.get("name") == "speak":
-                speak_call = tool_call
-                speak_call_index = i
-                break
-
-        # If there is a speak call, filter it. Otherwise, the agent just thinks.
-        if speak_call and self.filter:
-            logger.info("Filter enabled. Reviewing initial response.")
-            original_text = (speak_call.get("params") or speak_call.get("parameters", {})).get("text", "")
-
-            if original_text:
-                filtered_calls = await self.filter.process(original_output=original_text)
-                if filtered_calls:
-                    # Replace the original speak call with the filtered one
-                    tool_calls[speak_call_index] = filtered_calls[0]
-                else:
-                    # If filter fails, remove the speak call to be safe
-                    tool_calls.pop(speak_call_index)
-                    logger.warning("Filter did not return a tool call. Suppressing speech.")
-            else:
-                # If speak call has no text, remove it
-                tool_calls.pop(speak_call_index)
+                    if original_text:
+                        filtered_calls = await self.filter.process(original_output=original_text)
+                        if filtered_calls:
+                            # Replace the original speak call with the filtered one
+                            tool_calls[i] = filtered_calls[0]
+                        else:
+                            # If filter fails, remove the speak call to be safe
+                            tool_calls.pop(i)
+                            logger.warning("Filter did not return a tool call. Suppressing this speech.")
+                    else:
+                        # If speak call has no text, remove it
+                        tool_calls.pop(i)
 
         # Execute all tool calls (including 'think' and the filtered 'speak')
         processing_result = await self._execute_tool_calls(tool_calls, "neuro_agent")
 
-        if final_response := processing_result.get("final_response", ""):
+        if final_responses := processing_result.get("final_responses", []):
+            full_response = " ".join(final_responses)
             await self._append_to_history_log(
                 path_manager.neuro_history_path,
-                {"role": "assistant", "content": final_response},
+                {"role": "assistant", "content": full_response},
             )
 
         self.turn_counter += 1
