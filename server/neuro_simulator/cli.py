@@ -73,6 +73,10 @@ def main():
             path_manager.path_manager.memory_agent_prompt_path,
         )
         copy_if_not_exists(
+            neuro_source_path / "prompts" / "filter_prompt.txt",
+            path_manager.path_manager.neuro_agent_dir / "filter_prompt.txt",
+        )
+        copy_if_not_exists(
             neuro_source_path / "memory" / "core_memory.json",
             path_manager.path_manager.core_memory_path,
         )

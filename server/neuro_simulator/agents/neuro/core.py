@@ -20,6 +20,7 @@ from ...core.path_manager import path_manager
 from ...utils.banner import Colors, box_it_up
 from ..memory.manager import MemoryManager
 from ..tools.manager import ToolManager
+from .filter.filter import NeuroFilter
 
 logger = logging.getLogger("neuro_agent")
 
@@ -43,6 +44,12 @@ class Neuro(BaseAgent):
             settings.neuro.neuro_memory_llm_provider_id
         )
 
+        filter_llm_id = (
+            settings.neuro.neuro_filter_llm_provider_id
+            or settings.neuro.neuro_llm_provider_id
+        )
+        self.filter = NeuroFilter(filter_llm_id)
+
         self.memory_manager = MemoryManager(
             init_memory_path=path_manager.init_memory_path,
             core_memory_path=path_manager.core_memory_path,
@@ -58,6 +65,7 @@ class Neuro(BaseAgent):
             },
             default_allocations={
                 "neuro_agent": [
+                    "think",
                     "speak",
                     "add_temp_memory",
                     "get_core_memory_blocks",
@@ -151,6 +159,8 @@ class Neuro(BaseAgent):
             )
         return "\n".join(lines)
 
+
+
     async def build_neuro_prompt(self, messages: List[Dict[str, str]]) -> str:
         """Builds the prompt for the Neuro (Actor) LLM."""
         assert path_manager is not None
@@ -191,25 +201,6 @@ class Neuro(BaseAgent):
             else "Empty."
         )
 
-        # Read a much larger chunk of history to find enough of Neuro's own speech.
-        # Since chat messages are much more frequent than Neuro's responses, we need to look further back.
-        recent_history = await self._read_history_log(
-            path_manager.neuro_history_path, limit=300
-        )
-        
-        # Filter for only Neuro's (assistant) messages and take the configured number of recent lines.
-        neuro_recent_lines = config_manager.settings.neuro.recent_history_lines if config_manager.settings else 5
-        neuro_speech_history = [
-            msg.get('content', '') 
-            for msg in recent_history 
-            if msg.get('role') == 'assistant'
-        ][-neuro_recent_lines:]
-
-        # Format the text to be injected into the prompt.
-        if neuro_speech_history:
-            recent_history_text = "\n".join([f'- "{line}"' for line in reversed(neuro_speech_history)])
-        else:
-            recent_history_text = "- (You haven't spoken recently.)"
         user_messages_text = "\n".join(
             [f"{msg['username']}: {msg['text']}" for msg in messages]
         )
@@ -219,7 +210,6 @@ class Neuro(BaseAgent):
             init_memory=init_memory_text,
             core_memory=core_memory_text,
             temp_memory=temp_memory_text,
-            recent_history=recent_history_text,
             user_messages=user_messages_text,
         )
 
@@ -278,7 +268,8 @@ class Neuro(BaseAgent):
         final_response = ""
         for tool_call in tool_calls:
             tool_name = tool_call.get("name")
-            params = tool_call.get("params", {})
+            # Handle both 'params' and 'parameters' for robustness.
+            params = tool_call.get("params") or tool_call.get("parameters", {})
             if not tool_name:
                 continue
             logger.info(f"Executing tool: {tool_name} with params: {params}")
@@ -317,16 +308,47 @@ class Neuro(BaseAgent):
         response_text = await self.neuro_llm.generate(prompt)
         box_it_up(
             response_text.split('\n'),
-            title="Neuro Raw Response",
+            title="Neuro Raw Response (1st Pass)",
             border_color=Colors.GREEN,
         )
 
         tool_calls = self._parse_tool_calls(response_text)
         box_it_up(
             json.dumps(tool_calls, indent=2).split('\n'),
-            title="Neuro Parsed Tool Calls",
+            title="Neuro Parsed Tool Calls (1st Pass)",
             border_color=Colors.YELLOW,
         )
+
+        processing_result = {"tool_executions": [], "final_response": ""}
+        speak_call = None
+        speak_call_index = -1
+
+        # Find the speak tool call to process it with the filter
+        for i, tool_call in enumerate(tool_calls):
+            if tool_call.get("name") == "speak":
+                speak_call = tool_call
+                speak_call_index = i
+                break
+
+        # If there is a speak call, filter it. Otherwise, the agent just thinks.
+        if speak_call and self.filter:
+            logger.info("Filter enabled. Reviewing initial response.")
+            original_text = (speak_call.get("params") or speak_call.get("parameters", {})).get("text", "")
+
+            if original_text:
+                filtered_calls = await self.filter.process(original_output=original_text)
+                if filtered_calls:
+                    # Replace the original speak call with the filtered one
+                    tool_calls[speak_call_index] = filtered_calls[0]
+                else:
+                    # If filter fails, remove the speak call to be safe
+                    tool_calls.pop(speak_call_index)
+                    logger.warning("Filter did not return a tool call. Suppressing speech.")
+            else:
+                # If speak call has no text, remove it
+                tool_calls.pop(speak_call_index)
+
+        # Execute all tool calls (including 'think' and the filtered 'speak')
         processing_result = await self._execute_tool_calls(tool_calls, "neuro_agent")
 
         if final_response := processing_result.get("final_response", ""):
