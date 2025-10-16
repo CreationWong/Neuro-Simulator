@@ -308,18 +308,8 @@ class Neuro(BaseAgent):
 
         prompt = await self.build_neuro_prompt(messages)
         response_text = await self.neuro_llm.generate(prompt)
-        box_it_up(
-            response_text.split('\n'),
-            title="Neuro Raw Response (1st Pass)",
-            border_color=Colors.GREEN,
-        )
 
         tool_calls = self._parse_tool_calls(response_text)
-        box_it_up(
-            json.dumps(tool_calls, indent=2).split('\n'),
-            title="Neuro Parsed Tool Calls (1st Pass)",
-            border_color=Colors.YELLOW,
-        )
 
         # Filter all speak tool calls
         if self.filter and config_manager.settings.neuro.filter_enabled:

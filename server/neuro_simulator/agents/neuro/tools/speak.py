@@ -6,6 +6,7 @@ from typing import Dict, Any, List
 
 from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.agents.memory.manager import MemoryManager
+from neuro_simulator.utils.banner import Colors, box_it_up
 
 logger = logging.getLogger("neuro_agent")
 
@@ -50,6 +51,12 @@ class SpeakTool(BaseTool):
         text = kwargs.get("text")
         if not isinstance(text, str) or not text:
             raise ValueError("The 'text' parameter must be a non-empty string.")
+
+        box_it_up(
+            text.split('\n'),
+            title="Neuro's Speaks",
+            border_color=Colors.GREEN,
+        )
 
         logger.info(f"Agent says: {text}")
         # The result of the speak tool is the text that was spoken.
