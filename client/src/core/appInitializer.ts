@@ -17,6 +17,8 @@ import { WebSocketMessage, ChatMessage, NeuroSpeechSegmentMessage, StreamMetadat
 import { SettingsModal, AppSettings } from '../ui/settingsModal';
 import { MuteButton } from '../ui/muteButton';
 import { getLatestReplayVideo, buildBilibiliIframeUrl } from '../services/bilibiliService';
+import { IS_TAURI } from '../utils/env';
+import { getSettings, saveSettings } from '../services/settingsService';
 
 export class AppInitializer {
     private wsClient: WebSocketClient | null;
@@ -48,8 +50,10 @@ export class AppInitializer {
         this.streamTimer = new StreamTimer();
         this.muteButton = new MuteButton();
         
-        this.currentSettings = SettingsModal.getSettings();
         this.settingsModal = new SettingsModal((newSettings) => this.handleSettingsUpdate(newSettings));
+
+        // 初始化 currentSettings 为默认值，稍后在 init() 中异步加载
+        this.currentSettings = this.settingsModal.getDefaultSettings();
 
         // 初始化 wsClient 为 null，等待 start 方法中的探测逻辑
         this.wsClient = null;
@@ -77,26 +81,34 @@ export class AppInitializer {
         this.logoContainer = document.querySelector('.twitch-logo-container');
     }
 
+    public async init(): Promise<void> {
+        // 异步加载设置
+        const loadedSettings = await getSettings();
+        if (loadedSettings) {
+            this.currentSettings = loadedSettings;
+        }
+        
+        // 之后执行依赖设置的初始化逻辑
+        await this.probeForIntegratedServer();
+    }
+
     public start(): void {
         if (this.isStarted) return;
         this.isStarted = true;
-
-        // First, probe for an integrated server
-        this.probeForIntegratedServer();
 
         // Then start the layout manager and go offline
         this.layoutManager.start();
         this.updateLogoState('disconnected'); // Set initial logo state
         this.goOffline(); // Start in offline state, connection status will update UI via goOnline
         this.updateUiWithSettings();
-        // Connection logic is handled by probeForIntegratedServer
+        // Connection logic is handled by probeForIntegratedServer which is called in init()
     }
 
     private setupSettingsModalTrigger(): void {
         const trigger = document.querySelector('.nav-user-avatar-button');
         if (trigger) {
-            trigger.addEventListener('click', () => {
-                this.settingsModal.open();
+            trigger.addEventListener('click', async () => {
+                await this.settingsModal.open();
             });
         }
     }
@@ -220,8 +232,9 @@ export class AppInitializer {
 
     private async probeForIntegratedServer(): Promise<void> {
         // First, load the currently stored settings
-        const storedSettings = SettingsModal.getSettings();
-        console.log("Probing for integrated server. Stored settings:", storedSettings);
+        const storedSettings = await getSettings();
+        const currentSettings = storedSettings || this.settingsModal.getDefaultSettings();
+        console.log("Probing for integrated server. Stored settings:", currentSettings);
 
         // Try to connect to the local Server's health check endpoint
         try {
@@ -230,15 +243,16 @@ export class AppInitializer {
             console.log("Probing integrated server at:", healthUrl);
 
             const response = await fetch(healthUrl);
+            const contentType = response.headers.get("content-type");
 
-            if (response.ok) {
+            if (response.ok && contentType && contentType.includes("application/json")) {
                 console.log("Integrated server detected via health check. Auto-connecting...");
                 // 1. Set to integrated mode, using the current origin
                 const integratedBackendUrl = window.location.origin;
                 // 2. Update the current settings' backendUrl
-                this.currentSettings = { ...this.currentSettings, backendUrl: integratedBackendUrl };
-                // 3. Save to localStorage for future use
-                localStorage.setItem('neuro_settings', JSON.stringify(this.currentSettings));
+                this.currentSettings = { ...currentSettings, backendUrl: integratedBackendUrl };
+                // 3. Save to storage for future use using settings service
+                await saveSettings(this.currentSettings);
                 // 4. Initialize or update the WebSocket client
                 this.initWebSocketClient(integratedBackendUrl);
                 // 5. Try to connect if the client and URL are valid
@@ -254,13 +268,14 @@ export class AppInitializer {
         }
 
         // If probing fails, fall back to using the stored settings
-        console.log("Falling back to stored backend URL:", storedSettings.backendUrl);
-        this.initWebSocketClient(storedSettings.backendUrl);
+        console.log("Falling back to stored backend URL:", currentSettings.backendUrl);
+        this.currentSettings = currentSettings;
+        this.initWebSocketClient(currentSettings.backendUrl);
 
         // Attempt to connect if the client and URL are valid
-        if (this.wsClient && storedSettings.backendUrl) {
+        if (this.wsClient && currentSettings.backendUrl) {
             this.wsClient.connect();
-        } else if (!storedSettings.backendUrl) {
+        } else if (!currentSettings.backendUrl) {
             console.warn("Backend URL is not configured via probe or stored settings. Opening settings modal.");
             this.settingsModal.open();
         }
@@ -327,6 +342,11 @@ export class AppInitializer {
         console.log("Entering ONLINE state.");
         this.updateUiWithSettings();
 
+        // --- ADDED: Activate Tauri view mode on any online state ---
+        if (IS_TAURI) {
+            document.body.classList.add('stream-live-view');
+        }
+
         const offlinePlayer = document.querySelector('.offline-video-player') as HTMLIFrameElement;
         if (offlinePlayer) {
             offlinePlayer.src = 'about:blank';
@@ -359,6 +379,11 @@ export class AppInitializer {
     private goOffline(): void {
         console.log("Entering OFFLINE state.");
         this.currentPhase = 'offline';
+
+        // --- ADDED: Deactivate Tauri view mode on offline state ---
+        if (IS_TAURI) {
+            document.body.classList.remove('stream-live-view');
+        }
 
         const offlinePlayer = document.querySelector('.offline-video-player') as HTMLIFrameElement;
         if (offlinePlayer && this.offlinePlayerSrc) {
@@ -413,10 +438,6 @@ export class AppInitializer {
 
         switch (message.type) {
             case 'offline':
-                // --- MODIFIED: Remove class on offline ---
-                if (window.__TAURI__) {
-                    document.body.classList.remove('stream-live-view');
-                }
                 this.goOffline();
                 break;
             case 'model_spin':
@@ -447,10 +468,6 @@ export class AppInitializer {
                 });
                 break;
             case 'enter_live_phase':
-                // --- MODIFIED: Add class on live ---
-                if (window.__TAURI__) {
-                    document.body.classList.add('stream-live-view');
-                }
                 this.updateLogoState('live');
                 this.currentPhase = 'live';
                 this.videoPlayer.hide();

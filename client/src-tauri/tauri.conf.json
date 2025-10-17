@@ -19,9 +19,11 @@
   },
   "productName": "Neuro Simulator",
   "mainBinaryName": "neuro",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "identifier": "cafe.jiahui.neuro",
-  "plugins": {},
+  "plugins": {
+    "store": null
+  },
   "app": {
     "withGlobalTauri": true,
     "windows": [

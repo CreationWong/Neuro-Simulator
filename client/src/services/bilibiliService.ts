@@ -1,6 +1,6 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
-const IS_TAURI = typeof window !== 'undefined' && window.__TAURI__ !== undefined;
+import { IS_TAURI } from '../utils/env';
 
 // 与 ainst.rs 中的结构匹配
 export interface BilibiliVideoInfo {

@@ -6,15 +6,23 @@ import '@fontsource/inter';
 // 导入单例管理器
 import { singletonManager } from './core/singletonManager';
 
-// 页面加载完成后，启动应用程序
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOMContentLoaded event fired.");
-    
+// 定义主异步函数
+async function main() {
+    console.log("Main function started.");
+
     // 通过单例管理器获取 AppInitializer 实例
     const app = singletonManager.getAppInitializer();
-    
-    // 调用 start 方法，该方法内部有防止重复启动的机制
-    app.start(); 
-});
 
-console.log("main.ts loaded. Waiting for DOMContentLoaded to initialize the app.");
+    // 首先异步初始化应用（加载设置等）
+    await app.init();
+
+    // 然后启动应用
+    app.start();
+
+    console.log("App initialized and started.");
+}
+
+// 调用主函数来启动整个应用程序
+main().catch(console.error);
+
+console.log("main.ts loaded. Running main function.");
