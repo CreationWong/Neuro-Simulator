@@ -303,52 +303,73 @@ async def neuro_response_cycle():
                 )
                 continue
 
-            synthesis_tasks = [
-                synthesize_audio_segment(s, tts_provider_id=tts_id) for s in sentences
-            ]
-            synthesis_results = await asyncio.gather(
-                *synthesis_tasks, return_exceptions=True
-            )
+            num_responses = len(sentences)
+            for i, sentence in enumerate(sentences):
+                try:
+                    # Synthesize audio for each sentence individually
+                    synthesis_result = await synthesize_audio_segment(
+                        sentence, tts_provider_id=tts_id
+                    )
 
-            # Check for TTS timeout before processing packages
-            tts_timed_out = False
-            for res in synthesis_results:
-                if isinstance(res, tuple) and res[0] == "timeout":
-                    logger.warning("TTS synthesis timed out. Broadcasting TTS error to clients.")
+                    # Handle TTS timeout
+                    if (
+                        isinstance(synthesis_result, tuple)
+                        and synthesis_result[0] == "timeout"
+                    ):
+                        logger.warning(
+                            "TTS synthesis timed out for a sentence. Broadcasting TTS error."
+                        )
+                        await connection_manager.broadcast({"type": "neuro_error_signal"})
+                        continue  # Move to the next sentence
+
+                    # Handle other synthesis errors
+                    if isinstance(synthesis_result, Exception):
+                        raise synthesis_result
+
+                    speech_package = {
+                        "segment_id": 0,  # Each sentence is its own single-segment message
+                        "text": sentence,
+                        "audio_base64": synthesis_result[0],
+                        "duration": synthesis_result[1],
+                    }
+
+                    # Process this single sentence as a complete speech event
+                    live_stream_manager.set_neuro_speaking_status(True)
+                    await connection_manager.broadcast(
+                        {"type": "neuro_speech_segment", **speech_package, "is_end": False}
+                    )
+                    await asyncio.sleep(speech_package["duration"])
+                    await connection_manager.broadcast(
+                        {"type": "neuro_speech_segment", "is_end": True}
+                    )
+                    live_stream_manager.set_neuro_speaking_status(False)
+
+                    # If there are more sentences to follow, apply the cooldown
+                    if i < num_responses - 1:
+                        cooldown_range = (
+                            config_manager.settings.neuro.post_speech_cooldown_sec
+                        )
+                        delay = 1.0  # Fallback default
+                        if isinstance(cooldown_range, list):
+                            if len(cooldown_range) == 1:
+                                delay = cooldown_range[0]
+                            elif len(cooldown_range) >= 2:
+                                min_delay = min(cooldown_range[0], cooldown_range[1])
+                                max_delay = max(cooldown_range[0], cooldown_range[1])
+                                delay = random.uniform(min_delay, max_delay)
+
+                        await asyncio.sleep(delay)
+
+                except Exception as e:
+                    logger.error(
+                        f"Error processing sentence '{sentence}': {e}", exc_info=True
+                    )
+                    # In case of an error with one sentence, signal it and try the next one
                     await connection_manager.broadcast({"type": "neuro_error_signal"})
-                    tts_timed_out = True
-                    break  # Exit after the first timeout
-
-            if tts_timed_out:
-                continue
-
-            speech_packages = [
-                {
-                    "segment_id": i,
-                    "text": sentences[i],
-                    "audio_base64": res[0],
-                    "duration": res[1],
-                }
-                for i, res in enumerate(synthesis_results)
-                if not isinstance(res, Exception)
-            ]
-
-            if not speech_packages:
-                continue
-
-            live_stream_manager.set_neuro_speaking_status(True)
-            for package in speech_packages:
-                await connection_manager.broadcast(
-                    {"type": "neuro_speech_segment", **package, "is_end": False}
-                )
-                await asyncio.sleep(package["duration"])
-
-            await connection_manager.broadcast(
-                {"type": "neuro_speech_segment", "is_end": True}
-            )
-            live_stream_manager.set_neuro_speaking_status(False)
-
-            await asyncio.sleep(config_manager.settings.neuro.post_speech_cooldown_sec)
+                    live_stream_manager.set_neuro_speaking_status(
+                        False
+                    )  # Ensure status is reset
+                    continue
 
         except asyncio.TimeoutError:
             logger.warning("Agent response timed out, skipping this cycle.")

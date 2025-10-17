@@ -1,7 +1,7 @@
 import yaml
 import asyncio
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from typing import Any, List, Optional, Literal
+from pydantic import BaseModel, Field, field_validator
 
 # --- Provider Models ---
 
@@ -48,12 +48,19 @@ class NeuroSettings(BaseModel):
     neuro_filter_llm_provider_id: Optional[str] = Field(default=None, title="Neuro Filter LLM Provider ID", description="The ID of the LLM provider for Neuro's filter module. If not set, it will fallback to neuro_llm_provider_id.")
     tts_provider_id: Optional[str] = Field(default=None, title="TTS Provider ID", description="The ID of the TTS provider for speech synthesis.")
     input_chat_sample_size: int = Field(10, title="Input Chat Sample Size", description="Number of recent chat messages to use as context in one turn.")
-    post_speech_cooldown_sec: float = Field(1.0, title="Post-Speech Cooldown (sec)", description="Time to wait after Neuro speaks before she can speak again.")
+    post_speech_cooldown_sec: List[float] = Field(default_factory=lambda: [1.0, 3.0], title="Post-Speech Cooldown Range (sec)", description="The min and max time to wait after a speech segment. A random value in this range is chosen. Set both to the same value for a fixed delay.")
     initial_greeting: str = Field("The stream has just started. Greet your audience and say hello!", title="Initial Greeting", format="text-area", description="The message Neuro will see when the stream first starts.")  # type: ignore[call-overload]
     neuro_input_queue_max_size: int = Field(200, title="Neuro Input Queue Max Size", description="Max number of incoming events (chats, etc.) to hold in the queue.")
     reflection_threshold: int = Field(5, title="Reflection Threshold", description="Number of turns before triggering memory consolidation. Set to 0 to disable.")
     recent_history_lines: int = Field(10, title="Recent History Lines", description="Number of recent spoken lines to include in the prompt context.")
     filter_enabled: bool = Field(default=False, title="Enable Filter", description="If true, a second LLM call is made via the Filter module to review and potentially revise Neuro's response.")
+
+    @field_validator('post_speech_cooldown_sec', mode='before')
+    @classmethod
+    def _migrate_cooldown_format(cls, v: Any) -> Any:
+        if isinstance(v, (float, int)):
+            return [float(v), float(v)]
+        return v
 
 
 class ChatbotSettings(BaseModel):

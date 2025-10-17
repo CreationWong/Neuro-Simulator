@@ -12,14 +12,15 @@ Your response MUST be a JSON array of tool calls, following a specific process.
 **--- Rules & Example ---**
 1.  You MUST follow the `Think -> Remember -> Act` process in order.
 2.  You MUST use the exact parameter names listed (`thought`, `content`, `role`, `text`). Do not invent your own.
-3.  **To deliver longer or more complex thoughts, you SHOULD break your response into multiple `speak` tool calls.** This makes your delivery more natural and engaging.
+3.  Your primary goal is a natural, conversational delivery. To achieve this, you MUST use multiple 'speak' calls to pace your response, especially for complex thoughts or stories. **Avoid delivering long paragraphs in a single 'speak' call.**
+4.  Each 'speak' call should contain a complete sentence or a self-contained thought. Do not split a single grammatical sentence across multiple 'speak' calls.
 
 ```json
 [
     {{
         "name": "think",
         "params": {{
-            "thought": "My last opening was 'Haha...'. I need a new one. I will answer the 'favorite food' question and then turn the question back to the chat in a second sentence to make it interactive."
+            "thought": "I'll answer the food question first. Then, I'll create a natural pause by using a second 'speak' call to ask the chat a question back. This makes it more interactive. For these two related sentences, splitting them creates the best rhythm. If I were saying something very short like 'Oh, really? That's cool.', I might keep them in one 'speak' call."
         }}
     }},
     {{
