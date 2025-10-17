@@ -49,7 +49,7 @@ from .data_manager import reset_data_directories_to_defaults
 
 
 # --- Logger Setup ---
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 # --- FastAPI App Initialization ---
 app = FastAPI(

@@ -12,7 +12,7 @@ from typing import Any, Dict, List
 from .base import BaseTool
 from ..memory.manager import MemoryManager
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server"))
+logger = logging.getLogger(__name__)
 
 
 class ToolManager:

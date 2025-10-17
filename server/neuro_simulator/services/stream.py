@@ -9,7 +9,7 @@ from mutagen.mp4 import MP4, MP4StreamInfoError
 from ..core.config import config_manager
 from ..utils.state import app_state
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 _WORKING_DIR = os.getcwd()
 _WELCOME_VIDEO_PATH_BACKEND = os.path.join(_WORKING_DIR, "assets", "neuro_start.mp4")

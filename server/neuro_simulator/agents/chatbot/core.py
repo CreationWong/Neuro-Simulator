@@ -19,7 +19,7 @@ from ..memory.manager import MemoryManager
 from ..tools.manager import ToolManager
 from .nickname_gen.generator import NicknameGenerator
 
-logger = logging.getLogger("neuro_chatbot")
+logger = logging.getLogger(__name__)
 
 
 class Chatbot(BaseAgent):

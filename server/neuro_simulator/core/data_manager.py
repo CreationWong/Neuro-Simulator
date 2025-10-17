@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .path_manager import path_manager
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 
 def reset_data_directories_to_defaults():

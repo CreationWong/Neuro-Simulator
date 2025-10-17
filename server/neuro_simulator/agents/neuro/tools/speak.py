@@ -8,7 +8,7 @@ from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.agents.memory.manager import MemoryManager
 from neuro_simulator.utils import console
 
-logger = logging.getLogger("neuro_agent")
+logger = logging.getLogger(__name__)
 
 
 class SpeakTool(BaseTool):

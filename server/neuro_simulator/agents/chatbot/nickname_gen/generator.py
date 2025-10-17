@@ -14,7 +14,7 @@ from ....core.config import config_manager
 from ....core.path_manager import path_manager
 from ....utils import console
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
+logger = logging.getLogger(__name__)
 
 
 class NicknameGenerator:

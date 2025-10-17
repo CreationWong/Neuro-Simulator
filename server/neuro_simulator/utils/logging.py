@@ -30,6 +30,16 @@ class ColoredFormatter(logging.Formatter):
         # Create a copy of the record to avoid modifying the original
         record_copy = logging.makeLogRecord(record.__dict__)
 
+        # Remove the 'neuro_simulator.' prefix for conciseness
+        if record_copy.name.startswith("neuro_simulator."):
+            record_copy.name = record_copy.name[16:]
+
+        # Truncate long logger names to maintain alignment
+        name_len = len(record_copy.name)
+        max_name_len = 32  # Must match the width in LOG_FORMAT
+        if name_len > max_name_len:
+            record_copy.name = f"...{record_copy.name[name_len - max_name_len + 3:]}"
+
         # Get the color for the level
         color = self.level_colors.get(record_copy.levelno)
 
@@ -103,15 +113,7 @@ def configure_server_logging():
     uvicorn_error_logger = logging.getLogger("uvicorn.error")
     uvicorn_error_logger.handlers = [server_queue_handler, console_handler]
     uvicorn_error_logger.propagate = False
-
-    # Configure the neuro_agent logger
-    neuro_agent_logger = logging.getLogger("neuro_agent")
-    neuro_agent_queue_handler = QueueLogHandler(agent_log_queue)
-    neuro_agent_queue_handler.setFormatter(queue_formatter)
-    neuro_agent_logger.addHandler(neuro_agent_queue_handler)
-    neuro_agent_logger.addHandler(console_handler)  # Also send agent logs to console
-    neuro_agent_logger.setLevel(logging.INFO)
-    neuro_agent_logger.propagate = False  # Prevent double-logging
+  # Prevent double-logging
 
     root_logger.info(
         "Server logging configured for queue and console."

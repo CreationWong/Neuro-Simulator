@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server"))
+logger = logging.getLogger(__name__)
 
 
 def generate_id(length=6) -> str:

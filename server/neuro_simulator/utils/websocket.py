@@ -4,7 +4,7 @@ import logging
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 
 class WebSocketManager:

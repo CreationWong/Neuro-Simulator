@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from ....core.llm_manager import LLMClient, llm_manager
 from ....core.path_manager import path_manager
 
-logger = logging.getLogger("neuro_filter")
+logger = logging.getLogger(__name__)
 
 
 class NeuroFilter:

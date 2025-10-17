@@ -6,7 +6,7 @@ from .agent_interface import BaseAgent
 from .config import config_manager, AppSettings
 from ..agents.chatbot.core import Chatbot
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 # A cache for the chatbot instance to avoid re-initialization
 _chatbot_instance: Optional[BaseAgent] = None

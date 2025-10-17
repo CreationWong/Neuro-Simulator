@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.utils import console
 
-logger = logging.getLogger("neuro_agent")
+logger = logging.getLogger(__name__)
 
 
 class ThinkTool(BaseTool):

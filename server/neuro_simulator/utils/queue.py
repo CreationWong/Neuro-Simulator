@@ -7,7 +7,7 @@ from collections import deque
 from ..core.config import config_manager
 from ..utils.state import app_state
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 # Deques for chat messages
 audience_chat_buffer: deque[dict] = deque()

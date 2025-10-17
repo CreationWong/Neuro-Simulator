@@ -6,7 +6,7 @@ from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.services.stream import live_stream_manager
 from neuro_simulator.utils import console
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 
 class ModelZoomTool(BaseTool):

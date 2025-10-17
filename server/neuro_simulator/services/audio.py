@@ -9,7 +9,7 @@ import azure.cognitiveservices.speech as speechsdk  # type: ignore
 
 from ..core.config import config_manager
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 
 def _remove_emoji(text: str) -> str:

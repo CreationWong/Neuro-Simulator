@@ -6,7 +6,7 @@ from .agent_interface import BaseAgent
 from .config import config_manager, AppSettings
 from ..agents.neuro.core import Neuro
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 # A cache for the agent instance to avoid re-initialization
 _agent_instance: Optional[BaseAgent] = None

@@ -22,7 +22,7 @@ from ..memory.manager import MemoryManager
 from ..tools.manager import ToolManager
 from .filter.filter import NeuroFilter
 
-logger = logging.getLogger("neuro_agent")
+logger = logging.getLogger(__name__)
 
 
 class Neuro(BaseAgent):

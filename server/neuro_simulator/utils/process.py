@@ -5,7 +5,7 @@ import logging
 from ..services.stream import live_stream_manager
 from .websocket import connection_manager
 
-logger = logging.getLogger(__name__.replace("neuro_simulator", "server", 1))
+logger = logging.getLogger(__name__)
 
 
 class ProcessManager:
