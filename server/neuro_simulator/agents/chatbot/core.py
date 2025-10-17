@@ -237,7 +237,7 @@ class Chatbot(BaseAgent):
                 await self._execute_single_tool_call(tool_call, agent_name, generated_messages)
             else:
                 logger.warning(f"Unexpected tool_call type: {type(tool_call)}, value: {tool_call}")
-        logger.info(f"Returning generated messages: {generated_messages}")
+        logger.debug(f"Returning generated messages: {generated_messages}")
         return generated_messages
 
     async def _execute_single_tool_call(self, tool_call: Dict[str, Any], agent_name: str, generated_messages: List[Dict[str, str]]):

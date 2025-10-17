@@ -39,7 +39,7 @@ class ToolManager:
 
     def load_tools(self):
         """Dynamically scans tool directories, imports modules, and registers tool instances."""
-        logger.info(f"Loading tools for agent from: {self.builtin_tools_path.parent.name}")
+        logger.debug(f"Loading tools for agent from: {self.builtin_tools_path.parent.name}")
         self.tools = {}
         tool_paths = [self.builtin_tools_path, self.user_tools_path]
 
@@ -47,7 +47,7 @@ class ToolManager:
             if not tools_dir.exists():
                 continue
 
-            logger.info(f"Scanning for tools in: {tools_dir}")
+            logger.debug(f"Scanning for tools in: {tools_dir}")
             for filename in os.listdir(tools_dir):
                 if filename.endswith(".py") and not filename.startswith(
                     ("__", "base", "manager")
@@ -73,7 +73,7 @@ class ToolManager:
                                             f"Duplicate tool name '{tool_instance.name}' found. Overwriting with version from {module_path}."
                                         )
                                     self.tools[tool_instance.name] = tool_instance
-                                    logger.info(
+                                    logger.debug(
                                         f"Successfully loaded tool: {tool_instance.name}"
                                     )
                         except Exception as e:
@@ -96,7 +96,7 @@ class ToolManager:
                 with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(default, f, indent=2)
 
-        logger.info(f"Tool allocations loaded: {self.agent_tool_allocations}")
+        logger.debug(f"Tool allocations loaded: {self.agent_tool_allocations}")
 
     def get_all_tool_schemas(self) -> List[Dict[str, Any]]:
         return [tool.get_schema() for tool in self.tools.values()]

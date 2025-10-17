@@ -553,7 +553,7 @@ async def startup_event():
     # 5. Initialize main agent (which will load its own configs)
     try:
         await create_agent()
-        logger.info("Successfully initialized agent.")
+        logger.debug("Successfully initialized agent.")
     except Exception as e:
         logger.critical(f"Agent initialization failed on startup: {e}", exc_info=True)
 

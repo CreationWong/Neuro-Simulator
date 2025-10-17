@@ -45,7 +45,9 @@ class _LLMManager:
         if provider_id in self._clients:
             return self._clients[provider_id]
 
-        logger.info(f"Creating new LLMClient for provider_id: '{provider_id}'")
+        logger.debug(
+            f"Creating new LLMClient for provider_id: '{provider_id}'"
+        )
 
         if not config_manager.settings:
             raise RuntimeError("Configuration not loaded. Cannot create LLMClient.")

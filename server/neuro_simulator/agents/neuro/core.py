@@ -90,7 +90,7 @@ class Neuro(BaseAgent):
         self.turn_counter = 0
         self.reflection_threshold = settings.neuro.reflection_threshold
 
-        logger.info("Hello everyone, Neuro-sama here.")
+        logger.debug("Hello everyone, Neuro-sama here.")
 
     @property
     def tool_manager(self) -> ToolManager:
@@ -295,7 +295,7 @@ class Neuro(BaseAgent):
     ) -> Dict[str, Any]:
         assert path_manager is not None
         await self.initialize()
-        logger.info(f"Processing {len(messages)} messages in Actor flow.")
+        logger.debug(f"Processing {len(messages)} messages in Actor flow.")
 
         if not self.neuro_llm:
             logger.warning("Neuro's Actor LLM is not configured. Skipping response.")

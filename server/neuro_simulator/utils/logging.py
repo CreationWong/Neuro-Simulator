@@ -95,11 +95,14 @@ def configure_server_logging():
     level = _log_level_map.get(log_level_str, logging.INFO)
     root_logger.setLevel(level)
 
-    # Force uvicorn loggers to use our handlers
-    for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error"]:
-        uvicorn_logger = logging.getLogger(logger_name)
-        uvicorn_logger.handlers = [server_queue_handler, console_handler]
-        uvicorn_logger.propagate = False  # Prevent double-logging
+    # Silence noisy third-party loggers
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+    # Force uvicorn error logger to use our handlers
+    uvicorn_error_logger = logging.getLogger("uvicorn.error")
+    uvicorn_error_logger.handlers = [server_queue_handler, console_handler]
+    uvicorn_error_logger.propagate = False
 
     # Configure the neuro_agent logger
     neuro_agent_logger = logging.getLogger("neuro_agent")

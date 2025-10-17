@@ -40,8 +40,6 @@ async def create_agent(force_recreate: bool = False) -> BaseAgent:
     if _agent_instance is not None:
         return _agent_instance
 
-    logger.info("Creating new Neuro agent instance...")
-
     try:
         # Directly instantiate and initialize the Neuro agent
         agent = Neuro()

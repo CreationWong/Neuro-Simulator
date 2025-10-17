@@ -119,7 +119,7 @@ async def synthesize_audio_segment(
                 audio_data = result.audio_data
                 encoded_audio = base64.b64encode(audio_data).decode("utf-8")
                 audio_duration_sec = result.audio_duration.total_seconds()
-                logger.info(
+                logger.debug(
                     f"TTS synthesis completed: '{text[:30]}...' (Duration: {audio_duration_sec:.2f}s)"
                 )
                 return encoded_audio, audio_duration_sec

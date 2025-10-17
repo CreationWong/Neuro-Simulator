@@ -50,7 +50,7 @@ class LLMClient:
         self.seed = provider_config.seed
         self.force_json_output = provider_config.force_json_output
 
-        logger.info(f"LLMClient instance created for provider: '{self.provider_id}'")
+        logger.debug(f"LLMClient instance created for provider: '{self.provider_id}'")
 
         provider_type = provider_config.provider_type.lower()
 
@@ -76,7 +76,7 @@ class LLMClient:
                 f"Unsupported provider type in config for provider ID '{self.provider_id}': {provider_type}"
             )
 
-        logger.info(
+        logger.debug(
             f"LLM client for '{self.provider_id}' initialized. Provider: {provider_type.upper()}, Model: {self.model_name}"
         )
 

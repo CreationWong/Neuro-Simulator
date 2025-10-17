@@ -26,7 +26,7 @@ def initialize_queues():
         logger.error("Queue initialization failed: Config not loaded.")
         return
 
-    logger.info("Initializing queues with configured sizes.")
+    logger.debug("Initializing queues with configured sizes.")
 
     # Re-initialize the deques with the correct maxlen
     audience_chat_buffer = deque(
@@ -42,7 +42,7 @@ def clear_all_queues():
     audience_chat_buffer.clear()
     neuro_input_queue.clear()
     app_state.superchat_queue.clear()
-    logger.info("All chat queues (including superchats) have been cleared.")
+    logger.debug("All chat queues (including superchats) have been cleared.")
 
 
 def add_to_audience_buffer(chat_item: dict):

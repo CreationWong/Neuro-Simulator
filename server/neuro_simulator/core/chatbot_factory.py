@@ -41,14 +41,14 @@ async def create_chatbot(force_recreate: bool = False) -> Optional[BaseAgent]:
     if _chatbot_instance is not None:
         return _chatbot_instance
 
-    logger.info("Creating new Chatbot agent instance...")
+    logger.debug("Creating new Chatbot agent instance...")
 
     try:
         # Directly instantiate and initialize the Chatbot agent
         agent = Chatbot()
         await agent.initialize()
         _chatbot_instance = agent
-        logger.info("New Chatbot agent instance created and cached.")
+        logger.debug("New Chatbot agent instance created and cached.")
         return _chatbot_instance
     except Exception as e:
         logger.critical(f"Failed to create and initialize Chatbot agent: {e}", exc_info=True)
