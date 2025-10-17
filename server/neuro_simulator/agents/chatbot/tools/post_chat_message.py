@@ -1,7 +1,6 @@
 # neuro_simulator/chatbot/tools/post_chat_message.py
 """The Post Chat Message tool for the chatbot agent."""
 
-import logging
 from typing import Dict, Any, List
 
 from neuro_simulator.agents.tools.base import BaseTool

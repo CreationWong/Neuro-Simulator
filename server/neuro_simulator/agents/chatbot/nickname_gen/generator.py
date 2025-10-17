@@ -12,7 +12,7 @@ from typing import Any, List, Dict, Callable, Optional
 from ...llm import LLMClient
 from ....core.config import config_manager
 from ....core.path_manager import path_manager
-from ....utils.banner import Colors, box_it_up
+from ....utils import console
 
 logger = logging.getLogger(__name__.replace("neuro_simulator", "chatbot", 1))
 
@@ -114,12 +114,12 @@ class NicknameGenerator:
                 logger.info(
                     f"Successfully populated dynamic pools with {len(self.dynamic_adjectives)} adjectives and {len(self.dynamic_nouns)} nouns."
                 )
-                box_it_up(
+                console.box_it_up(
                     [
                         f"Successfully populated dynamic pools with {len(self.dynamic_adjectives)} adjectives and {len(self.dynamic_nouns)} nouns."
                     ],
                     title="Nickname Pool Generated",
-                    border_color=Colors.BLUE,
+                    border_color=console.BLUE,
                 )
             else:
                 logger.warning("LLM generated empty lists for dynamic pools.")

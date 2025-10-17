@@ -5,7 +5,7 @@ import logging
 from typing import Dict, Any, List
 
 from neuro_simulator.agents.tools.base import BaseTool
-from neuro_simulator.utils.banner import Colors, box_it_up
+from neuro_simulator.utils import console
 
 logger = logging.getLogger("neuro_agent")
 
@@ -43,10 +43,10 @@ class ThinkTool(BaseTool):
         if not isinstance(thought, str) or not thought:
             raise ValueError("The 'thought' parameter must be a non-empty string.")
 
-        box_it_up(
+        console.box_it_up(
             thought.split('\n'),
             title="Neuro's Thoughts",
-            border_color=Colors.GREEN,
+            border_color=console.THEME["THINK"],
         )
 
         return {"status": "success", "message": "Thought process has been logged."}

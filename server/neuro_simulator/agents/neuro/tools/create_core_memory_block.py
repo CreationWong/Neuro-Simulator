@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 
 from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.agents.memory.manager import MemoryManager
+from neuro_simulator.utils import console
 
 
 class CreateCoreMemoryBlockTool(BaseTool):
@@ -68,6 +69,12 @@ class CreateCoreMemoryBlockTool(BaseTool):
 
         block_id = await self.memory_manager.create_core_memory_block(
             title=title, description=description, content=content
+        )
+
+        console.box_it_up(
+            [f"Title: {title}", f"ID: {block_id}"],
+            title="Created Core Memory Block",
+            border_color=console.THEME["MEMORY"],
         )
 
         return {

@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.agents.memory.manager import MemoryManager
+from neuro_simulator.utils import console
 
 
 class AddTempMemoryTool(BaseTool):
@@ -58,6 +59,12 @@ class AddTempMemoryTool(BaseTool):
             raise ValueError("The 'role' parameter must be a string.")
 
         await self.memory_manager.add_temp_memory(content=content, role=role)
+
+        console.box_it_up(
+            [f"Role: {role}", f"Content: {content}"],
+            title="Added to Temporary Memory",
+            border_color=console.THEME["MEMORY"],
+        )
 
         return {
             "status": "success",

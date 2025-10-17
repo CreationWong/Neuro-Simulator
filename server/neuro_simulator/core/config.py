@@ -91,6 +91,7 @@ class ServerSettings(BaseModel):
 
     host: str = Field("127.0.0.1", title="Host", description="The IP address the server will bind to.")
     port: int = Field(8000, title="Port", description="The port the server will listen on.")
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field("INFO", title="Log Level", description="The minimum level of logs to display.")
     panel_password: Optional[str] = Field("your-secret-api-token-here", title="Panel Password", format="password", description="Password to protect access to the admin dashboard.")  # type: ignore[call-overload]
     client_origins: List[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"], title="Client Origins", description="Allowed origins for CORS (whitelist for remote dashboard).")
     audience_chat_buffer_max_size: int = Field(1000, title="Audience Chat Buffer Max Size", description="How many recent chat messages to keep in buffer for new clients.")

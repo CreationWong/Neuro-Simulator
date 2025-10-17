@@ -17,7 +17,7 @@ from ...core.agent_interface import BaseAgent
 from ...core.config import config_manager
 from ...core.llm_manager import llm_manager
 from ...core.path_manager import path_manager
-from ...utils.banner import Colors, box_it_up
+from ...utils import console
 from ..memory.manager import MemoryManager
 from ..tools.manager import ToolManager
 from .filter.filter import NeuroFilter
@@ -275,6 +275,7 @@ class Neuro(BaseAgent):
             logger.info(f"Executing tool: {tool_name} with params: {params}")
             try:
                 result = await self.tool_manager.execute_tool(tool_name, **params)
+                logger.info(f"Tool '{tool_name}' executed with result: {result}")
                 execution_results.append(
                     {"name": tool_name, "params": params, "result": result}
                 )
@@ -361,10 +362,10 @@ class Neuro(BaseAgent):
 
         assert path_manager is not None
         logger.info("Neuro is reflecting on recent conversations...")
-        box_it_up(
+        console.box_it_up(
             ["The 'Thinker' agent is now active.", "Consolidating recent memories..."],
             title="Neuro Memory Consolidation Started",
-            border_color=Colors.BLUE,
+            border_color=console.THEME["STATUS"],
         )
         self.turn_counter = 0
         # Use neuro's history path
@@ -374,29 +375,29 @@ class Neuro(BaseAgent):
 
         prompt = await self._build_memory_prompt(history)
         response_text = await self.memory_llm.generate(prompt)
-        box_it_up(
+        console.box_it_up(
             response_text.split('\n'),
             title="Neuro (Thinker) Raw Response",
-            border_color=Colors.GREEN,
+            border_color=console.THEME["INFO"],
         )
         if not response_text:
             return
 
         tool_calls = self._parse_tool_calls(response_text)
-        box_it_up(
+        console.box_it_up(
             json.dumps(tool_calls, indent=2).split('\n'),
             title="Neuro (Thinker) Parsed Tool Calls",
-            border_color=Colors.YELLOW,
+            border_color=console.THEME["WARNING"],
         )
         if not tool_calls:
             return
 
         # Execute with the 'memory_manager' agent name
         await self._execute_tool_calls(tool_calls, "memory_manager")
-        box_it_up(
+        console.box_it_up(
             ["The 'Thinker' agent has finished its task."],
             title="Neuro Memory Consolidation Complete",
-            border_color=Colors.BLUE,
+            border_color=console.THEME["STATUS"],
         )
         logger.info("Neuro memory consolidation complete.")
 

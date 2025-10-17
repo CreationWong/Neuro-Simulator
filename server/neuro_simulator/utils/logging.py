@@ -4,6 +4,9 @@ import sys
 from collections import deque
 from typing import Deque
 
+from neuro_simulator.core.config import config_manager
+from neuro_simulator.utils import console
+
 # Define a single, consistent format for all logs
 LOG_FORMAT = "%(asctime)s - [%(name)-32s] - %(levelname)-8s - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
@@ -13,21 +16,14 @@ DATE_FORMAT = "%H:%M:%S"
 class ColoredFormatter(logging.Formatter):
     """A custom log formatter that adds color ONLY to the log level name."""
 
-    GREY = "\x1b[38;20m"
-    GREEN = "\x1b[32m"
-    YELLOW = "\x1b[33m"
-    RED = "\x1b[31m"
-    BOLD_RED = "\x1b[31;1m"
-    RESET = "\x1b[0m"
-
     def __init__(self, fmt):
         super().__init__(fmt, datefmt=DATE_FORMAT)
         self.level_colors = {
-            logging.DEBUG: self.GREY,
-            logging.INFO: self.GREEN,
-            logging.WARNING: self.YELLOW,
-            logging.ERROR: self.RED,
-            logging.CRITICAL: self.BOLD_RED,
+            logging.DEBUG: console.THEME["DEBUG"],
+            logging.INFO: console.THEME["INFO"],
+            logging.WARNING: console.THEME["WARNING"],
+            logging.ERROR: console.THEME["ERROR"],
+            logging.CRITICAL: console.THEME["CRITICAL"],
         }
 
     def format(self, record):
@@ -39,7 +35,7 @@ class ColoredFormatter(logging.Formatter):
 
         # If a color is found, apply it to the levelname
         if color:
-            record_copy.levelname = f"{color}{record_copy.levelname}{self.RESET}"
+            record_copy.levelname = f"{color}{record_copy.levelname}{console.RESET}"
 
         # Use the parent class's formatter with the modified record
         return super().format(record_copy)
@@ -61,6 +57,15 @@ class QueueLogHandler(logging.Handler):
         log_entry = self.format(record)
         self.queue.append(log_entry)
 
+
+# Map string log levels to logging constants
+_log_level_map = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
 
 def configure_server_logging():
     """Configures the server (root) logger to use the server_log_queue and a standard format."""
@@ -84,7 +89,11 @@ def configure_server_logging():
         root_logger.handlers.clear()
     root_logger.addHandler(server_queue_handler)
     root_logger.addHandler(console_handler)
-    root_logger.setLevel(logging.INFO)
+
+    # Set log level from config
+    log_level_str = config_manager.settings.server.log_level.upper()
+    level = _log_level_map.get(log_level_str, logging.INFO)
+    root_logger.setLevel(level)
 
     # Force uvicorn loggers to use our handlers
     for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error"]:

@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 
 from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.agents.memory.manager import MemoryManager
+from neuro_simulator.utils import console
 
 
 class UpdateCoreMemoryBlockTool(BaseTool):
@@ -59,6 +60,13 @@ class UpdateCoreMemoryBlockTool(BaseTool):
         update_payload = {k: v for k, v in kwargs.items() if v is not None}
 
         await self.memory_manager.update_core_memory_block(**update_payload)
+
+        updated_fields = [k for k in update_payload.keys() if k != 'block_id']
+        console.box_it_up(
+            [f"ID: {block_id}", f"Updated Fields: {updated_fields}"],
+            title="Updated Core Memory Block",
+            border_color=console.THEME["MEMORY"],
+        )
 
         return {
             "status": "success",

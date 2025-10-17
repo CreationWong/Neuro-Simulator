@@ -2,7 +2,6 @@
 """Manages the reset and initialization of data directories."""
 
 import logging
-import os
 import shutil
 from pathlib import Path
 

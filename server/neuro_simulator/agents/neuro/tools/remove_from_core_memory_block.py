@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 
 from neuro_simulator.agents.tools.base import BaseTool
 from neuro_simulator.agents.memory.manager import MemoryManager
+from neuro_simulator.utils import console
 
 
 class RemoveFromCoreMemoryBlockTool(BaseTool):
@@ -62,6 +63,12 @@ class RemoveFromCoreMemoryBlockTool(BaseTool):
 
         await self.memory_manager.update_core_memory_block(
             block_id=block_id, content=content
+        )
+
+        console.box_it_up(
+            [f"Block ID: {block_id}", f"Removed Item: {removed_item}"],
+            title="Removed from Core Memory Block",
+            border_color=console.THEME["MEMORY"],
         )
 
         return {

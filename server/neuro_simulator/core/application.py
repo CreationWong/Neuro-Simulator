@@ -5,7 +5,6 @@ import asyncio
 import json
 import logging
 import random
-import re
 import time
 import os
 from typing import Any, Dict
