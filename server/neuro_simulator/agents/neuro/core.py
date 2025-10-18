@@ -8,7 +8,6 @@ and asynchronous memory consolidation.
 import asyncio
 import json
 import logging
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -18,6 +17,7 @@ from ...core.config import config_manager
 from ...core.llm_manager import llm_manager
 from ...core.path_manager import path_manager
 from ...utils import console
+from ..streaming_parser import parse_json_stream
 from ..memory.manager import MemoryManager
 from ..tools.manager import ToolManager
 from .filter.filter import NeuroFilter
@@ -90,7 +90,11 @@ class Neuro(BaseAgent):
         self.turn_counter = 0
         self.reflection_threshold = settings.neuro.reflection_threshold
 
-        logger.debug("Hello everyone, Neuro-sama here.")
+        console.box_it_up(
+            ["Hello everyone, Neuro-sama here."],
+            title="Neuro Wake Up",
+            border_color=console.THEME["STATUS"],
+        )
 
     @property
     def tool_manager(self) -> ToolManager:
@@ -112,7 +116,7 @@ class Neuro(BaseAgent):
         # Clear history files by overwriting them
         open(path_manager.neuro_history_path, "w").close()
         open(path_manager.memory_agent_history_path, "w").close()
-        logger.info("All agent memory and history logs have been reset.")
+        logger.debug("All agent memory and history logs have been reset.")
 
     async def get_message_history(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Reads the last N lines from the Neuro agent's history log."""
@@ -243,53 +247,6 @@ class Neuro(BaseAgent):
             tool_descriptions=tool_descriptions, conversation_history=history_text
         )
 
-    def _parse_tool_calls(self, response_text: str) -> List[Dict[str, Any]]:
-        try:
-            match = re.search(
-                r"""```json\s*([\s\S]*?)\s*```|(\[[\s\S]*\])""", response_text
-            )
-            if not match:
-                logger.warning(
-                    f"No valid JSON tool call block found in response: {response_text}"
-                )
-                return []
-            json_str = match.group(1) or match.group(2)
-            return json.loads(json_str)
-        except Exception as e:
-            logger.error(f"Failed to parse tool calls from LLM response: {e}")
-            return []
-
-    async def _execute_tool_calls(
-        self,
-        tool_calls: List[Dict[str, Any]],
-        agent_name: str, # Added for signature consistency
-    ) -> Dict[str, Any]:
-        execution_results = []
-        final_responses = []
-        for tool_call in tool_calls:
-            tool_name = tool_call.get("name")
-            # Handle both 'params' and 'parameters' for robustness.
-            params = tool_call.get("params") or tool_call.get("parameters", {})
-            if not tool_name:
-                continue
-            logger.info(f"Executing tool: {tool_name} with params: {params}")
-            try:
-                result = await self.tool_manager.execute_tool(tool_name, **params)
-                logger.info(f"Tool '{tool_name}' executed with result: {result}")
-                execution_results.append(
-                    {"name": tool_name, "params": params, "result": result}
-                )
-                if tool_name == "speak" and result.get("status") == "success":
-                    spoken_text = result.get("spoken_text", "")
-                    if spoken_text:
-                        final_responses.append(spoken_text)
-            except Exception as e:
-                logger.error(f"Error executing tool {tool_name}: {e}")
-                execution_results.append(
-                    {"name": tool_name, "params": params, "error": str(e)}
-                )
-        return {"tool_executions": execution_results, "final_responses": final_responses}
-
     async def process_and_respond(
         self, messages: List[Dict[str, str]]
     ) -> Dict[str, Any]:
@@ -299,7 +256,7 @@ class Neuro(BaseAgent):
 
         if not self.neuro_llm:
             logger.warning("Neuro's Actor LLM is not configured. Skipping response.")
-            return {"tool_executions": [], "final_response": ""}
+            return {"tool_executions": [], "final_responses": []}
 
         for msg in messages:
             await self._append_to_history_log(
@@ -308,35 +265,71 @@ class Neuro(BaseAgent):
             )
 
         prompt = await self.build_neuro_prompt(messages)
-        response_text = await self.neuro_llm.generate(prompt)
+        response_stream = self.neuro_llm.generate_stream(prompt)
 
-        tool_calls = self._parse_tool_calls(response_text)
+        execution_results = []
+        final_responses = []
 
-        # Filter all speak tool calls
-        if self.filter and config_manager.settings.neuro.filter_enabled:
-            for i in range(len(tool_calls) - 1, -1, -1):
-                tool_call = tool_calls[i]
-                if tool_call.get("name") == "speak":
-                    logger.info("Filter enabled. Reviewing a speak call.")
-                    original_text = (tool_call.get("params") or tool_call.get("parameters", {})).get("text", "")
+        # The parser will yield each JSON object/list as it's parsed from the stream.
+        async for parsed_item in parse_json_stream(response_stream):
+            # The LLM may return a list of tool calls, or single tool calls one by one.
+            # We handle both cases by creating a list to iterate over.
+            tool_calls_to_process = (
+                parsed_item if isinstance(parsed_item, list) else [parsed_item]
+            )
+
+            for tool_call in tool_calls_to_process:
+                # Filter speak tool calls before execution
+                if (
+                    self.filter
+                    and config_manager.settings.neuro.filter_enabled
+                    and tool_call.get("name") == "speak"
+                ):
+                    logger.debug("Filter enabled. Reviewing a speak call.")
+                    original_text = (
+                        tool_call.get("params") or tool_call.get("parameters", {})
+                    ).get("text", "")
 
                     if original_text:
-                        filtered_calls = await self.filter.process(original_output=original_text)
+                        filtered_calls = await self.filter.process(
+                            original_output=original_text
+                        )
                         if filtered_calls:
-                            # Replace the original speak call with the filtered one
-                            tool_calls[i] = filtered_calls[0]
+                            tool_call = filtered_calls[
+                                0
+                            ]  # Replace with filtered call
                         else:
-                            # If filter fails, remove the speak call to be safe
-                            tool_calls.pop(i)
-                            logger.warning("Filter did not return a tool call. Suppressing this speech.")
+                            logger.warning(
+                                "Filter did not return a tool call. Suppressing this speech."
+                            )
+                            continue  # Skip this tool call
                     else:
-                        # If speak call has no text, remove it
-                        tool_calls.pop(i)
+                        continue  # Skip speak call with no text
 
-        # Execute all tool calls (including 'think' and the filtered 'speak')
-        processing_result = await self._execute_tool_calls(tool_calls, "neuro_agent")
+                # Execute the tool call
+                tool_name = tool_call.get("name")
+                params = tool_call.get("params") or tool_call.get("parameters", {})
+                if not tool_name:
+                    continue
 
-        if final_responses := processing_result.get("final_responses", []):
+                logger.debug(f"Executing tool: {tool_name} with params: {params}")
+                try:
+                    result = await self.tool_manager.execute_tool(tool_name, **params)
+                    logger.debug(f"Tool '{tool_name}' executed with result: {result}")
+                    execution_results.append(
+                        {"name": tool_name, "params": params, "result": result}
+                    )
+                    if tool_name == "speak" and result.get("status") == "success":
+                        spoken_text = result.get("spoken_text", "")
+                        if spoken_text:
+                            final_responses.append(spoken_text)
+                except Exception as e:
+                    logger.error(f"Error executing tool {tool_name}: {e}")
+                    execution_results.append(
+                        {"name": tool_name, "params": params, "error": str(e)}
+                    )
+
+        if final_responses:
             full_response = " ".join(final_responses)
             await self._append_to_history_log(
                 path_manager.neuro_history_path,
@@ -347,7 +340,10 @@ class Neuro(BaseAgent):
         if self.turn_counter >= self.reflection_threshold:
             asyncio.create_task(self._reflect_and_consolidate())
 
-        return processing_result
+        return {
+            "tool_executions": execution_results,
+            "final_responses": final_responses,
+        }
 
     async def _reflect_and_consolidate(self):
         """The main thinker loop to consolidate memories for the Neuro agent."""
@@ -361,7 +357,7 @@ class Neuro(BaseAgent):
             return
 
         assert path_manager is not None
-        logger.info("Neuro is reflecting on recent conversations...")
+        logger.debug("Neuro is reflecting on recent conversations...")
         console.box_it_up(
             ["The 'Thinker' agent is now active.", "Consolidating recent memories..."],
             title="Neuro Memory Consolidation Started",
@@ -399,7 +395,7 @@ class Neuro(BaseAgent):
             title="Neuro Memory Consolidation Complete",
             border_color=console.THEME["STATUS"],
         )
-        logger.info("Neuro memory consolidation complete.")
+        logger.debug("Neuro memory consolidation complete.")
 
     # --- Implementation of BaseAgent interface methods ---
 

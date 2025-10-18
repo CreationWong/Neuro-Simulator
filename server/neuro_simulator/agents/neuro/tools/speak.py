@@ -58,7 +58,7 @@ class SpeakTool(BaseTool):
             border_color=console.THEME["SPEAK"],
         )
 
-        logger.info(f"Agent says: {text}")
+        logger.debug(f"Agent says: {text}")
         # The result of the speak tool is the text that was spoken.
         # This can be used for logging or further processing.
         return {"status": "success", "spoken_text": text}

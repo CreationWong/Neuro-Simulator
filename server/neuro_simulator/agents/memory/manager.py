@@ -119,7 +119,7 @@ class MemoryManager:
         """Reset temp memory to an empty list."""
         self.temp_memory = []
         await self._save_temp_memory()
-        logger.info(f"Temp memory at {self.temp_memory_file} has been reset.")
+        logger.debug(f"Temp memory at {self.temp_memory_file} has been reset.")
 
     async def add_temp_memory(self, content: str, role: str = "system"):
         """Adds an item to temp memory and ensures the list doesn't exceed 20 items."""

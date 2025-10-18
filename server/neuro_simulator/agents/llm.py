@@ -5,7 +5,7 @@ Unified LLM client for all agents in the Neuro Simulator.
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any, AsyncGenerator, Optional
 
 from google import genai
 from google.genai import types
@@ -38,6 +38,7 @@ class LLMClient:
         self.client: Any = None
         self.model_name: str = provider_config.model_name
         self._generate_func = None
+        self._generate_func_stream = None
 
         # Store generation parameters from config
         self.temperature = provider_config.temperature
@@ -61,6 +62,7 @@ class LLMClient:
                 )
             self.client = genai.Client(api_key=provider_config.api_key)
             self._generate_func = self._generate_gemini
+            self._generate_func_stream = self._generate_gemini_stream
 
         elif provider_type == "openai":
             if not provider_config.api_key:
@@ -71,6 +73,7 @@ class LLMClient:
                 api_key=provider_config.api_key, base_url=provider_config.base_url
             )
             self._generate_func = self._generate_openai
+            self._generate_func_stream = self._generate_openai_stream
         else:
             raise ValueError(
                 f"Unsupported provider type in config for provider ID '{self.provider_id}': {provider_type}"
@@ -146,6 +149,107 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Error in _generate_openai for '{self.provider_id}': {e}", exc_info=True)
             return ""
+
+    async def _generate_gemini_stream(
+        self, prompt: str, max_tokens: int
+    ) -> AsyncGenerator[str, None]:
+        """Generates text using the Gemini model with streaming."""
+
+        config_params = {
+            "max_output_tokens": max_tokens,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "top_k": self.top_k,
+            "presence_penalty": self.presence_penalty,
+            "frequency_penalty": self.frequency_penalty,
+            "stop_sequences": self.stop_sequences,
+            "seed": self.seed,
+        }
+        if self.force_json_output:
+            config_params["response_mime_type"] = "application/json"
+
+        filtered_params = {k: v for k, v in config_params.items() if v is not None}
+        generation_config = types.GenerationConfig(**filtered_params)
+
+        def run_generation():
+            return self.client.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                generation_config=generation_config,
+                stream=True,
+            )
+
+        try:
+            response_iterator = await asyncio.to_thread(run_generation)
+            for chunk in response_iterator:
+                if chunk.text:
+                    yield chunk.text
+        except Exception as e:
+            logger.error(
+                f"Error in _generate_gemini_stream for '{self.provider_id}': {e}",
+                exc_info=True,
+            )
+            # Yield nothing if there's an error
+            return
+
+    async def _generate_openai_stream(
+        self, prompt: str, max_tokens: int
+    ) -> AsyncGenerator[str, None]:
+        """Generates text using the OpenAI model with streaming."""
+
+        params = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "frequency_penalty": self.frequency_penalty,
+            "presence_penalty": self.presence_penalty,
+            "stop": self.stop_sequences,
+            "seed": self.seed,
+            "stream": True,
+        }
+        if self.force_json_output:
+            params["response_format"] = {"type": "json_object"}
+
+        filtered_params = {k: v for k, v in params.items() if v is not None}
+
+        try:
+            stream = await self.client.chat.completions.create(**filtered_params)
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            logger.error(
+                f"Error in _generate_openai_stream for '{self.provider_id}': {e}",
+                exc_info=True,
+            )
+            return
+
+    async def generate_stream(
+        self, prompt: str, max_tokens: Optional[int] = None
+    ) -> AsyncGenerator[str, None]:
+        """Generate text using the configured LLM with streaming."""
+        if not self._generate_func_stream:
+            raise RuntimeError(
+                f"LLM Client for '{self.provider_id}' could not be initialized for streaming."
+            )
+
+        final_max_tokens = (
+            max_tokens if max_tokens is not None else self.max_output_tokens
+        )
+        if final_max_tokens is None:
+            final_max_tokens = 2048
+
+        try:
+            async for chunk in self._generate_func_stream(prompt, final_max_tokens):
+                yield chunk
+        except Exception as e:
+            logger.error(
+                f"Error generating text stream with LLM for '{self.provider_id}': {e}",
+                exc_info=True,
+            )
+            yield "Someone tell Vedal there is a problem with my AI."
 
     async def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
         """Generate text using the configured LLM."""

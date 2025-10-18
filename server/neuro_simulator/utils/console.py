@@ -165,6 +165,7 @@ def box_it_up(
     else:
         top_border_str = f"╭───{'─' * width}───╮"
     sys.__stdout__.write(f"{border_color}{top_border_str}{RESET}\n")
+    sys.__stdout__.flush()
 
     # Content lines
     for line in wrapped_lines:
@@ -174,7 +175,9 @@ def box_it_up(
             f"   {line}{' ' * padding}   "
             f"{border_color}│{RESET}\n"
         )
+        sys.__stdout__.flush()
 
     # Bottom border
     bottom_border_str = f"╰───{'─' * width}───╯"
     sys.__stdout__.write(f"{border_color}{bottom_border_str}{RESET}\n")
+    sys.__stdout__.flush()
