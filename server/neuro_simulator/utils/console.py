@@ -4,6 +4,7 @@ A centralized module for console UI, including ANSI color codes and display util
 
 import re
 import shutil
+import sys
 import textwrap
 
 # ==============================================================================
@@ -108,7 +109,10 @@ def box_it_up(
     border_color: str = RESET,
     content_color: str = RESET,
 ):
-    """Wraps a list of strings in a decorative, auto-wrapping box and prints them."""
+    """
+    Wraps a list of strings in a decorative, auto-wrapping box and prints them
+    directly to the original stdout, bypassing any log handlers.
+    """
     if not lines:
         return
 
@@ -160,17 +164,17 @@ def box_it_up(
         top_border_str = f"╭───┤ {title} ├{'─' * (width - len(title) - 1)}╮"
     else:
         top_border_str = f"╭───{'─' * width}───╮"
-    print(f"{border_color}{top_border_str}{RESET}")
+    sys.__stdout__.write(f"{border_color}{top_border_str}{RESET}\n")
 
     # Content lines
     for line in wrapped_lines:
         padding = width - visible_len(line)
-        print(
+        sys.__stdout__.write(
             f"{border_color}│{RESET}"
             f"   {line}{' ' * padding}   "
-            f"{border_color}│{RESET}"
+            f"{border_color}│{RESET}\n"
         )
 
     # Bottom border
     bottom_border_str = f"╰───{'─' * width}───╯"
-    print(f"{border_color}{bottom_border_str}{RESET}")
+    sys.__stdout__.write(f"{border_color}{bottom_border_str}{RESET}\n")

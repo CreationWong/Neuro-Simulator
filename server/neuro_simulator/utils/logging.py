@@ -77,8 +77,17 @@ _log_level_map = {
     "CRITICAL": logging.CRITICAL,
 }
 
+def _update_log_level(settings):
+    """Callback to update the root logger's level based on new settings."""
+    log_level_str = settings.server.log_level.upper()
+    level = _log_level_map.get(log_level_str, logging.INFO)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    root_logger.info(f"Log level updated to {log_level_str}")
+
+
 def configure_server_logging():
-    """Configures the server (root) logger to use the server_log_queue and a standard format."""
+    """Configures server logging and sets up dynamic level updates."""
     # Non-colored formatter for the queue (for the web UI)
     queue_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
 
@@ -100,10 +109,11 @@ def configure_server_logging():
     root_logger.addHandler(server_queue_handler)
     root_logger.addHandler(console_handler)
 
-    # Set log level from config
-    log_level_str = config_manager.settings.server.log_level.upper()
-    level = _log_level_map.get(log_level_str, logging.INFO)
-    root_logger.setLevel(level)
+    # Set initial log level from config
+    _update_log_level(config_manager.settings)
+
+    # Register the callback to update log level dynamically
+    config_manager.register_update_callback(_update_log_level)
 
     # Silence noisy third-party loggers
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -112,9 +122,6 @@ def configure_server_logging():
     # Force uvicorn error logger to use our handlers
     uvicorn_error_logger = logging.getLogger("uvicorn.error")
     uvicorn_error_logger.handlers = [server_queue_handler, console_handler]
-    uvicorn_error_logger.propagate = False
-  # Prevent double-logging
+    uvicorn_error_logger.propagate = False  # Prevent double-logging
 
-    root_logger.info(
-        "Server logging configured for queue and console."
-    )
+    root_logger.debug("Server logging configured for queue, console, and dynamic updates.")
