@@ -121,23 +121,31 @@ def box_it_up(
 
     wrapped_lines = []
     for line in lines:
-        color_prefix = content_color if content_color != RESET else ""
-        color_suffix = RESET if color_prefix else ""
-
-        # Don't wrap pre-colored lines to avoid mangling codes
-        if "\033[" in line or visible_len(line) <= max_content_width:
-            wrapped_lines.append(line)
-            continue
-
-        # If the line is too long, wrap it
-        wrapped_sub_lines = textwrap.wrap(
-            line,
-            width=max_content_width,
-            replace_whitespace=False,
-            drop_whitespace=True,
-        )
-        for sub_line in wrapped_sub_lines:
-            wrapped_lines.append(f"{color_prefix}{sub_line}{color_suffix}")
+        # Check if line already has ANSI color codes
+        has_color_codes = "\033[" in line
+        
+        # For lines that don't need wrapping
+        if visible_len(line) <= max_content_width:
+            # If line doesn't have color codes and content_color is specified, apply it
+            if content_color != RESET and not has_color_codes:
+                wrapped_lines.append(f"{content_color}{line}{RESET}")
+            else:
+                wrapped_lines.append(line)
+        else:
+            # Line needs wrapping
+            # If the line has color codes, we can't wrap it safely
+            if has_color_codes:
+                wrapped_lines.append(line)
+            else:
+                # Wrap the line and apply color
+                wrapped_sub_lines = textwrap.wrap(
+                    line,
+                    width=max_content_width,
+                    replace_whitespace=False,
+                    drop_whitespace=True,
+                )
+                for sub_line in wrapped_sub_lines:
+                    wrapped_lines.append(f"{content_color}{sub_line}{RESET}")
 
     if not wrapped_lines:
         return
