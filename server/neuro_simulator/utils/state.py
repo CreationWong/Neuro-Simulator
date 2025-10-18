@@ -16,6 +16,9 @@ class AppState:
         )
         self.superchat_queue = deque()
         self.last_superchat_time: float = 0.0
+        # Track stream state to distinguish between true stream start and config updates
+        self.is_first_response_for_stream: bool = True  # Only reset when a new stream cycle starts
+        self.stream_cycle_id: int = 0  # Incremented each time a new stream cycle starts
 
 
 # Create a single, globally accessible instance of the AppState.

@@ -32,7 +32,7 @@ class ModelZoomTool(BaseTool):
         """
         Sends a WebSocket command to the client to trigger the avatar zoom animation.
         """
-        logger.info(f"Executing {self.name} tool.")
+        logger.debug(f"Executing {self.name} tool.")
         try:
             await live_stream_manager.event_queue.put({"type": "model_zoom"})
             console.box_it_up(

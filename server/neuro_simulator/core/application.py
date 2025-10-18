@@ -226,7 +226,6 @@ async def neuro_response_cycle():
     assert config_manager.settings is not None
     await app_state.live_phase_started_event.wait()
     agent = await create_agent()
-    is_first_response = True
 
     while True:
         try:
@@ -247,14 +246,14 @@ async def neuro_response_cycle():
                 # Clear the regular input queue to prevent immediate follow-up with normal chats
                 get_all_neuro_input_chats()
             else:
-                if is_first_response:
+                if app_state.is_first_response_for_stream:
                     add_to_neuro_input_queue(
                         {
                             "username": "System",
                             "text": config_manager.settings.neuro.initial_greeting,
                         }
                     )
-                    is_first_response = False
+                    app_state.is_first_response_for_stream = False
                 elif is_neuro_input_queue_empty():
                     await asyncio.sleep(1)
                     continue

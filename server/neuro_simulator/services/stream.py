@@ -97,6 +97,10 @@ class LiveStreamManager:
         logger.info("Starting new stream cycle...")
         self._stream_start_global_time = time.time()
 
+        # Reset stream state for new cycle
+        app_state.is_first_response_for_stream = True
+        app_state.stream_cycle_id += 1
+
         from ..core.agent_factory import create_agent
 
         try:
